@@ -14,7 +14,7 @@ const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).sta
 
 // The landing's ratified lines that belong to the page itself, not to a browser: no Copy
 // button, no install tabs or "Read it first" link, no video, no links at its foot (N55, N59), none
-// of its words to the person about their agent, and not the price box's controls (N74).
+// of its words to the person about their agent, and not the price box's controls (N85).
 // The system-requirements sentence is checked against the landing's own (filled-in) sentence instead.
 const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|What would it cost\?|Why shroom\?|Video a month|Auto-cleanup after|30 days|60 days|a year|a month)$/;
 

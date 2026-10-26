@@ -63,16 +63,16 @@ fn naming_on_puts_the_page_up_with_the_ai_and_a_schedule_each_minute_and_off_tak
     assert_eq!(ai_of(&fake), Some(false));
     assert!(fake.with(|s| s.schedules.get("v").is_none_or(Vec::is_empty)));
 
-    wire::set_ai(&c, &spec(&acc, &tok, &m), true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), true, false).unwrap();
     assert_eq!(bound(&fake), ["r2_bucket", "secret_text", "ai"]);
     assert_eq!(fake.with(|s| s.scripts["v"][2]["name"].clone()), "AI");
     assert_eq!(fake.with(|s| s.schedules["v"].clone()), ["* * * * *"]);
     assert_eq!(ai_of(&fake), Some(true), "the page says so");
     // Turning it on again is the same page.
-    wire::set_ai(&c, &spec(&acc, &tok, &m), true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), true, false).unwrap();
     assert_eq!(bound(&fake), ["r2_bucket", "secret_text", "ai"]);
 
-    wire::set_ai(&c, &spec(&acc, &tok, &m), false).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), false, false).unwrap();
     assert_eq!(bound(&fake), ["r2_bucket", "secret_text"]);
     assert_eq!(fake.with(|s| s.schedules["v"].clone()), Vec::<String>::new());
     assert_eq!(ai_of(&fake), Some(false));
@@ -85,7 +85,7 @@ fn a_refresh_after_an_update_keeps_naming_as_the_live_page_has_it() {
         let (acc, tok, old) = wired(&fake, "0.3.0");
         let c = cloud(&fake);
         if on {
-            wire::set_ai(&c, &spec(&acc, &tok, &old), true).unwrap();
+            wire::set_ai(&c, &spec(&acc, &tok, &old), true, false).unwrap();
         }
         let ours = module("0.4.0");
         let at = |h: &str| Space::at(h, &fake.page(h));
@@ -102,7 +102,7 @@ fn a_re_wiring_keeps_it_too() {
     let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
     let (acc, tok, old) = wired(&fake, "0.3.0");
     let c = cloud(&fake);
-    wire::set_ai(&c, &spec(&acc, &tok, &old), true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &old), true, false).unwrap();
     // The repair mood's wiring, with a newer page in hand: the script goes up again, the AI with it.
     let ours = module("0.4.0");
     let at = |h: &str| Space::at(h, &fake.page(h));
@@ -119,7 +119,7 @@ fn naming_is_only_ever_turned_on_for_shrooms_own_page() {
     let c = cloud(&fake);
     let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
     let m = module("0.4.0");
-    assert!(matches!(wire::set_ai(&c, &spec(&acc, &tok, &m), true), Err(WireError::Foreign)));
+    assert!(matches!(wire::set_ai(&c, &spec(&acc, &tok, &m), true, false), Err(WireError::Foreign)));
     assert!(fake.with(|s| !s.schedules.contains_key("v")), "no schedule on someone else's Worker");
 }
 
@@ -127,4 +127,109 @@ fn naming_is_only_ever_turned_on_for_shrooms_own_page() {
 fn the_schedule_is_fenced_like_every_other_write() {
     let c = Cloud::new(TOKEN, Policy::TestNamespace { prefix: "shroom-e2e-".into() });
     assert!(c.put_schedules("acc", "v", &["* * * * *"]).is_err(), "a run token never touches a name outside its own");
+}
+
+/// N76 (Bagrat, 2026-10-25: on by default): a space set up from now on gets a page with the AI
+/// and its schedule; a space already there keeps what its page has, set up again or not, and
+/// a repair's wiring never turns it on.
+#[test]
+fn a_new_space_starts_with_the_ai_and_an_old_one_keeps_what_it_has() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let c = cloud(&fake);
+    let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
+    let m = module("0.4.0");
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    wire::wire_fresh_parts(&c, &spec(&acc, &tok, &m), Some(&check(&at, "0.4.0")), &|_| {}).unwrap();
+    assert!(bound(&fake).contains(&"ai".to_string()));
+    assert_eq!(fake.with(|s| s.schedules["v"].clone()), ["* * * * *"]);
+    assert_eq!(ai_of(&fake), Some(true));
+
+    // Set up again over a page whose AI was turned off: it stays off.
+    wire::set_ai(&c, &spec(&acc, &tok, &m), false, false).unwrap();
+    let newer = module("0.5.0");
+    let w = wire::wire_fresh_parts(&c, &spec(&acc, &tok, &newer), Some(&check(&at, "0.5.0")), &|_| {}).unwrap();
+    assert!(w.deployed);
+    assert_eq!(ai_of(&fake), Some(false), "an explicit off stands");
+
+    // A repair's wiring where the page is gone never turns it on.
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let c = cloud(&fake);
+    let (acc, tok) = fake.with(|s| (s.account_id(), s.token_id.clone()));
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    wire::wire_with(&c, &spec(&acc, &tok, &m), Some(&check(&at, "0.4.0"))).unwrap();
+    assert!(!bound(&fake).contains(&"ai".to_string()));
+    assert_eq!(ai_of(&fake), Some(false));
+}
+
+#[test]
+fn auto_cleanup_shares_naming_s_one_schedule_and_each_keeps_it_while_the_other_is_on() {
+    // N75 (DECISIONS B232): the space's page deletes on the one schedule naming uses; turning
+    // auto-cleanup on puts it, naming off keeps it while auto-cleanup is on, and auto-cleanup
+    // off takes it away once naming is off too. The page itself isn't put up again.
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    let schedules = || fake.with(|s| s.schedules.get("v").cloned().unwrap_or_default());
+
+    wire::set_schedule(&c, &spec(&acc, &tok, &m), true).unwrap();
+    assert_eq!(schedules(), ["* * * * *"]);
+    assert_eq!(bound(&fake), ["r2_bucket", "secret_text"], "no AI for auto-cleanup");
+
+    wire::set_ai(&c, &spec(&acc, &tok, &m), true, true).unwrap();
+    wire::set_ai(&c, &spec(&acc, &tok, &m), false, true).unwrap();
+    assert_eq!(schedules(), ["* * * * *"], "naming off, auto-cleanup on: the schedule stays");
+    assert_eq!(bound(&fake), ["r2_bucket", "secret_text"]);
+
+    wire::set_schedule(&c, &spec(&acc, &tok, &m), false).unwrap();
+    assert!(schedules().is_empty(), "both off: no schedule");
+}
+
+/// N80: turning AI on or off says its parts as they begin — the page put up again, then its
+/// schedule — and ends only once the page itself says so.
+#[test]
+fn naming_says_its_parts_in_order_and_ends_when_the_page_says_so() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    let at = |h: &str| Space::at(h, &fake.page(h));
+    for on in [true, false] {
+        let seen = std::cell::RefCell::new(Vec::new());
+        wire::set_ai_parts(&c, &spec(&acc, &tok, &m), on, false, Some((&check(&at, "0.4.0"), HOST)), &|p| seen.borrow_mut().push(p)).unwrap();
+        assert_eq!(*seen.borrow(), [wire::AiPart::Page, wire::AiPart::Schedule]);
+        assert_eq!(ai_of(&fake), Some(on));
+    }
+}
+
+/// N80: a page that never says so is a re-wiring that didn't go through (law 12) — never a
+/// done said ahead of the page.
+#[test]
+fn naming_that_the_page_never_confirms_didnt_go_through() {
+    let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+    let (acc, tok, m) = wired(&fake, "0.4.0");
+    let c = cloud(&fake);
+    // Asked somewhere nothing answers: the page never says its AI is on.
+    let never = |_: &str| Space::at(HOST, "http://127.0.0.1:9");
+    let r = wire::set_ai_parts(&c, &spec(&acc, &tok, &m), true, false, Some((&check(&never, "0.4.0"), HOST)), &|_| {});
+    assert!(matches!(r, Err(WireError::NotAnswering)), "{r:?}");
+}
+
+/// N80: a page still answering with its old AI keeps the run waiting, and it ends as a
+/// didn't-go-through — never a done because the calls answered.
+#[test]
+fn naming_waits_for_the_pages_new_word() {
+    for on in [true, false] {
+        let fake = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+        let (acc, tok, m) = wired(&fake, "0.4.0");
+        let c = cloud(&fake);
+        if !on {
+            wire::set_ai(&c, &spec(&acc, &tok, &m), true, false).unwrap();
+        }
+        // Another space's page, saying the old word whatever this one now has.
+        let stale = Fake::start(State { subdomain: Some("bagrat".into()), ..State::fresh() });
+        let (sa, st, sm) = wired(&stale, "0.4.0");
+        wire::set_ai(&cloud(&stale), &spec(&sa, &st, &sm), !on, false).unwrap();
+        let old = |h: &str| Space::at(h, &stale.page(h));
+        let r = wire::set_ai_parts(&c, &spec(&acc, &tok, &m), on, false, Some((&check(&old, "0.4.0"), HOST)), &|_| {});
+        assert!(matches!(r, Err(WireError::NotAnswering)), "on {on}: {r:?}");
+    }
 }

@@ -112,17 +112,23 @@ Two things to know before anything else:
    rm -r ~/.shroom/release-identity
    ```
 
-8. *(Optional — your approval before each release.)* On the `release` environment's page:
-   **Required reviewers** → add yourself, and leave **Prevent self-review** unticked (you
-   are the only reviewer). Each release's build then waits for your click in the run's page
-   before it can read the secrets.
+Steps 8 and 9 are **required**: they are what keeps the release identity to the code you
+meant to ship. A run of the workflow uses the copy of `release.yml` on the branch it runs
+from, so the workflow's own checks can't guard the secrets; the environment's rules can,
+because they live in GitHub's settings, not in a branch. Check both before every launch.
 
-9. *(Optional — who may release.)* Still on the environment's page: **Deployment branches
-   and tags** → **Selected branches and tags** → add the tag rule `v*`, and the branch
-   `main` if you want to use the rehearsal in step 11. And under **Settings** → **Rules** →
-   **Rulesets** → **New tag ruleset**: target `v*`, restrict creations, updates and
-   deletions, with yourself on the bypass list — so nobody else can push a release tag, and
-   a published version's tag can't be moved.
+8. *(Required — your approval before each signed build.)* On the `release` environment's
+   page: **Required reviewers** → add yourself, and leave **Prevent self-review** unticked
+   (you are the only reviewer). Each signed build then waits for your click in the run's
+   page before it can read the secrets.
+
+9. *(Required — who may sign.)* Still on the environment's page: **Deployment branches
+   and tags** → **Selected branches and tags** → add the branch `main`, the branch
+   `early-release` (early builds: [Pre-releases](#pre-releases)) and the tag rule `v*` —
+   nothing else. A rehearsal off any other branch runs outside the environment, signed ad
+   hoc. And under **Settings** → **Rules** → **Rulesets** → **New tag ruleset**: target
+   `v*`, restrict creations, updates and deletions, with yourself on the bypass list — so
+   nobody else can push a release tag, and a published version's tag can't be moved.
 
 10. Look at CI on `main`: all four jobs green — **Tests**, **Release build (ad hoc)**,
     **Signing rehearsal**, **Advisories**. The rehearsal does everything a release does to
@@ -131,7 +137,8 @@ Two things to know before anything else:
     been proven".)
 
 11. Rehearse with the real identity, publishing nothing: **Actions** → **Release** → **Run
-    workflow** → branch `main`. It builds and signs exactly as a tag would, shows the
+    workflow** → branch `main`. It builds and signs exactly as a tag would (off `main`, a
+    rehearsal builds the same but never signs with the identity), shows the
     signature and the SHA-256s in the run's summary, keeps the two files as an artifact
     for a week, and skips the publish job.
 
@@ -170,6 +177,16 @@ not been proven". 0.1.4 was never released.) Read your version for it.
    ```
 
    and read 0.1.5 for 0.1.4 from here on.
+
+   If an early build heading to a higher version is out (Pre-releases), release that
+   version instead: with `0.1.33-early.1` out and the tree at an unreleased `0.1.32`, move
+   it to `0.1.33`, so early Macs take the release too.
+
+   Between releases the tree's version moves only when a build goes out (DECISIONS B248): a
+   page change while its version is unreleased re-stamps that version's row in
+   `worker/page-version.json` (the page-version test prints it), and once a build of it is
+   published — a release or an early build — the row is frozen and the next page change
+   needs the next version (`tools/page-version-out.sh`, in CI, holds that).
 
 2. Write the release's notes: `docs/release-notes/<version>.md`, a short list of what
    someone using shroom would notice, one line each, in shroom's voice — no decision
@@ -247,14 +264,17 @@ official channel never see it. Only a Mac on the **early channel** takes it.
 **Versions.** An early build is `x.y.z-early.n` on the way to release `x.y.z`, n counting
 from 1: `0.1.24` → `0.1.25-early.1` → `0.1.25-early.2` → `0.1.25` → `0.1.26-early.1`. Every reader of
 a version keeps that order: the app's updater, the page compare, `tools/bump-version.sh`, the
-installer and the release workflow. `tools/bump-version.sh 0.1.25-early.1` moves the tree there,
-from `0.1.24` or from an unreleased `0.1.25`; the next is `-early.2`, and `0.1.25` itself is the
-release. The release workflow takes an early build's version only with **Early** ticked, and
+installer and the release workflow. `tools/bump-version.sh 0.1.25-early.1` moves the tree there
+from `0.1.24`, released or not, but never down from `0.1.25`: the tree holds its own version's
+page row, and an early build's page must be newer (B248). So from an unreleased `0.1.25`, the
+early build is `0.1.26-early.1`. The next is `-early.2`, and `0.1.26` itself is the release. The release workflow takes an early build's version only with **Early** ticked, and
 an early build only with that version.
 
-**Branches.** The channel's own code lives on `main`. Early builds are cut only from the
+**Branches.** The channel's own code lives on `main`. Early builds are made on the
 long-lived integration branch, `claude/early-integration`: `main` plus the feature pull
-requests held for a release, each merged in. It takes `main` by merging it in, never by a
+requests held for a release, each merged in. They are published from `early-release`,
+which only ever points at a commit of that branch (DECISIONS B254): sessions push only
+`claude/` branches, and the `release` environment allows no `claude/` branch. It takes `main` by merging it in, never by a
 rebase. `main` stays free — fixes and features merge to it as always, and releases are cut
 from it as always (Cutting a release, above). A feature reaches `main` through its own pull
 request, never through this branch.
@@ -284,16 +304,22 @@ curl -fsSL https://github.com/bagrat/shroom/releases/download/early/manifest.txt
    head.
 3. See CI green on that head, and the hosted-Mac heartbeat (**Actions** → **E2E full** →
    Run workflow on the branch).
-4. **Actions** → **Release** → **Run workflow** → the branch, tick **Publish** and
-   **Early**. The run refuses unless CI is green on that commit, the version is an early
+4. **Actions** → **Early release branch** → **Run workflow** on
+   `claude/early-integration`. It moves `early-release` forward to that head, and refuses
+   unless CI is green on it, so what's built next is the commit CI and the heartbeat tested.
+   Then **Actions** → **Release** → **Run workflow** → `early-release`, tick **Publish** and
+   **Early**. With the environment's required reviewer set (One-time setup, step 8), the
+   build waits for your **Approve and deploy**. The run refuses unless CI is green on that commit, the version is an early
    build's and isn't tagged, and its release isn't out; it needs no release notes
    (shroom.am's What's new sends a version it has no notes for to the newest release's). It
    tags `v<version>` on the commit it built.
 5. The run's publish job fails if `releases/latest` turned out to be the early build, and
    warns if the pointer doesn't name it.
 
-*(If the `release` environment's deployment branches are limited — One-time setup, step 9
-— the branch must be on that list for the run to reach the signing secrets.)*
+The release workflow publishes an early build from `early-release` and no other branch,
+and it is the one branch besides `main` the `release` environment allows (One-time setup,
+step 9). Renaming it means changing all of them: `EARLY_BRANCH` and the publish job's
+condition in `release.yml`, `early-release.yml`, and that list.
 
 **Taking the early channel on a Mac.** Once, in Terminal:
 
@@ -416,12 +442,20 @@ before the build, and the publish after it. Both workflows build through one scr
 `tools/release-build.sh`, so the app CI checks is the app a tag ships. Every action is
 pinned to a commit.
 
-**CI** (`.github/workflows/ci.yml`) — every push to `main`, every pull request:
+**CI** (`.github/workflows/ci.yml`) — every push to `main`, every pull request. It is
+routed (the **Route** job, `tools/ci-route.py`): `main` and Run workflow run every job; a
+pull request runs the Linux jobs always and the Mac's (the two Mac test lanes, the release
+build, the signing rehearsal) only when it touches something outside `site/`, `worker/`,
+`docs/`, `dev/`, `history/`, `.claude/`, `spec/MACHINE.md` and top-level prose, or a web
+file a Mac lane reads (the router finds those in the Mac lanes' sources:
+`python3 tools/ci-route.py --reads`). A skipped Mac job reports as skipped. An early build
+from a branch needs those jobs green, so it is of a branch that touched the app — which
+always runs them.
 
 | Job | What it does |
 |---|---|
-| Tests | the spec's readable form current (`tools/render-machine-md.py --check`), the Rust workspace, the Worker (unit suite, typecheck, the contract under workerd), the installer, the landing page, the agent skill, the media readers, the frontend's build and typecheck |
-| Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in. From `main` it saves the caches a tag needs |
+| Tests | the gate: green when every test lane this run needs is — **Tests · web (Linux)** (the spec's readable form current, the third-party notices, the frontend's build, typecheck and unit suite, the Worker's unit suite, typecheck and contract under workerd, the release notes, the landing page, the agent skill, the media readers), **Tests · Rust (Linux)** (the crates with no platform in them, `rust-tests.sh --ci-linux`), **Tests · Settings fits its window (Linux)** (every General, Videos and Space pane no taller than the window's page, `app/test/settings-fit.mjs`, N79), **Tests · Rust and media (Mac)** (the rest of the workspace and the real recordings, `rust-tests.sh --ci`) and **Tests · installer (Mac)** (the installer and the cask, with real `ditto` and `codesign`) |
+| Release build (ad hoc) | the release build with no identity (signed ad hoc), every bundle check, packaged as a stand-in; then signed after the build with a throwaway identity, as a release is (`--resign`). From `main` it saves the caches a tag needs |
 | Signing rehearsal | makes a throwaway identity with `tools/make-release-identity.sh`, imports and trusts it as a release would, signs a file and checks macOS would keep a permission by it |
 | Advisories | `cargo audit` against RustSec and `npm audit --audit-level=high` (DECISIONS B125): a known vulnerability in a pinned dependency fails it; an unmaintained-crate notice is listed, not fatal |
 
@@ -430,7 +464,7 @@ pinned to a commit.
 | Job | What it does |
 |---|---|
 | The tag is the tree's version | the tag equals the version in all seven version files; the commit is on `main`; the certificate is pinned; the version's notes are written (a rehearsal only warns) |
-| Build, sign, package | restores the caches, builds the encoder only if its cache missed, imports the identity into a throwaway keychain (deleted whatever happens), checks it is the pinned certificate, runs the release build, packages it |
+| Build, sign, package | restores the caches, builds the encoder only if its cache missed, runs the release build with no key on the runner (signed ad hoc), then imports the identity into a throwaway keychain (its key not exportable; deleted whatever happens), checks it is the pinned certificate, signs the finished bundle with it (`--resign`), packages it. A rehearsal off `main` skips the identity and keeps the ad hoc build |
 | Publish the release | the only job that can write to the repo: creates the release with its files and its notes — `docs/release-notes/<version>.md` under "What's new", GitHub's generated list folded under "Under the hood" (`tools/release-notes.mjs`, B152) — then fetches the files back from the public address |
 
 ### How long
@@ -525,7 +559,8 @@ it — and a green `ci.yml` says nothing about them:
   through the installed dev app: the hosted Mac's **E2E full** workflow, or
   `tests/l5/heartbeat-vm.sh`.
 - **The app's window drives and galleries** (`app/test/`) — the hosted Mac
-  (`dev/mac/loop.sh`), or their Tart lanes.
+  (`dev/mac/loop.sh`), or their Tart lanes. (The galleries' Settings height check alone runs
+  in CI: `settings-fit.mjs`.)
 - **The clean-Mac lanes** (`tests/l5/`) — a Tart VM and the
   `shroom-dev` identity; and **two Macs** (`tests/l6/`).
 

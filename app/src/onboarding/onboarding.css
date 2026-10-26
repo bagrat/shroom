@@ -1,3 +1,4 @@
+@import "../lib/parts.css";
 /* The setup window — the welcome, the plan, the invite window's faces — drawn as the
    canvas draws it (“shroom UI”, DEVIATIONS #45): the mushroom header, one grouped card of
    rows with hairlines, one filled Frost action per face, the buttons at the window's foot.
@@ -681,38 +682,8 @@ input.paste.held {
   min-width: 0;
 }
 
-/* The spinner: the canvas's ring, its Frost arc turning; at rest it holds still. */
-.spin {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  display: block;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  animation: spin 0.9s linear infinite;
-}
-
-.spin .track {
-  stroke: var(--border);
-}
-
-.spin .arc {
-  stroke: var(--frost);
-}
-
-.spin.rest {
-  animation: none;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spin {
-    animation-duration: 2.4s;
-  }
+/* The working row's clock follows its aside (N74); the dot between is drawn, not said. */
+.aside .clock::before {
+  content: " · ";
+  color: var(--muted);
 }

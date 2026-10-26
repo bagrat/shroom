@@ -5,16 +5,16 @@ pub mod feedback;
 pub mod library;
 pub mod members;
 pub mod onboarding;
-mod popover;
+pub mod popover;
 pub mod settings;
 pub mod status;
 mod tray;
 
-pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 pub use popover::{
     DISK_MARGIN, ROOM_FLOOR_MINUTES, ROOM_LOW_MINUTES, bytes_per_minute, marker_offered, resume_mic, resume_ok, selected_camera, source_present,
     take_floor_bytes,
 };
+pub(crate) use popover::{OneShot, one_shot_showing, selected_mic as popover_selected_mic, selected_source as popover_selected_source};
 
 use crate::copy;
 use crate::scene::{Bubble, Countdown, Preview, Scene};
@@ -29,6 +29,8 @@ pub const UNDO_MS: u64 = 5_000;
 /// the link opened cold to draw itself. The window shows the light for its own first moments
 /// (about two seconds) and fades it, whenever it drew.
 pub const LIT_MS: u64 = 6_000;
+/// How long the marker toast shows (N78): two seconds, then it fades.
+pub const MARKER_TOAST_MS: u64 = 2_000;
 /// The countdown: 3 · 2 · 1 (N22).
 pub const COUNTDOWN_MS: u64 = 3_000;
 /// “Every few hours”: how often the background update check runs, and how long a failed
@@ -54,7 +56,8 @@ pub fn derive(w: &World) -> Scene {
     // setup-only Dock was rejected).
     let dock = onboarding.is_some() || library.is_some() || settings.is_some() || feedback.is_some() || !editors.is_empty();
     let label = agent_label(w);
-    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editors, countdown, bubble, preview, label, dock, next_wake: next_wake(w) }
+    let toast = marker_toast(w, popover.is_some() || countdown.is_some(), label.as_ref());
+    Scene { tray: tray::derive(w), popover, onboarding, library, settings, feedback, editors, countdown, bubble, preview, label, toast, dock, next_wake: next_wake(w) }
 }
 
 /// The agent label (N62, B216): on the display a take the command started records, while
@@ -65,6 +68,27 @@ fn agent_label(w: &World) -> Option<crate::scene::AgentLabel> {
     let SourceId::Display(display) = t.source else { return None };
     let recording = matches!(t.phase, crate::world::Phase::Starting | crate::world::Phase::Recording | crate::world::Phase::Resuming);
     recording.then(|| crate::scene::AgentLabel { display, line: copy::agent_label_line() })
+}
+
+/// The marker toast (N78): for two seconds after ⌥⌘M answered, on the display the take
+/// records (Camera's: where its preview sits), under the agent label when it shows there.
+/// Never beside the popover or a count, never once the take is over.
+fn marker_toast(w: &World, covered: bool, label: Option<&crate::scene::AgentLabel>) -> Option<crate::scene::MarkerToast> {
+    let t = w.take.as_ref()?;
+    let (says, at) = t.toast?;
+    if covered || w.now >= at.plus(MARKER_TOAST_MS) || matches!(t.phase, crate::world::Phase::Finalizing(_)) {
+        return None;
+    }
+    let display = match t.source {
+        SourceId::Display(id) => id,
+        SourceId::Camera => preview_display(w)?,
+    };
+    let line = match says {
+        crate::world::MarkerToastSays::Dropped(n) => copy::marker_toast(n),
+        crate::world::MarkerToastSays::Already => copy::already_marked(),
+    };
+    let under_label = label.is_some_and(|l| l.display == display);
+    Some(crate::scene::MarkerToast { display, line, hint: copy::marker_toast_hint(), under_label, pressed: at.0 })
 }
 
 /// The update to offer now: downloaded, verified, a space to carry it (never before
@@ -157,16 +181,20 @@ pub const UPKEEP_MS: u64 = CLEANUP_MS;
 
 /// When the editor's upkeep is due (B197 (d)): once a launch — at once, booted on a Mac in a
 /// space — then `UPKEEP_MS` after the last one (fail-soft: one that couldn't run waits as
-/// long). Every Mac, token or not: each bakes and copies its own videos.
+/// long), and at once when voice cuts have landed since the last one (`CutsLanded`). Every
+/// Mac, token or not: each bakes and copies its own videos.
 pub fn next_upkeep(w: &World) -> Option<Mono> {
     if !w.provisioned() || w.launch.version.is_empty() {
         return None;
     }
     let failed = w.inflight.failures.get(&Op::EditorUpkeep).map(|f| f.at);
-    Some(match w.library_ops.upkept.max(failed) {
+    let turn = match w.library_ops.upkept.max(failed) {
         Some(t) => t.plus(UPKEEP_MS),
         None => Mono(0),
-    })
+    };
+    // Cuts landed since the last upkeep answered: due from then.
+    let asked = w.library_ops.upkeep_asked.filter(|&a| w.library_ops.upkept.max(failed).is_none_or(|t| t < a));
+    Some(asked.map_or(turn, |a| a.min(turn)))
 }
 
 /// When the token Mac's page refresh is due (§6.10, B50): once a launch, an hour after one
@@ -261,21 +289,29 @@ fn next_wake(w: &World) -> Option<Mono> {
     if let Some((_, at)) = &w.session.copied {
         wakes.push(at.plus(COPIED_MS));
     }
+    if let Some((_, at)) = w.take.as_ref().and_then(|t| t.toast) {
+        wakes.push(at.plus(MARKER_TOAST_MS));
+    }
     if let Some((_, at)) = &w.session.fields.library.undo {
         wakes.push(at.plus(UNDO_MS));
     }
     if let Some((_, at)) = &w.session.fields.settings.lit {
         wakes.push(at.plus(LIT_MS));
     }
+    // An open editor's next mark for the space's auto-cleanup (N75).
+    wakes.extend(w.library_ops.marked.values().map(|t| t.plus(crate::settle::EDITING_MARK_MS)));
     wakes.extend(w.inflight.ops.values().copied());
     // The stop's probe asking again after a “not shroom” that hasn't held (B60).
     if w.session.page_open.is_some() {
         wakes.extend(w.net.not_shroom_reprobe());
     }
     wakes.extend(w.inflight.failures.values().map(|f| f.retry_at()));
-    // The AI banner's Turn on, tried again quietly (N66).
-    if w.space.ai_turn == Some(crate::world::AiTurn::Turning) {
-        wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
+    // The AI's re-wiring, tried again quietly (N76): the banner's Turn off, or the setup
+    // Mac's turn-on by default.
+    wakes.extend(w.inflight.failures.get(&Op::Ai).map(|f| f.ai_retry_at()));
+    // The AI's re-wiring's clock, each second while it runs (N80).
+    if let Some(run) = ai_running(w) {
+        wakes.push(Mono(run.since.0 + (w.now.0.saturating_sub(run.since.0) / 1_000 + 1) * 1_000));
     }
     onboarding::wakes(w, &mut wakes);
     settings::wakes(w, &mut wakes);
@@ -295,6 +331,39 @@ fn next_wake(w: &World) -> Option<Mono> {
 
 /// Naming's last re-wiring didn't go through (N66, law 12) and nothing runs since: said in the
 /// window it was asked from, for this visit to it.
+/// After this long on one part, the AI's re-wiring says Cloudflare is slow (N80).
+pub const AI_LONG_MS: u64 = 20_000;
+
+/// The AI's re-wiring while it runs (N80).
+pub fn ai_running(w: &World) -> Option<crate::world::AiRun> {
+    w.space.ai_run.filter(|r| r.end.is_none() && w.inflight.ops.contains_key(&Op::Ai))
+}
+
+/// The AI's parts as its run stands (N80): the parts before the one underway done, it
+/// spinning with its running clock from its first second, the rest to come; all done once
+/// the page said so; a run that stopped ends at its part, crossed. With the quiet line once
+/// the part underway has run long.
+pub fn ai_parts(w: &World, run: crate::world::AiRun) -> (Vec<crate::scene::Part>, Option<String>) {
+    use crate::scene::{Glyph, Part};
+    use crate::world::AiEnd;
+    let ms = w.now.0.saturating_sub(run.since.0);
+    let last = if run.end == Some(AiEnd::Stopped) { run.part } else { 3 };
+    let parts = (1..=last)
+        .map(|n| {
+            let glyph = match (run.end, n.cmp(&run.part)) {
+                (Some(AiEnd::Done), _) | (_, std::cmp::Ordering::Less) => Glyph::Done,
+                (Some(AiEnd::Stopped), _) => Glyph::Stopped,
+                (None, std::cmp::Ordering::Equal) => Glyph::Working,
+                (None, std::cmp::Ordering::Greater) => Glyph::Ahead,
+            };
+            let clock = (glyph == Glyph::Working && ms >= 1_000).then(|| copy::length(ms));
+            Part { glyph, line: copy::ai_part(run.on, n, glyph), clock }
+        })
+        .collect();
+    let long = (run.end.is_none() && ms >= AI_LONG_MS).then(copy::ai_long);
+    (parts, long)
+}
+
 pub fn ai_fell_through(w: &World, window: crate::world::WindowKind) -> bool {
     let entered = w.session.windows.get(&window).map(|d| d.entered);
     !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| entered.is_some_and(|e| f.at >= e))

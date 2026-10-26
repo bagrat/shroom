@@ -35,7 +35,7 @@ fn rec(id: &str) -> RecId {
 }
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64, live: bool) -> LibraryRow {
-    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None }
+    LibraryRow { rec: rec(id), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live, owner: Some("m1".into()), poster: false, edited_ms: None, pinned: false }
 }
 
 /// The space's records, as the mock draws them (and enough of them for six at once).
@@ -65,9 +65,28 @@ fn with_popover(mut w: World) -> World {
 }
 
 /// The setup Mac's popover while the space's AI is off: its banner is due (N66).
-fn ai_offered() -> World {
+/// The setup Mac's popover over a space whose AI is off and was never settled here (N76).
+fn ai_unsettled() -> World {
     let mut w = with_popover(ready());
     w.space.ai = Some(false);
+    w
+}
+
+/// The same, the AI turned on as the banner showed (N76).
+fn ai_turned_on() -> World {
+    let mut w = ai_unsettled();
+    w.space.ai = Some(true);
+    w
+}
+
+/// A member's popover in a space whose ping says its AI is on (N76).
+fn ai_member() -> World {
+    let mut w = with_popover(ready());
+    w.space.token = false;
+    let id = w.space.identity.as_mut().unwrap();
+    id.role = Role::Member;
+    id.owner_name = "Bagrat".into();
+    w.space.ai = Some(true);
     w
 }
 
@@ -89,7 +108,30 @@ fn suggestion(id: &str, bytes: u64, plays: u32, quiet_days: u32) -> Suggestion {
 
 /// What the space said is worth deleting, with the space's size (N68).
 fn suggested(mut w: World, rows: Vec<Suggestion>, space_bytes: u64) -> World {
-    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows }, Mono(960));
+    w.suggestions = Fact::known(Suggestions { counting: true, space_bytes, rows, ..Default::default() }, Mono(960));
+    w
+}
+
+/// Auto-cleanup on at 30 days (N75), with two videos going in three days and, once, the
+/// round before it said.
+fn going(mut w: World) -> World {
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean = AutoClean { days: 30, last: Some(Cleaned { at: Wall(1_789_900_000_000), recs: vec![rec("a4")], bytes: 1_700_000_000 }) };
+        v.going = vec![
+            Going { rec: rec("a2"), bytes: 640_000_000, plays: 2, quiet_days: 31, stopped_early: false, deletes_at: Wall(1_790_259_200_000) },
+            Going { rec: rec("r19"), bytes: 1_100_000_000, plays: 0, quiet_days: 33, stopped_early: false, deletes_at: Wall(1_790_259_200_000) },
+        ];
+    }
+    w
+}
+
+/// A pinned video in the list (N75).
+fn with_pinned(mut w: World, id: &str) -> World {
+    if let Fact::Known { v, .. } = &mut w.library {
+        if let Some(r) = Arc::make_mut(v).iter_mut().find(|r| r.rec == rec(id)) {
+            r.pinned = true;
+        }
+    }
     w
 }
 
@@ -285,6 +327,7 @@ fn plan(s: &Scene) -> &shroom_core::scene::PlanView {
     match &s.settings.as_ref().expect("the Settings window").body.pane {
         SettingsPane::Space(sp) => &sp.plan,
         SettingsPane::General(_) => panic!("General, not Space"),
+        SettingsPane::Videos(_) => panic!("Videos, not Space"),
         SettingsPane::Members(_) => panic!("Members, not Space"),
     }
 }
@@ -292,6 +335,7 @@ fn plan(s: &Scene) -> &shroom_core::scene::PlanView {
 fn general(s: &Scene) -> &shroom_core::scene::GeneralBody {
     match &s.settings.as_ref().expect("the Settings window").body.pane {
         SettingsPane::General(g) => g,
+        SettingsPane::Videos(_) => panic!("Videos, not General"),
         SettingsPane::Space(_) => panic!("Space, not General"),
         SettingsPane::Members(_) => panic!("Members, not General"),
     }
@@ -341,6 +385,19 @@ impl Drive for Run {
 
 // ── the inventory: one row (or more) per in-scope state ──
 
+/// The AI's page being re-wired (N80): its run at `part` since `since`, in flight until it ends.
+fn ai_rewiring(mut w: World, on: bool, part: u8, end: Option<AiEnd>, since: u64) -> World {
+    w.space.ai_run = Some(AiRun { on, part, since: Mono(since), end });
+    if end.is_none() {
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+    }
+    // Begun long ago: the part has run past its quiet line's 20 s.
+    if since == 0 {
+        w.now = Mono(21_000);
+    }
+    w
+}
+
 fn rows() -> Vec<(&'static str, World)> {
     let mut rows: Vec<(&'static str, World)> = Vec::new();
     // ── the Library ──
@@ -356,45 +413,94 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("library-cleanup", {
         let mut w = library_suggesting();
         w.session.fields.library.cleanup = true;
-        w.session.fields.library.undo = Some((rec("a1"), Mono(990)));
+        w.session.fields.library.undo = Some((vec![rec("a1")], Mono(990)));
         w
     }));
     rows.push(("library-cleanup", {
         let mut w = library_suggesting();
         w.session.fields.library.cleanup = true;
         for id in ["a3", "onb", "a1"] {
-            w.library_ops.landed.insert(rec(id), (Landed::Kept, Mono(980)));
+            w.library_ops.landed.insert(rec(id), (Landed::Pinned(true), Mono(980)));
         }
         w
     }));
-    rows.push(("library-empty", library_with(ready(), vec![])));
-    // N66 (Bagrat, 2026-10-18): the setup Mac's popover while the space's AI is off — its
-    // banner, the confirm Turn on… opens, the banner while the page is re-wired and when that
-    // didn't go through, and the line once it's on.
-    rows.push(("ai-offer", ai_offered()));
-    rows.push(("ai-confirm", {
-        let mut w = ai_offered();
-        w.session.confirm = Some(Confirm::Ai);
+    // ── Pin, Delete all and auto-cleanup (N75) ──
+    rows.push(("library", with_pinned(library_suggesting(), "r502")));
+    rows.push(("library", going(library_suggesting())));
+    rows.push(("library", {
+        let mut w = with_pinned(library_suggesting(), "r502");
+        w.inflight.failures.insert(Op::Pin, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
         w
     }));
-    rows.push(("ai-turning-on", {
-        let mut w = ai_offered();
-        w.space.ai_turn = Some(AiTurn::Turning);
+    rows.push(("library-cleanup", {
+        let mut w = going(library_suggesting());
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((vec![rec("a3"), rec("onb"), rec("a1")], Mono(990)));
+        w
+    }));
+    rows.push(("delete-confirm-cleanup", {
+        let mut w = library_suggesting();
+        w.session.fields.library.cleanup = true;
+        w.session.confirm = Some(Confirm::DeleteSuggested(vec![rec("a3"), rec("onb"), rec("a1")]));
+        w
+    }));
+    rows.push(("autoclean-warning", going(suggested(with_popover(library(ready())), vec![], 34_000_000_000))));
+    rows.push(("autoclean-warning", {
+        let mut w = going(suggested(with_popover(library(ready())), vec![], 34_000_000_000));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
+    rows.push(("autoclean-warning", {
+        let mut w = going(suggested(with_popover(library(ready())), vec![], 34_000_000_000));
+        w.session.fields.library.pinned_note = Some((2, Wall(1_790_259_200_000)));
+        w
+    }));
+    rows.push(("library-empty", library_with(ready(), vec![])));
+    // N76 (Bagrat, 2026-10-25): AI on by default — the setup Mac's banner while the page is
+    // re-wired with it and once it's on, its Turn off re-wiring and when that didn't go
+    // through, the line once it's off; and a member's banner.
+    rows.push(("ai-turned-on", {
+        let mut w = ai_unsettled();
+        w.space.ai_turn = Some(AiTurn::TurningOn);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
         w
     }));
-    rows.push(("ai-offer-failed", {
-        let mut w = ai_offered();
-        w.space.ai_turn = Some(AiTurn::Turning);
+    rows.push(("ai-turned-on", ai_turned_on()));
+    rows.push(("ai-turning-off", {
+        let mut w = ai_turned_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w
+    }));
+    // Its parts as they land (N80), and the quiet line once one has run long.
+    for (part, since) in [(1, 990), (2, 990), (3, 990), (2, 0)] {
+        rows.push(("ai-turning-off", {
+            let mut w = ai_turned_on();
+            w.space.ai_turn = Some(AiTurn::TurningOff);
+            ai_rewiring(w, false, part, None, since)
+        }));
+    }
+    rows.push(("ai-turn-off-failed", {
+        let mut w = ai_turned_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
-    rows.push(("ai-on", {
+    rows.push(("ai-off", {
         let mut w = with_popover(ready());
-        w.space.ai = Some(true);
-        w.space.ai_turn = Some(AiTurn::On);
+        w.space.ai = Some(false);
+        w.space.ai_turn = Some(AiTurn::Off);
+        w.once.ai_offer_answered = true;
         w
     }));
+    rows.push(("ai-on-in-space", ai_member()));
     rows.push(("library-no-match", {
         let mut w = library_with(ready(), space_rows().into_iter().filter(|r| !r.title.contains("502")).collect());
         w.session.fields.library.search = "502".into();
@@ -450,6 +556,23 @@ fn rows() -> Vec<(&'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
+    // A run stopped at its first part (N80, law 12).
+    rows.push(("settings-space", {
+        let mut w = space_tab();
+        w.space.ai = Some(true);
+        w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
+        ai_rewiring(w, false, 1, Some(AiEnd::Stopped), 990)
+    }));
+    // The switch's parts as they land, done, and running long (N80).
+    for on in [true, false] {
+        for (part, end, since) in [(1, None, 990), (2, None, 990), (3, None, 990), (3, Some(AiEnd::Done), 990), (2, None, 0)] {
+            rows.push(("settings-space", {
+                let mut w = space_tab();
+                w.space.ai = Some(!on);
+                ai_rewiring(w, on, part, end, since)
+            }));
+        }
+    }
     rows.push(("settings-space", {
         let mut w = space_tab();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -486,6 +609,15 @@ fn rows() -> Vec<(&'static str, World)> {
         let mut w = space_tab();
         w.sweep.gates = Fact::known(Gates { email: false, card: true }, Mono(950));
         w.session.fields.billing_opened = true;
+        w
+    }));
+    // N74: the repair mood's card gate is the setup's, its watch and its quiet line too.
+    rows.push(("gate-card", {
+        let mut w = space_tab();
+        w.sweep.gates = Fact::known(Gates { email: false, card: true }, Mono(950));
+        w.session.fields.billing_opened = true;
+        w.session.fields.billing_at = Some(Mono(1_000));
+        w.now = Mono(50_000);
         w
     }));
     rows.push(("wiring", {
@@ -527,9 +659,39 @@ fn rows() -> Vec<(&'static str, World)> {
         w.session.fields.settings.sent = true;
         w
     }));
-    rows.push(("settings-general", suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000)));
-    rows.push(("settings-general", {
-        let mut w = suggested(settings_on(ready(), SettingsTab::General), vec![], 34_000_000_000);
+    rows.push(("settings-videos", suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000)));
+    // Space used, in the Space tab on an owner-class Mac (N79).
+    rows.push(("settings-space", suggested(settings_on(ready(), SettingsTab::Space), vec![], 34_000_000_000)));
+    // Auto-cleanup (N75): the setting Mac's pop-up, another Mac's line, counting off, and the
+    // question turning it on asks.
+    rows.push(("settings-videos", going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000))));
+    rows.push(("settings-videos", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000));
+        w.space.token = false;
+        w
+    }));
+    rows.push(("settings-videos", {
+        let mut w = going(suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.counting = false;
+        }
+        w
+    }));
+    rows.push(("settings-videos", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000);
+        w.library_ops.autoclean = Some(30);
+        w
+    }));
+    rows.push(("autoclean-confirm", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000);
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.idle = vec![Idle { rec: rec("a2"), quiet_days: 40 }, Idle { rec: rec("a3"), quiet_days: 90 }, Idle { rec: rec("a4"), quiet_days: 31 }, Idle { rec: rec("r19"), quiet_days: 35 }];
+        }
+        w.session.confirm = Some(Confirm::Autoclean(30));
+        w
+    }));
+    rows.push(("settings-videos", {
+        let mut w = suggested(settings_on(ready(), SettingsTab::Videos), vec![], 34_000_000_000);
         w.inflight.failures.insert(Op::Plays, Failure { class: FailClass::Transport, at: Mono(970), tries: 1 });
         w
     }));
@@ -703,6 +865,21 @@ const LINES_OUT_OF_SCOPE: &[(&str, &str, &str)] = &[
     ("settings-space", "The small mark on every video page. You can flip it right on a page, too.", "the mark switch — not in this slice"),
     ("settings-space", "Leave this space…", "members' exit — Region 6"),
     ("wiring", "Almost there — switching your name on takes a few minutes the first time, and only once.", "the setup's last step — the onboarding window's (N45, onboarding.rs)"),
+    ("wiring", "Making your private storage…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Your private storage", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Making your private storage", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Putting up your video page…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Your video page", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Putting up your video page", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Switching your name on…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Your name is on", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Switching your name on", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Checking it all works…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Last check passed", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "A last check that it all works", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Adding this Mac to your space…", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "Adding this Mac to your space", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
+    ("wiring", "New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.", "the setup's last step lists wiring's parts — the onboarding window's (N74, onboarding.rs); the repair mood keeps its calm line"),
     ("editor", "was 4:32", "a template: the Scene hands the editor “was {}” and the webview puts the recording's length in it, as it does the time"),
 ];
 
@@ -713,7 +890,8 @@ fn surface_of(id: &str) -> Surface {
         Surface::Feedback
     } else if id.starts_with("editor") {
         Surface::Editor(EDITOR)
-    } else if id.starts_with("settings") || ["disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
+    } else if id.starts_with("settings") || [
+            "autoclean-confirm","disconnect-confirm", "disconnect-confirm-no-token", "leave-confirm", "uninstall-confirm", "report-problem", "repair-mood", "re-entry-as-settings", "token-repair-mood", "token-other-account", "gate-card", "wiring", "space-storage-gone", "name-changed"].contains(&id) {
         Surface::Settings
     } else {
         Surface::Popover
@@ -794,11 +972,6 @@ fn every_region5_state_derives_with_its_return_default_and_its_lines() {
             let want_esc = (!f.sending).then_some(Action::CloseFeedback);
             if scene.esc(surface) != want_esc {
                 failures.push(format!("{id}: Esc is {:?}, want {want_esc:?}", scene.esc(surface)));
-            }
-        } else if id == "ai-confirm" {
-            // The popover's question (N66): a click, not Return (as every question there); Esc is Back.
-            if scene.ret(surface).is_some() || scene.esc(surface) != Some(Action::Back) {
-                failures.push(format!("{id}: Return {:?}, Esc {:?}", scene.ret(surface), scene.esc(surface)));
             }
         } else if !structural {
             let got = scene.ret(surface);
@@ -1082,8 +1255,8 @@ fn library_rows_carry_their_state_words_and_their_doors() {
     let live = row(&s, "Where the 502s come from");
     assert_eq!(
         live.menu.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(),
-        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Delete…"],
-        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page"
+        ["Copied", "Copy thumbnail", "Open page", "Edit…", "Rename", "Pin", "Delete…"],
+        "N46: Copy thumbnail under Copy link; N63: Edit… after Open page; N75: Pin after Rename"
     );
     assert_eq!(live.gestures.double_click, Some(Action::OpenPage(rec("r502"))));
     assert_eq!(s.library.as_ref().unwrap().body.footer.as_deref(), Some("12 videos"));
@@ -1213,7 +1386,7 @@ fn the_repair_mood_routes_each_break_to_its_row() {
     let Nest::StorageGone { buttons, .. } = &plan(&r.scene).nest else { panic!() };
     assert_eq!(buttons.iter().map(|b| b.label.as_str()).collect::<Vec<_>>(), ["Set it up fresh", "Disconnect this Mac…"]);
     r.key(Surface::Settings, Key::Return);
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into() })));
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: false })));
     r.cloud(CloudNews::Wired(Ok(identity())));
     assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))), "wired: the plan re-probes");
     r.cloud(CloudNews::Swept(swept_ok()));
@@ -1233,7 +1406,7 @@ fn the_repair_mood_routes_each_break_to_its_row() {
     refocus(&mut r);
     r.cloud(CloudNews::Swept(SweepAnswer { worker: Some(WorkerFact::KeyGone), ..swept_ok() }));
     assert!(faces(&r.scene).contains(&"wiring"));
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into() })));
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: false })));
     r.cloud(CloudNews::Wired(Ok(identity())));
     r.cloud(CloudNews::Swept(swept_ok()));
     assert!(faces(&r.scene).contains(&"settings-space-inspection"));
@@ -1620,7 +1793,8 @@ fn a_closed_library_or_settings_comes_back_only_when_reached_for() {
 
 #[test]
 fn every_region5_op_has_a_deadline() {
-    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Keep, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
+    for (op, ms) in [(Op::LibRefresh, 60_000), (Op::Rename, 60_000), (Op::Delete, 60_000), (Op::Suggest, 60_000), (Op::Pin, 60_000),
+        (Op::Autoclean, 60_000), (Op::Plays, 60_000), (Op::UpdateCheck, 10_000), (Op::UpdateDownload, 1_800_000), (Op::UpdateApply, 30_000)] {
         assert_eq!(op.deadline_ms(), ms, "{op:?}");
     }
     // A refresh that never answers ends at its deadline; the window still shows the cache.
@@ -2284,10 +2458,12 @@ fn naming_is_a_switch_on_the_setup_mac_that_re_wires_the_page() {
     r.set(Action::SetAi(false));
     r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
     assert!(space_pane(&r.scene).ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it");
-    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
+    // Since N80 the failure is said under the switch's parts; the cost line stays.
+    assert_eq!(space_pane(&r.scene).ai_failed, Some(shroom_core::copy::ai_failed()), "and it says so (law 12)");
     r.set(Action::SetAi(false));
     r.send(Event::Cloud(CloudNews::AiSet(false)));
-    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_cost()), "until it goes through");
+    assert_eq!(space_pane(&r.scene).ai_failed, None, "until it goes through");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(shroom_core::copy::ai_cost()));
     let mut w = space_tab();
     w.space.ai = Some(true);
     w.take = Some(OpenTake { opened: Mono(950), since: Mono(950), ..take(Phase::Recording, 61_000) });
@@ -2306,129 +2482,178 @@ fn the_page_check_says_whether_naming_is_on() {
     assert_eq!(r.w.space.ai, Some(true));
 }
 
-/// N66 (Bagrat, 2026-10-18: off by default, but visible): on the setup Mac, while the space's
-/// AI is off, the popover's lowest banner offers it. Turn on… asks first, with what it costs;
-/// Turn on re-wires the page, the banner says so, a Turn on that didn't go through says that
-/// (law 12), and once it's on the status line says it, once.
+/// N76 (Bagrat, 2026-10-25: on by default): on the setup Mac, the popover that would show
+/// the AI's banner over AI that's off turns it on as it shows — said before anything is
+/// heard — and says so until OK or Turn off. OK settles it for good on this Mac.
 #[test]
-fn the_popover_offers_ai_on_the_setup_mac() {
+fn the_setup_mac_turns_ai_on_as_the_banner_shows() {
     let banner = |r: &Run| r.scene.popover.as_ref().and_then(|p| p.banner.clone());
     let labels = |b: &shroom_core::scene::Banner| b.buttons.iter().map(|x| (x.label.clone(), x.style)).collect::<Vec<_>>();
-    let mut r = Run::new(ai_offered());
+    let mut r = Run::new(ai_unsettled());
+    r.send(Event::Tick);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))), "the popover that shows it turns it on");
     let b = banner(&r).expect("the banner");
-    assert_eq!((b.id, b.tone, b.line.as_str()), ("ai-offer", shroom_core::scene::Tone::Frost, shroom_core::copy::ai_banner().as_str()));
-    assert_eq!(labels(&b), [(shroom_core::copy::turn_on_ask(), Style::Filled), (shroom_core::copy::not_now(), Style::Link)]);
+    assert_eq!((b.id, b.tone, b.line.as_str()), ("ai-turned-on", shroom_core::scene::Tone::Frost, shroom_core::copy::ai_turned_on().as_str()));
+    assert_eq!(b.detail, Some(shroom_core::copy::ai_turned_on_detail()));
+    assert_eq!(labels(&b), [(shroom_core::copy::ok(), Style::Filled), (shroom_core::copy::turn_off(), Style::Link)]);
+    assert!(!b.buttons[1].enabled, "Turn off waits for the turn-on's few seconds");
     assert_eq!(r.scene.popover.as_ref().unwrap().ret, Some(Action::Start), "a banner's own button is never Return (law 8)");
-
-    // Turn on… asks first: what it does and costs; Turn on is a click, Back and Esc go out.
-    r.act(Action::AiAsk);
-    let p = r.scene.popover.clone().unwrap();
-    assert_eq!(p.id, "ai-confirm");
-    let shroom_core::scene::PopoverBody::Question(q) = &p.body else { panic!("a question") };
-    assert_eq!((q.title.as_str(), q.line.as_str()), (shroom_core::copy::ai_confirm_title().as_str(), shroom_core::copy::ai_cost().as_str()));
-    assert_eq!(q.buttons.iter().map(|b| b.label.clone()).collect::<Vec<_>>(), [shroom_core::copy::back(), shroom_core::copy::turn_on()]);
-    assert_eq!((p.ret, p.esc), (None, Some(Action::Back)));
-    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "asking costs nothing");
-    r.act(Action::Back);
-    assert_eq!(banner(&r).map(|b| b.id), Some("ai-offer"), "back: the banner stays");
-
-    // Turn on: the page is re-wired, and the banner says so with nothing to press.
-    r.act(Action::AiAsk).act(Action::AiOn);
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))));
-    let b = banner(&r).unwrap();
-    assert_eq!((b.id, b.line.as_str(), b.buttons.len()), ("ai-turning-on", shroom_core::copy::ai_turning_on().as_str(), 0));
-    assert!(r.scene.state_ids().contains(&"ai-offer"));
-
-    // It didn't go through: said in place of the line, Turn on… live again (law 12).
-    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
-    let b = banner(&r).unwrap();
-    assert_eq!((b.id, b.line.as_str()), ("ai-offer-failed", shroom_core::copy::ai_failed().as_str()));
-    assert_eq!(labels(&b), [(shroom_core::copy::turn_on_ask(), Style::Filled), (shroom_core::copy::not_now(), Style::Link)]);
-
-    // Again, and it's on: the banner goes, the status line says so once, and it's done here.
-    r.act(Action::AiAsk).act(Action::AiOn);
     r.send(Event::Cloud(CloudNews::AiSet(true)));
-    assert!(banner(&r).is_none());
-    assert_eq!(status(&r.scene), Some(shroom_core::copy::ai_on_said()));
-    assert!(r.scene.state_ids().contains(&"ai-on"));
-    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)), "answered for good on this Mac");
+    assert!(banner(&r).unwrap().buttons[1].enabled);
+    assert_eq!(banner(&r).map(|b| b.id), Some("ai-turned-on"), "said until it's answered");
+    assert!(!r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(_)))), "not settled by itself");
     r.act(Action::Dismiss);
     r.click();
-    assert_ne!(status(&r.scene), Some(shroom_core::copy::ai_on_said()), "said once");
-}
+    assert_eq!(banner(&r).map(|b| b.id), Some("ai-turned-on"), "still there the next time");
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "on already: nothing to re-wire");
 
-/// N66 (Bagrat, 2026-10-18: never again): Not now hides the banner for good on this Mac, however
-/// many recordings follow; from then on only the switch in Settings · Space turns AI on. AI
-/// turned on anywhere answers it too.
-#[test]
-fn not_now_hides_the_ai_banner_for_good() {
-    let due = |w: &World| derive(w).popover.and_then(|p| p.banner).is_some_and(|b| b.id == "ai-offer");
-    let mut r = Run::new(ai_offered());
-    r.act(Action::AiNotNow);
-    assert!(r.scene.popover.as_ref().unwrap().banner.is_none());
+    // OK: on, settled for good on this Mac.
+    r.act(Action::AiOk);
+    assert!(banner(&r).is_none());
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)), "kept across launches");
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))));
-    let mut w = space_tab();
-    w.space.ai = Some(false);
-    w.once.ai_offer_answered = true;
-    assert!(space_pane(&derive(&w)).ai.is_some(), "the switch stays");
+}
 
-    // Recordings never bring it back.
-    let mut w = ai_offered();
-    w.once.ai_offer_answered = true;
+/// N76: never before it can be said — not with the popover shut, not under a higher banner,
+/// not mid-take, not offline — and never over an explicit no (the old offer's Not now, or the
+/// switch): those Macs' AI is settled.
+#[test]
+fn ai_is_turned_on_only_where_the_banner_shows() {
+    let turns_on = |w: World| {
+        let mut r = Run::new(w);
+        r.send(Event::Tick);
+        r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(true))))
+    };
+    assert!(turns_on(ai_unsettled()));
+    let mut w = ai_unsettled();
     w.session.popover = None;
-    w.take = Some(OpenTake { phase: Phase::Finalizing(Why::Stop), ..take(Phase::Recording, 61_000) });
-    let mut r = Run::new(w);
-    r.send(Event::Rec(RecNews::Finalized(Ok(61_000))));
-    assert!(!due(&r.w), "not after a recording");
-    let mut w = ai_offered();
+    assert!(!turns_on(w), "the popover shut");
+    let mut w = ai_unsettled();
+    w.mac.screen = Fact::known(false, Mono(0));
+    assert!(!turns_on(w), "under a higher banner");
+    let mut w = ai_unsettled();
     w.once.ai_offer_answered = true;
-    assert!(!due(&w), "not ever");
+    assert!(!turns_on(w.clone()), "settled: an explicit no stands");
+    assert!(derive(&w).popover.unwrap().banner.is_none());
+    let mut w = ai_unsettled();
+    w.space.ai = None;
+    assert!(!turns_on(w), "not known yet");
+    let mut w = ai_unsettled();
+    w.net.online = Fact::known(false, Mono(0));
+    assert!(!turns_on(w), "offline");
+    for role in [Role::OwnerClass, Role::Member] {
+        let mut w = ai_unsettled();
+        w.space.token = false;
+        w.space.identity.as_mut().unwrap().role = role;
+        assert!(!turns_on(w), "{role:?}: only the setup Mac re-wires the page");
+    }
 
-    // On from Settings answers it too, even if it's turned off again later.
-    let mut r = Run::new(ai_offered());
-    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    // The switch is a choice: on or off, the AI is settled on this Mac.
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)));
 }
 
-/// N66, law 12: a Turn on that didn't go through is tried again quietly — ten minutes, then
-/// longer — even with a take running meanwhile, until it goes through; Not now ends it.
+/// N76, law 12: a turn-on that didn't go through, once said, is tried again quietly — ten
+/// minutes, then longer — with the popover shut too, until it goes through; OK lets it go on.
 #[test]
-fn a_turn_on_that_didnt_go_through_is_tried_again_until_not_now() {
-    let mut r = Run::new(ai_offered());
-    r.act(Action::AiAsk).act(Action::AiOn);
+fn a_turn_on_that_didnt_go_through_is_tried_again_quietly() {
+    let mut r = Run::new(ai_unsettled());
+    r.send(Event::Tick);
     r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    assert_eq!(r.scene.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id), Some("ai-turned-on"));
+    r.act(Action::AiOk);
+    r.act(Action::Dismiss);
     let at = r.w.inflight.failures[&Op::Ai].ai_retry_at();
     r.tick_to(at.0 - 1);
     assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "not before its time");
     r.tick_to(at.0);
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))), "tried again");
-    assert_eq!(r.scene.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id), Some("ai-turning-on"));
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(true))), "tried again, the popover shut");
     r.send(Event::Cloud(CloudNews::AiSet(true)));
-    assert_eq!(status(&r.scene), Some(shroom_core::copy::ai_on_said()), "and when it goes through, it's said");
-
-    let mut r = Run::new(ai_offered());
-    r.act(Action::AiAsk).act(Action::AiOn);
-    r.send(Event::Failed { op: Op::Ai, class: FailClass::Refused });
-    r.act(Action::AiNotNow);
-    r.tick_to(10 * 3_600_000);
-    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "Not now: no more tries");
+    assert_eq!(r.w.space.ai_turn, None);
 }
 
-/// N66: the banner sits under every other banner, and never mid-take or while the space's
-/// AI is unknown.
+/// N76: Turn off re-wires the page without the AI, the banner says so, a Turn off that didn't
+/// go through says that (law 12) and is tried again quietly; once it's off the status line
+/// says so once, and the AI is settled on this Mac.
+#[test]
+fn turn_off_takes_the_ai_away_and_says_so_once() {
+    let banner = |r: &Run| r.scene.popover.as_ref().and_then(|p| p.banner.clone());
+    let mut r = Run::new(ai_turned_on());
+    r.act(Action::AiTurnOff);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(false))));
+    let b = banner(&r).unwrap();
+    assert_eq!((b.id, b.line.as_str(), b.buttons.len()), ("ai-turning-off", shroom_core::copy::ai_turning_off().as_str(), 0));
+    assert!(r.scene.state_ids().contains(&"ai-turned-on"));
+
+    // It didn't go through: said under the line, Turn off live again, and tried again quietly.
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let b = banner(&r).unwrap();
+    assert_eq!((b.id, b.line.as_str(), b.detail.as_deref()), ("ai-turn-off-failed", shroom_core::copy::ai_turned_on().as_str(), Some(shroom_core::copy::ai_turn_off_failed().as_str())));
+    let at = r.w.inflight.failures[&Op::Ai].ai_retry_at();
+    r.tick_to(at.0);
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::SetAi(false))), "tried again");
+
+    // Off: the banner goes, the status line says so once, and it's settled here.
+    r.send(Event::Cloud(CloudNews::AiSet(false)));
+    assert!(banner(&r).is_none());
+    assert_eq!(status(&r.scene), Some(shroom_core::copy::ai_off_said()));
+    assert!(r.scene.state_ids().contains(&"ai-off"));
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)), "settled for good on this Mac");
+    r.act(Action::Dismiss);
+    r.click();
+    assert_ne!(status(&r.scene), Some(shroom_core::copy::ai_off_said()), "said once");
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(true)))), "never turned on by default again");
+
+    // OK after a Turn off that didn't go through: AI stays on, the quiet tries stop.
+    let mut r = Run::new(ai_turned_on());
+    r.act(Action::AiTurnOff);
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Refused });
+    r.act(Action::AiOk);
+    r.tick_to(10 * 3_600_000);
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "OK: no more tries");
+    assert!(banner(&r).is_none());
+}
+
+/// N76: a member's Mac, once its space's ping says the AI is on, says once whose account
+/// hears its new videos; OK answers it for good. It learns it from the ping.
+#[test]
+fn a_members_mac_says_once_that_the_space_hears_its_videos() {
+    let mut w = ai_member();
+    w.space.ai = None;
+    let mut r = Run::new(w);
+    assert!(r.scene.popover.as_ref().unwrap().banner.is_none(), "not known yet");
+    r.send(Event::Member(shroom_core::event::MemberNews::Standing(shroom_core::event::StandingAnswer::Fine { current: true, only_holder: None, mark: None, ai: Some(true) })));
+    let b = r.scene.popover.as_ref().and_then(|p| p.banner.clone()).expect("the banner");
+    assert_eq!((b.id, b.line.as_str()), ("ai-on-in-space", shroom_core::copy::ai_on_in_space("Bagrat").as_str()));
+    assert_eq!(b.detail, Some(shroom_core::copy::ai_on_in_space_detail("Bagrat")));
+    assert_eq!(b.buttons.iter().map(|x| x.label.clone()).collect::<Vec<_>>(), [shroom_core::copy::ok()]);
+    assert!(!r.has(|e| matches!(e, Effect::Cloud(CloudCmd::SetAi(_)))), "never re-wires anything");
+    r.act(Action::AiOk);
+    assert!(r.scene.popover.as_ref().unwrap().banner.is_none());
+    assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Once(o)) if o.ai_offer_answered)));
+    let mut w = ai_member();
+    w.space.ai = Some(false);
+    assert!(derive(&w).popover.unwrap().banner.is_none(), "AI off: nothing to say");
+}
+
+/// N66, N76: the banner sits under every other banner, and never while the space's AI is
+/// unknown.
 #[test]
 fn the_ai_banner_is_the_lowest_banner() {
-    let mut w = ai_offered();
+    let mut w = ai_turned_on();
     w.mac.screen = Fact::known(false, Mono(0));
     assert_eq!(derive(&w).popover.unwrap().banner.map(|b| b.id), Some("recording-off"));
-    let mut w = ai_offered();
+    let mut w = ai_turned_on();
     w.space.ai = None;
-    assert!(derive(&w).popover.unwrap().banner.is_none(), "unknown: nothing offered");
+    assert!(derive(&w).popover.unwrap().banner.is_none(), "unknown: nothing said");
 }
 
-/// N66: only the Mac that holds the setup key can re-wire the page, so only it shows naming:
-/// never another of the owner's Macs, never a member's.
+/// N66: only the Mac that holds the setup key can re-wire the page, so only it shows naming's
+/// switch, and its banner over AI that's off: never another of the owner's Macs, never a
+/// member's (a member's says only that the AI is on, N76).
 #[test]
 fn naming_shows_only_where_the_setup_key_is() {
     for role in [Role::OwnerClass, Role::Member] {
@@ -2442,4 +2667,196 @@ fn naming_shows_only_where_the_setup_key_is() {
         let w = with_popover(w);
         assert!(derive(&w).popover.unwrap().banner.is_none(), "{role:?}");
     }
+}
+
+// ── The AI switch shows its parts (N80) ──
+
+/// The AI's parts as the scene shows them: each part's mark, line and clock.
+fn ai_parts(parts: &[shroom_core::scene::Part]) -> Vec<(shroom_core::scene::Glyph, String, Option<String>)> {
+    parts.iter().map(|p| (p.glyph, p.line.clone(), p.clock.clone())).collect()
+}
+
+/// N80 (Bagrat, 2026-10-25): the switch moves at once to where it's going, greyed, and lists
+/// its three parts as they land — each ticked only when the run says the next began, the one
+/// underway with its running clock from its first second; done when the page says so, the
+/// list kept until the tab or the window changes.
+#[test]
+fn the_ai_switch_shows_its_parts_as_they_land() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let mut w = space_tab();
+    w.space.ai = Some(false);
+    let mut r = Run::new(w);
+    assert!(space_pane(&r.scene).ai_parts.is_empty(), "nothing before the press");
+    r.set(Action::SetAi(true));
+    let t = space_pane(&r.scene).ai.clone().unwrap();
+    assert!(t.on && !t.enabled, "moves at once, greyed: {t:?}");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(copy::ai_cost()), "the cost line stays");
+    assert_eq!(
+        ai_parts(&space_pane(&r.scene).ai_parts),
+        [(Working, "Checking your space…".into(), None), (Ahead, "Connecting AI to your space".into(), None), (Ahead, "Switching AI on for new videos".into(), None)]
+    );
+    let t0 = r.t;
+    r.tick_to(t0 + 1_500);
+    assert_eq!(space_pane(&r.scene).ai_parts[0].clock.as_deref(), Some("0:01"), "its clock from its first second");
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    assert_eq!(
+        ai_parts(&space_pane(&r.scene).ai_parts),
+        [(Done, "Your space is ready".into(), None), (Working, "Connecting AI to your space…".into(), None), (Ahead, "Switching AI on for new videos".into(), None)],
+        "the clock starts again with its part"
+    );
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 3 }));
+    assert_eq!(space_pane(&r.scene).ai_parts[2].glyph, Working);
+    assert_eq!(space_pane(&r.scene).ai_parts[2].line, "Switching AI on for new videos…");
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert_eq!(
+        ai_parts(&space_pane(&r.scene).ai_parts),
+        [(Done, "Your space is ready".into(), None), (Done, "AI connected".into(), None), (Done, "AI is on for new videos".into(), None)],
+        "done when the page says so"
+    );
+    let t = space_pane(&r.scene).ai.clone().unwrap();
+    assert!(t.on && t.enabled, "live again: {t:?}");
+    assert_eq!(space_pane(&r.scene).ai_line, Some(copy::ai_cost()));
+    // Kept until the tab changes.
+    r.set(Action::SettingsTab(SettingsTab::General));
+    r.set(Action::SettingsTab(SettingsTab::Space));
+    assert!(space_pane(&r.scene).ai_parts.is_empty(), "gone once the tab changed");
+
+    // Off reads the same with its own words.
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    assert!(!space_pane(&r.scene).ai.as_ref().unwrap().on, "moves to off at once");
+    assert_eq!(space_pane(&r.scene).ai_parts[1].line, "Disconnecting AI…");
+    assert_eq!(space_pane(&r.scene).ai_parts[2].line, "Switching AI off for new videos");
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 3 }));
+    r.send(Event::Cloud(CloudNews::AiSet(false)));
+    assert_eq!(
+        space_pane(&r.scene).ai_parts.iter().map(|p| p.line.as_str()).collect::<Vec<_>>(),
+        ["Your space is ready", "AI disconnected", "AI is off for new videos"]
+    );
+}
+
+/// N80, law 12: a re-wiring that didn't go through puts the switch back as the page has it,
+/// live; the part that stopped carries its cross in its plain words, the parts after it go,
+/// and the failure's line is said under them.
+#[test]
+fn an_ai_switch_that_didnt_go_through_says_where_it_stopped() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    assert_eq!(space_pane(&r.scene).ai_failed, None);
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let sp = space_pane(&r.scene);
+    assert!(sp.ai.as_ref().is_some_and(|t| t.on && t.enabled), "as the page has it, live");
+    assert_eq!(ai_parts(&sp.ai_parts), [(Done, "Your space is ready".into(), None), (Stopped, "Disconnecting AI".into(), None)]);
+    assert_eq!(sp.ai_failed, Some(copy::ai_failed()), "said (law 12)");
+    assert_eq!(sp.ai_line, Some(copy::ai_cost()), "the cost line stays");
+    // The next try starts over.
+    r.set(Action::SetAi(false));
+    let sp = space_pane(&r.scene);
+    assert_eq!(sp.ai_failed, None);
+    assert_eq!(sp.ai_parts[0].glyph, Working);
+}
+
+/// N80: from 20 s on one part, one quiet line under the parts; the clock keeps going.
+#[test]
+fn an_ai_switch_running_long_says_so_once() {
+    use shroom_core::copy;
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    let t0 = r.t;
+    r.tick_to(t0 + 19_000);
+    assert_eq!(space_pane(&r.scene).ai_long, None);
+    r.tick_to(t0 + 24_000);
+    assert_eq!(space_pane(&r.scene).ai_long, Some(copy::ai_long()));
+    assert_eq!(space_pane(&r.scene).ai_parts[1].clock.as_deref(), Some("0:24"));
+}
+
+/// N80: while the run's clock shows, the window wakes each second to move it.
+#[test]
+fn the_ai_switch_clock_wakes_the_window_each_second() {
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    let since = r.w.space.ai_run.unwrap().since;
+    let wake = r.scene.next_wake;
+    assert!(wake.is_some_and(|m| m.0 <= since.0 + 1_000), "{wake:?} after {since:?}");
+}
+
+/// N80: the banner's Turn off lists the same parts under its line, with their clock, and
+/// the quiet line from 20 s; its off and didn't-go-through faces stay as they were.
+#[test]
+fn the_banners_turn_off_shows_its_parts() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let banner = |r: &Run| r.scene.popover.as_ref().and_then(|p| p.banner.clone()).unwrap();
+    let mut r = Run::new(ai_turned_on());
+    r.act(Action::AiTurnOff);
+    let b = banner(&r);
+    assert_eq!((b.id, b.line.as_str()), ("ai-turning-off", copy::ai_turning_off().as_str()));
+    assert_eq!(
+        ai_parts(&b.parts),
+        [(Working, "Checking your space…".into(), None), (Ahead, "Disconnecting AI".into(), None), (Ahead, "Switching AI off for new videos".into(), None)]
+    );
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    let t0 = r.t;
+    r.tick_to(t0 + 3_200);
+    let b = banner(&r);
+    assert_eq!(ai_parts(&b.parts)[1], (Working, "Disconnecting AI…".into(), Some("0:03".into())));
+    assert_eq!(b.long, None);
+    r.tick_to(t0 + 21_000);
+    assert_eq!(banner(&r).long, Some(copy::ai_long()));
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let b = banner(&r);
+    assert_eq!(b.id, "ai-turn-off-failed");
+    assert!(b.parts.is_empty() && b.long.is_none(), "the failed face as it was");
+}
+
+/// N80 (3): the done list stays until the window closes or the tab changes — a refocus of
+/// Settings (Cmd-Tab back, the popover closing) is neither, before the page says so or after.
+#[test]
+fn the_ai_switch_done_list_outlives_a_refocus() {
+    let mut w = space_tab();
+    w.space.ai = Some(false);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(true));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 2 }));
+    r.send(Event::Cloud(CloudNews::Part { op: Op::Ai, part: 3 }));
+    r.send(Event::WindowFocused(WindowKind::Settings, quick()));
+    r.send(Event::Cloud(CloudNews::AiSet(true)));
+    assert_eq!(space_pane(&r.scene).ai_parts.len(), 3, "refocused while it ran");
+    r.send(Event::WindowFocused(WindowKind::Settings, quick()));
+    assert_eq!(space_pane(&r.scene).ai_parts.len(), 3, "refocused once done");
+    r.set(Action::SettingsTab(SettingsTab::General));
+    r.set(Action::SettingsTab(SettingsTab::Space));
+    assert!(space_pane(&r.scene).ai_parts.is_empty(), "a tab change ends it");
+    // Done before this window opened (it opened at 900): never shown by it.
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let w = ai_rewiring(w, true, 3, Some(AiEnd::Done), 800);
+    assert!(space_pane(&derive(&w)).ai_parts.is_empty(), "done before this window opened");
+}
+
+/// N80, law 12: a run that stops at its first part (the page unanswered, the setup key not
+/// live) crosses it in its plain words, with the failure's line under it.
+#[test]
+fn an_ai_switch_stopped_at_its_first_part_says_so() {
+    use shroom_core::copy;
+    use shroom_core::scene::Glyph::*;
+    let mut w = space_tab();
+    w.space.ai = Some(true);
+    let mut r = Run::new(w);
+    r.set(Action::SetAi(false));
+    r.send(Event::Failed { op: Op::Ai, class: FailClass::Transport });
+    let sp = space_pane(&r.scene);
+    assert_eq!(ai_parts(&sp.ai_parts), [(Stopped, "Checking your space".into(), None)]);
+    assert_eq!(sp.ai_failed, Some(copy::ai_failed()));
 }

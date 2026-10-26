@@ -265,6 +265,13 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("card", "card", token_saved()));
+    // N74: the check's parts as they answer — storage underway, two seconds in.
+    rows.push(("card", "card-check", {
+        let mut w = token_saved();
+        w.sweep.check = Some(Progress { part: 3, since: Mono(1_000) });
+        w.now = Mono(3_000);
+        w
+    }));
     rows.push(("gate-email", "gate-email", gated(true, true)));
     rows.push(("gate-card", "gate-card", gated(false, true)));
     rows.push(("gate-card", "gate-card-opened", {
@@ -272,6 +279,16 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
         w.session.fields.billing_opened = true;
         w
     }));
+    // N74: the watch with its clock, and from 45 s its quiet line.
+    for (name, ms) in [("gate-card-watching", 24_000), ("gate-card-long", 70_000)] {
+        rows.push(("gate-card", name, {
+            let mut w = gated(false, true);
+            w.session.fields.billing_opened = true;
+            w.session.fields.billing_at = Some(Mono(1_000));
+            w.now = Mono(1_000 + ms);
+            w
+        }));
+    }
     rows.push(("name", "name", at_name()));
     rows.push(("name", "name-typed", {
         let mut w = at_name();
@@ -304,6 +321,15 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("wiring", "wiring", at_wiring()));
+    // N74: wiring's parts, switching the name on with its clock, and past 3 min its line.
+    for (name, ms) in [("wiring-parts", 48_000), ("wiring-long", 252_000)] {
+        rows.push(("wiring", name, {
+            let mut w = at_wiring();
+            w.sweep.wiring = Some(Progress { part: 3, since: Mono(1_000) });
+            w.now = Mono(1_000 + ms);
+            w
+        }));
+    }
     rows.push(("wizard-offline", "wizard-offline", {
         let mut w = at_wiring();
         w.net.online = Fact::known(false, Mono(0));
@@ -322,6 +348,13 @@ fn rows() -> Vec<(&'static str, &'static str, World)> {
     }));
     rows.push(("done", "done", at_done()));
     rows.push(("done", "done-wiring-underneath", named()));
+    // N74: the working row names the part underway, with its clock.
+    rows.push(("done", "done-wiring-part", {
+        let mut w = named();
+        w.sweep.wiring = Some(Progress { part: 3, since: Mono(1_000) });
+        w.now = Mono(49_000);
+        w
+    }));
     rows.push(("perm-mic", "perm-mic", chapter(Access::NotAsked, false)));
     rows.push(("perm-camera", "perm-camera", {
         let mut w = chapter(Access::Granted, false);
@@ -354,7 +387,7 @@ const AUG03: i64 = 1_785_758_400_000;
 const SEP30: i64 = 1_790_769_600_000;
 
 fn remote(id: &str, title: &str, at: i64, length_ms: u64) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(length_ms), live: true, owner: Some("m1".into()), poster: false, edited_ms: None, pinned: false }
 }
 
 fn space_rows() -> Vec<LibraryRow> {
@@ -377,6 +410,7 @@ fn recording() -> OpenTake {
         length_ms: 30_000,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     }
@@ -460,18 +494,46 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
     rows.push(("library-cleanup", "library-cleanup-undo", {
         let mut w = suggesting(library(ready(), space_rows()));
         w.session.fields.library.cleanup = true;
-        w.session.fields.library.undo = Some((RecId("r19".into()), Mono(990)));
+        w.session.fields.library.undo = Some((vec![RecId("r19".into())], Mono(990)));
         w
     }));
     rows.push(("library-cleanup", "library-cleanup-empty", {
         let mut w = library(ready(), space_rows());
-        w.suggestions = Fact::known(Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![] }, Mono(960));
+        w.suggestions = Fact::known(Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![], ..Default::default() }, Mono(960));
         w.session.fields.library.cleanup = true;
         w
     }));
     rows.push(("delete-confirm", "library-delete-sheet", {
         let mut w = library(ready(), space_rows());
         w.session.confirm = Some(Confirm::Delete(vec![RecId("r502".into())]));
+        w
+    }));
+    // N75: a pinned row and its menu's Unpin; auto-cleanup's line and the going rows; the
+    // view with what's going first; Delete all's sheet and its one Undo line.
+    rows.push(("library", "library-pinned", pinned(library(ready(), space_rows()), "onb")));
+    rows.push(("library", "library-going", going(suggesting(library(ready(), space_rows())))));
+    rows.push(("library", "library-cleaned", {
+        let mut w = going(suggesting(library(ready(), space_rows())));
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-going", {
+        let mut w = going(suggesting(library(ready(), space_rows())));
+        w.session.fields.library.cleanup = true;
+        w
+    }));
+    rows.push(("library-cleanup", "library-cleanup-undo-all", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w.session.fields.library.undo = Some((["onb", "r19", "r502"].map(|r| RecId(r.into())).to_vec(), Mono(990)));
+        w
+    }));
+    rows.push(("delete-confirm-cleanup", "library-delete-all-sheet", {
+        let mut w = suggesting(library(ready(), space_rows()));
+        w.session.fields.library.cleanup = true;
+        w.session.confirm = Some(Confirm::DeleteSuggested(["onb", "r19", "r502"].map(|r| RecId(r.into())).to_vec()));
         w
     }));
     rows.push(("delete-confirm-several", "library-delete-sheet-several", {
@@ -482,11 +544,46 @@ fn library_rows() -> Vec<(&'static str, &'static str, World)> {
     rows
 }
 
+/// The space's videos known on a Mac whose Library isn't open (the popover's banner, N75).
+fn library_closed(mut w: World) -> World {
+    w.library = Fact::known(std::sync::Arc::new(space_rows()), Mono(950));
+    w
+}
+
+/// A row pinned (N75).
+fn pinned(mut w: World, id: &str) -> World {
+    if let Fact::Known { v, .. } = &mut w.library {
+        if let Some(r) = std::sync::Arc::make_mut(v).iter_mut().find(|r| r.rec.0 == id) {
+            r.pinned = true;
+        }
+    }
+    w
+}
+
+/// Auto-cleanup at 30 days (N75): two of the space's videos going in three days, and the
+/// round before it.
+fn going(mut w: World) -> World {
+    let due = Wall(w.wall.0 + 3 * 86_400_000);
+    if let Fact::Known { v, .. } = &mut w.suggestions {
+        v.autoclean = AutoClean { days: 30, last: Some(Cleaned { at: Wall(w.wall.0 - 86_400_000), recs: vec![RecId("old1".into()), RecId("old2".into())], bytes: 1_700_000_000 }) };
+        v.going = vec![
+            Going { rec: RecId("r19".into()), bytes: 640_000_000, plays: 2, quiet_days: 31, stopped_early: false, deletes_at: due },
+            Going { rec: RecId("r502".into()), bytes: 1_100_000_000, plays: 0, quiet_days: 33, stopped_early: false, deletes_at: due },
+        ];
+        v.idle = vec![
+            Idle { rec: RecId("r19".into()), quiet_days: 31 },
+            Idle { rec: RecId("r502".into()), quiet_days: 33 },
+            Idle { rec: RecId("onb".into()), quiet_days: 300 },
+        ];
+    }
+    w
+}
+
 /// What the space said is worth deleting (N68): three of the space's videos, of 34 GB.
 fn suggesting(mut w: World) -> World {
     let s = |id: &str, bytes: u64, plays: u32, quiet_days: u32| Suggestion { rec: RecId(id.into()), bytes, plays, quiet_days, stopped_early: false };
     w.suggestions = Fact::known(
-        Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![s("onb", 3_200_000_000, 4, 300), s("r19", 1_800_000_000, 0, 45), s("r502", 1_300_000_000, 2, 120)] },
+        Suggestions { counting: true, space_bytes: 34_000_000_000, rows: vec![s("onb", 3_200_000_000, 4, 300), s("r19", 1_800_000_000, 0, 45), s("r502", 1_300_000_000, 2, 120)], ..Default::default() },
         Mono(960),
     );
     w
@@ -521,13 +618,31 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.launch.version = "1.2.0".into();
         w
     }));
-    // Your videos (N68): the space past the free 10 GB; and inside it, counting off, the
+    // The Videos tab (N79; Your videos, N68): the space counting; and counting off, the
     // switch's failed line.
-    rows.push(("settings-general", "general-your-videos", suggesting(settings(ready(), SettingsTab::General))));
-    rows.push(("settings-general", "general-your-videos-free", {
-        let mut w = settings(ready(), SettingsTab::General);
-        w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![] }, Mono(960));
+    rows.push(("settings-videos", "videos", suggesting(settings(ready(), SettingsTab::Videos))));
+    rows.push(("settings-videos", "videos-free", {
+        let mut w = settings(ready(), SettingsTab::Videos);
+        w.suggestions = Fact::known(Suggestions { counting: false, space_bytes: 8_200_000_000, rows: vec![], ..Default::default() }, Mono(960));
         w.inflight.failures.insert(Op::Plays, Failure { at: Mono(970), class: FailClass::Transport, tries: 1 });
+        w
+    }));
+    // N75: auto-cleanup on the setup Mac, on another Mac, and turning it on.
+    rows.push(("settings-videos", "videos-autoclean", going(suggesting(settings(ready(), SettingsTab::Videos)))));
+    rows.push(("settings-videos", "videos-autoclean-other-mac", {
+        let mut w = going(suggesting(settings(ready(), SettingsTab::Videos)));
+        w.space.token = false;
+        w
+    }));
+    // A member's Mac: the space's switch and its auto-cleanup read-only, this Mac's own live.
+    rows.push(("settings-videos", "videos-member", going(suggesting(settings(member(), SettingsTab::Videos)))));
+    rows.push(("autoclean-confirm", "videos-autoclean-confirm", {
+        let mut w = suggesting(settings(ready(), SettingsTab::Videos));
+        w = going(w);
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.autoclean.days = 0;
+        }
+        w.session.confirm = Some(Confirm::Autoclean(30));
         w
     }));
     rows.push(("settings-general", "general-update-ready", {
@@ -551,6 +666,12 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w
     }));
     rows.push(("settings-space-inspection", "space-inspection", space()));
+    // Space used (N79): the space's size and its cost, with the AI switch on (the tallest Space).
+    rows.push(("settings-space", "space-used", {
+        let mut w = suggesting(space());
+        w.space.ai = Some(true);
+        w
+    }));
     // N66: naming's switch on the setup Mac, off and on, and a re-wiring that didn't go through.
     rows.push(("settings-space", "space-ai-off", {
         let mut w = space();
@@ -568,6 +689,24 @@ fn settings_rows() -> Vec<(&'static str, &'static str, World)> {
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
+    // N80: the switch while the page is re-wired (turning on, its second part with its clock),
+    // done, a turn off that stopped at its second part, and one running long.
+    let rewiring = |on: bool, part: u8, end: Option<AiEnd>, ran: u64| {
+        let mut w = space();
+        w.space.ai = Some(!on);
+        w.now = Mono(3_000 + ran);
+        w.space.ai_run = Some(AiRun { on, part, since: Mono(3_000), end });
+        match end {
+            None => drop(w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()))),
+            Some(AiEnd::Stopped) => drop(w.inflight.failures.insert(Op::Ai, Failure { at: Mono(3_000 + ran), class: FailClass::Transport, tries: 1 })),
+            Some(AiEnd::Done) => w.space.ai = Some(on),
+        }
+        w
+    };
+    rows.push(("settings-space", "space-ai-turning-on", rewiring(true, 2, None, 4_200)));
+    rows.push(("settings-space", "space-ai-on-done", rewiring(true, 3, Some(AiEnd::Done), 0)));
+    rows.push(("settings-space", "space-ai-off-stopped", rewiring(false, 2, Some(AiEnd::Stopped), 0)));
+    rows.push(("settings-space", "space-ai-long", rewiring(false, 2, None, 24_000)));
     rows.push(("settings-space", "space-mic-off", {
         let mut w = space();
         w.mac.mic = Fact::known(Access::Denied, Mono(0));
@@ -783,7 +922,7 @@ fn standing(a: StandingAnswer) -> Event {
 }
 
 fn fine() -> StandingAnswer {
-    StandingAnswer::Fine { current: true, only_holder: Some(false), mark: Some(true) }
+    StandingAnswer::Fine { current: true, only_holder: Some(false), mark: Some(true), ai: None }
 }
 
 fn struck(w: World, a: StandingAnswer) -> World {
@@ -862,7 +1001,7 @@ fn member_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
     rows.push(("settings", "member-remove-confirm-invite", "remove-invite", feed(members(owner(), "d_pro"), [set(Action::Remove(RowRef::Invite("i_ani".into())))])));
     rows.push(("settings", "member-remove-confirm-own-mac", "remove-mac", feed(members(owner(), "d_pro"), [set(Action::Remove(RowRef::Mac("d_air".into())))])));
     // ── Settings · Space on every kind of Mac ──
-    rows.push(("settings", "settings-space", "space-owner-mark", feed(inspected(settings(owner(), SettingsTab::Space)), [standing(StandingAnswer::Fine { current: true, only_holder: Some(true), mark: Some(true) })])));
+    rows.push(("settings", "settings-space", "space-owner-mark", feed(inspected(settings(owner(), SettingsTab::Space)), [standing(StandingAnswer::Fine { current: true, only_holder: Some(true), mark: Some(true), ai: None })])));
     rows.push(("settings", "settings-space-no-token", "space-owner-class", feed(settings(owner_class(), SettingsTab::Space), [standing(fine())])));
     rows.push(("settings", "token", "space-owner-class-add-token", feed(settings(owner_class(), SettingsTab::Space), [standing(fine()), set(Action::AddToken)])));
     rows.push(("settings", "settings-space-member", "space-member", feed(settings(member(), SettingsTab::Space), [standing(fine())])));
@@ -976,8 +1115,8 @@ fn member_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.queue = stranded_queue(1);
         struck(w, StandingAnswer::Gone)
     }));
-    rows.push(("popover", "space-needs-update-member", "needs-update-member", feed(popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None })])));
-    rows.push(("popover", "space-needs-update-no-token", "needs-update-owner-class", feed(popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true) })])));
+    rows.push(("popover", "space-needs-update-member", "needs-update-member", feed(popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None })])));
+    rows.push(("popover", "space-needs-update-no-token", "needs-update-owner-class", feed(popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true), ai: None })])));
     rows.push(("popover", "space-degraded-no-token-mac", "degraded-no-token", struck(popover(owner_class()), StandingAnswer::SpaceSide)));
     rows.push(("popover", "stopped-stranded", "stopped-stranded", {
         let mut w = popover(member());
@@ -1124,35 +1263,62 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.saved.push(saved_take(SavedCause::Interrupted, 272_000));
         w
     }));
-    // N66: the setup Mac's popover while the space's AI is off — the banner, its confirm,
-    // turning on, a Turn on that didn't go through, and on.
-    let ai_off = || {
+    // N76: AI on by default — the setup Mac's banner as it turns the AI on and once it's on,
+    // its Turn off re-wiring, a Turn off that didn't go through, off; and a member's banner.
+    let ai_on = || {
         let mut w = popover(ready());
-        w.space.ai = Some(false);
+        w.space.ai = Some(true);
         w
     };
-    rows.push(("popover", "ai-offer", "ai-offer", ai_off()));
-    rows.push(("popover", "ai-confirm", "ai-confirm", {
-        let mut w = ai_off();
-        w.session.confirm = Some(Confirm::Ai);
+    rows.push(("popover", "ai-turned-on", "ai-turned-on", ai_on()));
+    // N75: auto-cleanup's banner three days ahead, after Pin both, and once a round went.
+    let going_pop = || going(suggesting(library_closed(popover(ready()))));
+    rows.push(("popover", "autoclean-warning", "autoclean-warning", going_pop()));
+    rows.push(("popover", "autoclean-warning", "autoclean-pinned", {
+        let mut w = going_pop();
+        w.session.fields.library.pinned_note = Some((2, Wall(w.wall.0 + 3 * 86_400_000)));
         w
     }));
-    rows.push(("popover", "ai-turning-on", "ai-turning-on", {
-        let mut w = ai_off();
-        w.space.ai_turn = Some(AiTurn::Turning);
+    rows.push(("popover", "autoclean-warning", "autoclean-cleaned", {
+        let mut w = going_pop();
+        if let Fact::Known { v, .. } = &mut w.suggestions {
+            v.going.clear();
+        }
+        w
+    }));
+    rows.push(("popover", "ai-turning-off", "ai-turning-off", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        // Its parts (N80): the second underway, with its clock.
+        w.now = Mono(6_200);
+        w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
         w
     }));
-    rows.push(("popover", "ai-offer-failed", "ai-offer-failed", {
-        let mut w = ai_off();
-        w.space.ai_turn = Some(AiTurn::Turning);
+    rows.push(("popover", "ai-turning-off", "ai-turning-off-long", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
+        w.inflight.ops.insert(Op::Ai, Mono(990).plus(Op::Ai.deadline_ms()));
+        w.now = Mono(27_000);
+        w.space.ai_run = Some(AiRun { on: false, part: 2, since: Mono(3_000), end: None });
+        w
+    }));
+    rows.push(("popover", "ai-turn-off-failed", "ai-turn-off-failed", {
+        let mut w = ai_on();
+        w.space.ai_turn = Some(AiTurn::TurningOff);
         w.inflight.failures.insert(Op::Ai, Failure { at: Mono(990), class: FailClass::Transport, tries: 1 });
         w
     }));
-    rows.push(("popover", "ai-on", "ai-on", {
+    rows.push(("popover", "ai-off", "ai-off", {
         let mut w = popover(ready());
+        w.space.ai = Some(false);
+        w.space.ai_turn = Some(AiTurn::Off);
+        w.once.ai_offer_answered = true;
+        w
+    }));
+    rows.push(("popover", "ai-on-in-space", "ai-on-in-space", {
+        let mut w = popover(member());
         w.space.ai = Some(true);
-        w.space.ai_turn = Some(AiTurn::On);
         w
     }));
     rows.push(("popover", "paused", "paused", paused_take(Cause::User, 272_000)));
@@ -1233,6 +1399,21 @@ fn region3_rows() -> Vec<(&'static str, &'static str, &'static str, World)> {
         w.take = Some(t);
         w
     }));
+    // The marker toast (N78): ⌥⌘M's answer, the take's first marker, a later one, and again
+    // at a pause that has its marker (the popover put away).
+    for (variant, phase, says) in [
+        ("marker-dropped", Phase::Recording, MarkerToastSays::Dropped(1)),
+        ("marker-3-dropped", Phase::Recording, MarkerToastSays::Dropped(3)),
+        ("already-marked", Phase::Paused(Cause::User), MarkerToastSays::Already),
+    ] {
+        let state = if phase == Phase::Recording { "recording" } else { "tray-pause-bars" };
+        rows.push(("toast", state, variant, {
+            let mut w = ready();
+            let n = if let MarkerToastSays::Dropped(n) = says { n } else { 1 };
+            w.take = Some(OpenTake { phase, markers: n, marked_at_pause: says == MarkerToastSays::Already, toast: Some((says, w.now)), ..recording() });
+            w
+        }));
+    }
     for (variant, at) in [("countdown-3", 900), ("countdown-1", 2_950)] {
         rows.push(("countdown", "countdown", variant, {
             let mut w = ready();
@@ -1254,6 +1435,7 @@ fn region3_gallery() -> Vec<Value> {
             let (slice, faces) = match window {
                 "countdown" => (serde_json::to_value(&scene.countdown), vec![]),
                 "label" => (serde_json::to_value(&scene.label), vec![]),
+                "toast" => (serde_json::to_value(&scene.toast), vec![]),
                 _ => (serde_json::to_value(&scene.popover), scene.popover.as_ref().map(|x| x.faces.clone()).unwrap_or_default()),
             };
             let slice = slice.expect("the slice serializes");
@@ -1352,6 +1534,12 @@ fn editor_rows() -> Vec<(&'static str, &'static str, World)> {
         ("editor-making", "editor-making", after(EditorSave::Making { pct: 40 })),
         ("editor-making-failed", "editor-making-failed", after(EditorSave::MakingFailed)),
         ("editor-keep-original", "editor-keep-original", after(EditorSave::Asking)),
+        // ✕ with the end pulled in not saved: “Save your edit?” (N71).
+        ("editor-closing", "editor-closing", {
+            let mut w = open(here(), EditorSave::Idle, Some(stepped()));
+            w.session.fields.editors.get_mut(&EditorId(1)).unwrap().closing = true;
+            w
+        }),
     ]
 }
 

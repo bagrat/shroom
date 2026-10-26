@@ -6,7 +6,8 @@
 </script>
 
 <script lang="ts">
-  // The editor's timeline (board “Editor — a cut and undo”): the ruler, then the track —
+  // The editor's timeline (boards “Editor — a cut and undo”, “Editor — seeking”): the
+  // ruler, where the playhead is pressed, dragged and clicked to seek, then the track —
   // the whole recording's sound, the outside of the trim dimmed, the yellow ends, every
   // applied cut red and hatched with its scissors above, a suggestion dashed amber, each
   // marker a flag, the playhead, a part being selected and the chip under it. Times are
@@ -31,6 +32,7 @@
     trim = $bindable(null),
     onseek,
     onscrub,
+    onhold,
     ontrim,
     oncut,
     onputback,
@@ -54,6 +56,8 @@
     trim?: Trim | null;
     onseek: (t: number) => void;
     onscrub: (t: number) => void;
+    /** The playhead is held on the ruler (true) or let go (false): what plays waits meanwhile. */
+    onhold: (holding: boolean) => void;
     ontrim: (t: Trim) => void;
     oncut: (start: number, end: number) => void;
     onputback: (index: number) => void;
@@ -63,6 +67,8 @@
 
   /** A press that moves less than this is a click (px). */
   const CLICK = 4;
+  /** A selection's edge this close to an end goes to it (px): cut, it's a trim (A+). */
+  const SNAP = 6;
 
   let width = $state(0);
   let track: HTMLDivElement | undefined = $state();
@@ -150,8 +156,10 @@
     if (!editable || !ends) return;
     press.moved = true;
     const t = timeAt(e.clientX);
-    const start = Math.max(ends.in, Math.min(press.t0, t));
-    const end = Math.min(ends.out, Math.max(press.t0, t));
+    let start = Math.max(ends.in, Math.min(press.t0, t));
+    let end = Math.min(ends.out, Math.max(press.t0, t));
+    if (x(start) - x(ends.in) < SNAP) start = ends.in;
+    if (x(ends.out) - x(end) < SNAP) end = ends.out;
     selection = end > start ? { kind: "range", start, end } : null;
   }
 
@@ -168,6 +176,44 @@
     }
     selection = null;
     onseek(t);
+  }
+
+  // ── the ruler: a click seeks; the playhead's head, or the ruler, pressed and dragged scrubs ──
+
+  /** The playhead held: `by`, how far from it the pointer took hold (s), so it doesn't jump. */
+  let held = $state.raw<{ id: number; by: number } | null>(null);
+  /** Where the pointer is over the ruler (px), for the faint line and its time; null off it. */
+  let hover = $state<number | null>(null);
+  let rulerEl: HTMLDivElement | undefined = $state();
+
+  function holdAt(e: PointerEvent) {
+    return Math.min(Math.max(timeAt(e.clientX) - (held?.by ?? 0), 0), duration);
+  }
+
+  function holdDown(e: PointerEvent, onHead: boolean) {
+    if (e.button !== 0 || !seekable || !rulerEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    rulerEl.setPointerCapture(e.pointerId);
+    held = { id: e.pointerId, by: onHead && playhead !== null ? timeAt(e.clientX) - playhead : 0 };
+    selection = null;
+    onhold(true);
+    onscrub(holdAt(e));
+  }
+
+  function rulerMove(e: PointerEvent) {
+    const r = rulerEl!.getBoundingClientRect();
+    hover = Math.min(Math.max(e.clientX - r.left, 0), r.width);
+    if (!held || e.pointerId !== held.id) return;
+    onscrub(holdAt(e));
+  }
+
+  function holdUp(e: PointerEvent) {
+    if (!held || e.pointerId !== held.id) return;
+    const t = holdAt(e);
+    held = null;
+    onseek(t);
+    onhold(false);
   }
 
   // ── a yellow end, dragged ──
@@ -292,9 +338,26 @@
   });
 </script>
 
-<div class="tl" class:editable bind:clientWidth={width}>
-  <div class="ruler" data-measured>
+<div class="tl" class:editable class:holding={held} bind:clientWidth={width}>
+  <div
+    class="ruler"
+    class:seekable
+    class:lit={hover !== null || held}
+    data-measured
+    role="presentation"
+    bind:this={rulerEl}
+    onpointerdown={(e) => holdDown(e, false)}
+    onpointermove={rulerMove}
+    onpointerup={holdUp}
+    onpointercancel={holdUp}
+    onpointerleave={() => (hover = null)}
+  >
     {#each ticks as t}<span class="tick" style="left: {x(t)}px">{clock(t)}</span>{/each}
+    {#if seekable && width && (held ? playhead !== null : hover !== null)}
+      {@const at = held ? x(playhead ?? 0) : (hover ?? 0)}
+      <span class="when" style="left: {Math.min(Math.max(at, 20), width - 20)}px">{clock(held ? (playhead ?? 0) : (hover! / width) * duration)}</span>
+      {#if !held}<span class="ghost" style="left: {at}px"></span>{/if}
+    {/if}
   </div>
   <div class="track" role="presentation" bind:this={track} onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={() => (press = null)}>
     <div class="clip">
@@ -354,13 +417,19 @@
       {/if}
     {/if}
     {#if width}
+      <!-- A marker: its dashed line through the sound only, the flag's pole the line's
+           continuation upward, at the same whole pixel (Bagrat, 2026-10-25). -->
       {#each markers as m}
-        <div class="marker" style="left: {x(m) - 1}px">
-          <svg viewBox="0 0 10 12" aria-hidden="true"><path d="M1 0v12M1 1h8l-2 3 2 3H1z" /></svg>
+        <div class="marker" style="left: {Math.round(x(m))}px">
+          <span class="pole"></span>
+          <svg viewBox="0 0 8 6" aria-hidden="true"><path d="M0 0h8l-2 3 2 3H0z" /></svg>
         </div>
       {/each}
+      <!-- The playhead: its circle in the ruler is the line's top end, and what is held to seek. -->
       {#if playhead !== null && duration > 0}
-        <div class="playhead" style="left: {x(playhead)}px"><span></span></div>
+        <div class="playhead" class:held style="left: {x(playhead)}px">
+          <span class="head" role="presentation" onpointerdown={(e) => holdDown(e, true)}></span>
+        </div>
       {/if}
     {/if}
     {#if chip}
@@ -386,19 +455,26 @@
     user-select: none;
     -webkit-user-select: none;
   }
+  /* The ruler: the strip where the playhead is sought (board “Editor — seeking”). */
   .ruler {
     position: relative;
-    height: 18px;
+    height: 24px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--fg) 3%, transparent);
+    touch-action: none;
+  }
+  .ruler.seekable.lit {
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
   }
   .tick {
     position: absolute;
     top: 0;
-    height: 18px;
+    height: 24px;
     border-left: 1px solid var(--line);
     padding-left: 4px;
     color: var(--dim);
     font-size: 11px;
-    line-height: 18px;
+    line-height: 24px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -555,42 +631,94 @@
     box-sizing: border-box;
     pointer-events: none;
   }
+  /* The line is 1px of dashes from the sound's top to its bottom; the pole, 1px solid in
+     the gap above, at the same left: one line, no seam. */
   .marker {
     position: absolute;
-    top: -16px;
+    top: 0;
     bottom: 0;
-    border-left: 1px dashed var(--accent);
+    width: 1px;
+    background: repeating-linear-gradient(to bottom, var(--accent) 0 3px, transparent 3px 6px);
     pointer-events: none;
+  }
+  .marker .pole {
+    position: absolute;
+    left: 0;
+    top: -10px;
+    width: 1px;
+    height: 10px;
+    background: var(--accent);
+    display: block;
   }
   .marker svg {
     position: absolute;
-    left: 0;
-    top: 0;
-    width: 10px;
-    height: 12px;
+    left: 1px;
+    top: -10px;
+    width: 8px;
+    height: 6px;
     display: block;
     fill: var(--accent);
-    stroke: var(--accent);
-    stroke-width: 1.2;
   }
+  /* The line starts at the circle's centre, in the ruler's middle (10px gap + half its
+     24px): nothing of it shows above the circle, in any state. */
   .playhead {
     position: absolute;
-    top: -8px;
+    top: -22px;
     bottom: -8px;
     width: 2px;
     margin-left: -1px;
     background: var(--fg);
     pointer-events: none;
+    z-index: 3;
   }
-  .playhead span {
+  .playhead .head {
     position: absolute;
-    left: -5px;
-    top: -4px;
-    width: 12px;
-    height: 12px;
-    border-radius: 6px;
+    left: -6px;
+    top: -7px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
     background: var(--fg);
     display: block;
+    pointer-events: auto;
+    cursor: grab;
+    touch-action: none;
+    transition:
+      transform 80ms,
+      box-shadow 80ms;
+  }
+  .playhead .head:hover,
+  .playhead.held .head {
+    transform: scale(1.3);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .holding,
+  .holding * {
+    cursor: grabbing !important;
+  }
+  .ghost {
+    position: absolute;
+    top: 0;
+    height: 100px;
+    border-left: 1px solid color-mix(in srgb, var(--fg) 45%, transparent);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .when {
+    position: absolute;
+    top: -22px;
+    transform: translateX(-50%);
+    padding: 0 6px;
+    border-radius: 4px;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 4;
   }
   .chip {
     position: absolute;

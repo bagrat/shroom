@@ -502,6 +502,52 @@ pub struct CleanupPage {
     /// Since when plays are counted (`None`: not yet), for the `shroom` command (N62, B215).
     #[serde(default, rename = "countingSince")]
     pub counting_since: Option<String>,
+    /// The space's auto-cleanup (N75, §4.24): its days and the newest round, in this
+    /// device's scope. Absent from a page older than N75: off.
+    #[serde(default)]
+    pub autoclean: AutoCleanFacts,
+}
+
+/// Auto-cleanup as the space's page has it (N75, §4.24): the days a video may go unwatched
+/// (0: off) and the newest round that went, in this device's scope.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+pub struct AutoCleanFacts {
+    #[serde(default)]
+    pub days: u32,
+    #[serde(default)]
+    pub last: Option<AutoCleanRound>,
+}
+
+/// A round of auto-cleanup: when it began, the videos it deleted, the bytes they took.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+pub struct AutoCleanRound {
+    #[serde(default)]
+    pub at: String,
+    #[serde(default)]
+    pub ids: Vec<String>,
+    #[serde(default)]
+    pub bytes: u64,
+}
+
+/// `GET autoclean` (N75, §4.24): the setting, what's going and when, the newest round.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+pub struct AutoCleanState {
+    #[serde(default)]
+    pub days: u32,
+    #[serde(default)]
+    pub since: Option<String>,
+    #[serde(default)]
+    pub going: Vec<AutoCleanGoing>,
+    #[serde(default)]
+    pub last: Option<AutoCleanRound>,
+}
+
+/// A video auto-cleanup will delete, and when (N75).
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoCleanGoing {
+    pub id: String,
+    pub deletes_at: String,
 }
 
 fn yes() -> bool {
@@ -567,6 +613,12 @@ pub struct CleanupItem {
     pub duration_sec: Option<f64>,
     #[serde(default)]
     pub last_played_at: Option<String>,
+    /// Pinned (N75, the record's `keep`).
+    #[serde(default)]
+    pub keep: bool,
+    /// When auto-cleanup will delete it (N75), while it's going.
+    #[serde(default)]
+    pub deletes_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -864,6 +916,22 @@ impl Space {
     /// stands now.
     pub fn plays(&self, key: &DeviceKey, on: bool) -> Answer<bool> {
         self.call::<MarkAnswer>("POST", "plays", Some(json!({"on": on})), Some(key)).map(|a| a.on)
+    }
+
+    /// `GET autoclean` (N75, §4.24), any device: the setting, what's going, the newest round.
+    pub fn autoclean(&self, key: &DeviceKey) -> Answer<AutoCleanState> {
+        self.call("GET", "autoclean", None, Some(key))
+    }
+
+    /// `POST autoclean` (N75, §4.24), owner-class: the days (0: off). Answers the days set.
+    pub fn set_autoclean(&self, key: &DeviceKey, days: u32) -> Answer<u32> {
+        self.call::<AutoCleanState>("POST", "autoclean", Some(json!({"days": days})), Some(key)).map(|a| a.days)
+    }
+
+    /// `POST editing` (N75, §4.24): an editor is open on this video, so auto-cleanup leaves
+    /// it be for a quarter of an hour.
+    pub fn editing(&self, key: &DeviceKey, rec: &str) -> Answer<()> {
+        self.call::<Value>("POST", "editing", Some(json!({"rec": rec})), Some(key)).map(|_| ())
     }
 
     /// `POST health` (§4.18): `refused` after the debounce's second answer, `ok` once the

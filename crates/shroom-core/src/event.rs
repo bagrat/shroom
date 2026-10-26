@@ -3,12 +3,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::scene::Action;
+use crate::time::Wall;
 use crate::world::{
     Access, Account, Blocked, Device, Display, FailClass, Gates, InviteKind, LaunchKind, LibraryRow, Once, Op, OsSession, PendingInvite, Prefs,
     QuickProbe, Queued, Reach, RecId, Restore, Roster, SavedTake, SecretId, SpaceIdentity, TakeDir, TokenVerdict, UpdateOffer, WindowKind,
     WorkerFact,
 };
-use crate::time::Wall;
 
 /// What the shell read from disk at launch.
 #[derive(Debug, Clone, PartialEq)]
@@ -92,6 +92,8 @@ pub enum Surface {
     Bubble,
     /// The agent label (N62, B216): it takes no clicks and no keys; only its slice is read.
     Label,
+    /// The marker toast (N78): as the label, only its slice is read.
+    Toast,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -292,6 +294,10 @@ pub enum CloudNews {
     TokenSaved(SecretId),
     /// (Part of) the probe pass answered.
     Swept(SweepAnswer),
+    /// A run reached its part `part` (1-based, N74): the card step's check (`Sweep`'s full
+    /// pass: the token, the email gate, storage, the look around) or wiring (`Wire`: your
+    /// storage, your page, your name, the last check, this Mac).
+    Part { op: Op, part: u8 },
     /// The workers.dev name claim answered.
     Claimed { name: String, result: Result<(), ClaimFail> },
     /// Wiring ran to its silent self-check.
@@ -301,6 +307,8 @@ pub enum CloudNews {
     Refreshed { deployed: bool, ai: Option<bool> },
     /// Naming went on or off (N66): the page answers with the AI, or without it.
     AiSet(bool),
+    /// Auto-cleanup's setting landed: the days the space's page now has (N75).
+    Autoclean(u32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -373,8 +381,8 @@ pub enum LibraryNews {
     Cleaned { under_tombstones: u32, orphans: u32, keys: u32 },
     /// What the space says is worth deleting, and whether it counts plays (N68).
     Suggested(crate::world::Suggestions),
-    /// A record's `keep` landed (N68).
-    Kept(RecId),
+    /// Each record's `keep` landed, on or off (N75's Pin).
+    Pinned(Vec<RecId>, bool),
     /// The space's play-count switch answered: where it stands now (N68).
     Plays(bool),
 }
@@ -481,8 +489,9 @@ pub enum JoinAnswer {
 pub enum StandingAnswer {
     /// `/me` 200. `current`: the page has every route this app calls (ping `iface ≥
     /// IFACE_MIN`); owner-class Macs also hear whether this Mac is its space's only
-    /// token-holder (§4.7, U9) and the mark switch.
-    Fine { current: bool, only_holder: Option<bool>, mark: Option<bool> },
+    /// token-holder (§4.7, U9) and the mark switch. `ai`: whether the ping says the page
+    /// carries the AI (N76), when it was asked.
+    Fine { current: bool, only_holder: Option<bool>, mark: Option<bool>, ai: Option<bool> },
     /// `/me` or a mint: 401, or 403 `removed` — this identity is dead here. Never debounced.
     Revoked,
     /// A mint or `/me` 503 `space`, or a fresh credential refused on its first PUT. A face
@@ -522,6 +531,9 @@ pub enum EditorNews {
     CopyDone { rec: RecId, rev: u64, named: bool },
     /// The upkeep answered (B197 (d)): how many originals it baked, how many copies it made.
     UpkeepDone { baked: u32, copies: u32 },
+    /// The voice lane changed this video's cuts (they landed, or a press on its owner page
+    /// changed them): it owes its edited copy, so the upkeep is due at once.
+    CutsLanded { rec: RecId },
 }
 
 /// What the shell says about a report (B180).

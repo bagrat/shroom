@@ -9,6 +9,10 @@
 # release.yml), through the same script (tools/release-build.sh). The app's own test
 # `the_tag_workflow_builds_what_ci_cached` holds the two files to that.
 #
+# It is routed by what a pull request touches (the `route` job, tools/ci-route.py): the
+# Linux lanes run on every run, the Mac's only when the change can reach them. `main` and
+# Run workflow always run everything.
+#
 # Every action is pinned to a full commit SHA — the version is in the comment beside it.
 # No secret is read anywhere in this file, and it runs on the plain `pull_request` event
 # only (never the one that hands a pull request the repo's secrets): a pull request's code
@@ -73,10 +77,54 @@ jobs:
             bash tools/public-tripwire.sh
           fi
 
+  # ── Route ────────────────────────────────────────────────────────────────────────────
+  # Which lanes this run needs (tools/ci-route.py). The Linux lanes run on every run; the
+  # Mac's (the Rust and media tests, the installer, the release build, the signing
+  # rehearsal) run on `main`, on Run workflow, and on a pull request whose change can reach
+  # them: anything outside the site, the Worker, the docs and dev tooling, or a web file a
+  # Mac lane reads. A skipped Mac job reports as skipped, and the Tests gate below still
+  # reports, so no check waits forever. Seconds.
+  route:
+    name: Route
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      mac: ${{ steps.route.outputs.mac }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The router's own cases
+        run: python3 tools/ci-route.py --self-test
+
+      - name: Does this change reach the Mac?
+        id: route
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            python3 tools/ci-route.py "$BASE" HEAD 2>route.txt | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "mac=true" | tee -a "$GITHUB_OUTPUT"
+            echo "  (not a pull request: everything runs)" >route.txt
+          fi
+          {
+            echo "### Route: $(grep -o 'mac=.*' "$GITHUB_OUTPUT" | tail -n 1)"
+            echo
+            echo '```'
+            head -n 40 route.txt
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
   # ── Tests ────────────────────────────────────────────────────────────────────────────
   # What runs here needs no permission grant, no window on a screen, no VM and no keychain
   # identity: the spec's fixtures, the Rust workspace, the Worker, the installer, the landing
-  # page, the agent skill, the media readers.
+  # page, the agent skill, the media readers. Four lanes side by side — the web on Linux,
+  # the platform-free crates on Linux, the rest of the Rust and the media tests on a Mac,
+  # the installer on a Mac — and one gate, Tests, green only when every lane this run needs
+  # is (the name the release's check asks for, docs/RELEASING.md).
   #
   # NOT run here, by name, and why — these stay on Bagrat's Mac (docs/RELEASING.md, "What CI
   # does not cover"):
@@ -86,7 +134,8 @@ jobs:
   #       LaunchServices, the test space's token in ~/.shroom-dev, Playwright's browsers.
   #   app/test/*-drive.mjs, *-gallery.mjs, update-drive.sh
   #       drive the dev app's own windows (the `shroom-dev` keychain identity, a session
-  #       with a screen).
+  #       with a screen). The galleries' Settings height check runs here on its own, cheap,
+  #       as app/test/settings-fit.mjs (the tests-fit lane).
   #   tests/l5/*
   #       a Tart VM cloned from a 30 GB golden image, and the `shroom-dev` identity.
   #   tests/l6/two-macs.mjs
@@ -97,8 +146,164 @@ jobs:
   #       the cf-e2e environment. They compile and report "skipped" here.
   #   crates/shroom-record/tests/av_sync.rs's three-minute drift run
   #       `#[ignore]`d everywhere; run by hand.
-  tests:
-    name: Tests
+
+  # The node and Python lanes: none needs a Mac. Every run.
+  tests-web:
+    name: Tests · web (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      # npm's download cache on Linux: restored on every run, saved from main only.
+      - name: Restore npm's download cache
+        id: npm
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-ubuntu-24.04-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-ubuntu-24.04-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      - name: Save npm's download cache (from main only)
+        if: github.ref == 'refs/heads/main' && steps.npm.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: ${{ steps.npm.outputs.cache-primary-key }}
+
+      # spec/MACHINE.md is spec/machine.json's readable form, regenerated after every change (B133).
+      - name: The spec's readable form is current
+        run: python3 tools/render-machine-md.py --check
+
+      # Everything the app ships that isn't shroom's own has its licence in
+      # THIRD-PARTY-NOTICES.md, for the dependencies Cargo.lock and package-lock.json hold now (B124).
+      - name: The app's third-party notices are current
+        run: python3 tools/third-party-notices.py --check
+
+      - name: The app's frontend builds and typechecks
+        run: |
+          npm run build --workspace app
+          npm run check --workspace app
+
+      - name: The app's unit suite (the editor's edit model and clock, held to shroom-edit's vectors and the page)
+        run: npm test --workspace app
+
+      # A page's row may be re-stamped only until a build of its VERSION is out (B61, B248).
+      - name: A page that's out keeps its fingerprint
+        run: tools/page-version-out.sh
+
+      - name: The Worker — unit suite, typecheck, the contract under workerd
+        run: |
+          npm test --workspace worker
+          npm run typecheck --workspace worker
+          npm run test:workerd --workspace worker
+          node --test site/test/report.workerd.mjs
+
+      - name: The release notes (DECISIONS B152)
+        run: |
+          node --test tools/test/release-notes.test.mjs
+          node tools/release-notes.mjs check --all
+
+      - name: The landing page, the media readers
+        run: |
+          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs
+          node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
+
+  # The crates with no platform in them (rust-tests.sh's LINUX_CRATES): the state machine's
+  # regions, the spec, the cloud client, the editor's model. Every run — they read the docs,
+  # the site and the Worker, so a web change is held to them too.
+  tests-rust-linux:
+    name: Tests · Rust (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain (the workspace's rust-version)
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          rustc -vV
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: tests-ubuntu-24.04
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: The platform-free crates
+        run: .github/scripts/rust-tests.sh --ci-linux
+
+  # Settings fits its window (N79): every General, Videos and Space scene the core prints,
+  # rendered by the built page in WebKit, no taller than the window's page under the title
+  # bar — the windows gallery's own check, alone. General outgrew its window once, unseen,
+  # because the galleries run only by hand. Every run; about two minutes.
+  tests-fit:
+    name: Tests · Settings fits its window (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: Restore npm's download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-ubuntu-24.04-node${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-ubuntu-24.04-node${{ env.NODE_VERSION }}-
+
+      - name: Install the node packages
+        run: npm ci
+
+      - name: Rust toolchain (the workspace's rust-version)
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+
+      # Its own cache (only the core's gallery example is built here), saved from main only,
+      # so it never takes the place of the Linux Rust lane's.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: fit-ubuntu-24.04
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: The app's frontend
+        run: npm run build --workspace app
+
+      - name: WebKit, Playwright's
+        run: npx playwright install --with-deps webkit
+
+      - name: Settings fits its window
+        run: node app/test/settings-fit.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # The rest of the Rust workspace — the app, the recorder, the encoder, the uploader, the
+  # updater, the CLI — and the media tests' real recordings, on a Mac.
+  tests-mac:
+    name: Tests · Rust and media (Mac)
+    needs: route
+    if: needs.route.outputs.mac == 'true'
     runs-on: macos-26
     timeout-minutes: 60
     steps:
@@ -173,42 +378,9 @@ jobs:
             build/ffmpeg-oracle/BUILDINFO
           key: ${{ steps.oracle.outputs.cache-primary-key }}
 
-      # spec/MACHINE.md is spec/machine.json's readable form, regenerated after every change (B133).
-      - name: The spec's readable form is current
-        run: python3 tools/render-machine-md.py --check
-
-      # Everything the app ships that isn't shroom's own has its licence in
-      # THIRD-PARTY-NOTICES.md, for the dependencies Cargo.lock and package-lock.json hold now (B124).
-      - name: The app's third-party notices are current
-        run: python3 tools/third-party-notices.py --check
-
-      - name: The app's frontend builds and typechecks
-        run: |
-          npm run build --workspace app
-          npm run check --workspace app
-
-      - name: The app's unit suite (the editor's edit model and clock, held to shroom-edit's vectors and the page)
-        run: npm test --workspace app
-
-      - name: The Worker — unit suite, typecheck, the contract under workerd
-        run: |
-          npm test --workspace worker
-          npm run typecheck --workspace worker
-          npm run test:workerd --workspace worker
-          node --test site/test/report.workerd.mjs
-
-      - name: The installer, the Homebrew cask
-        run: node --test installer/test/install.test.mjs installer/test/cask.test.mjs
-
-      - name: The release notes (DECISIONS B152)
-        run: |
-          node --test tools/test/release-notes.test.mjs
-          node tools/release-notes.mjs check --all
-
-      - name: The landing page, the media readers
-        run: |
-          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs
-          node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
+      # The app's crate embeds the built frontend (app/dist); the web lane checks it.
+      - name: The app's frontend, built for the app's crate
+        run: npm run build --workspace app
 
       # The media tests make real recordings: H.264 through VideoToolbox. A hosted runner
       # is a virtual Mac, and whether its VideoToolbox encodes is a fact about the runner,
@@ -224,7 +396,7 @@ jobs:
             echo "::warning title=Media tests not run::VideoToolbox can't encode on this runner — the tests that make a recording are left out of this run (they are listed in the job summary). Run them on a Mac: cargo test --workspace."
           fi
 
-      - name: The Rust workspace
+      - name: The Rust workspace (but the Linux lane's crates)
         if: steps.encode.outputs.can == 'yes'
         run: .github/scripts/rust-tests.sh --ci
 
@@ -245,6 +417,64 @@ jobs:
         if: steps.encode.outputs.can != 'yes'
         run: .github/scripts/rust-tests.sh --no-encoder
 
+  # The installer and the Homebrew cask: real `ditto` and `codesign` on a real zip, so a
+  # Mac — beside the Rust, not after it.
+  tests-installer:
+    name: Tests · installer (Mac)
+    needs: route
+    if: needs.route.outputs.mac == 'true'
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+
+      - name: The installer, the Homebrew cask
+        run: node --test installer/test/install.test.mjs installer/test/cask.test.mjs
+
+  # The gate: green when every lane this run needs is, a skipped Mac lane counting only when
+  # the route skipped it. Its name is the one the release's check (release.yml) and
+  # docs/RELEASING.md ask for.
+  tests:
+    name: Tests
+    needs: [route, tests-web, tests-rust-linux, tests-fit, tests-mac, tests-installer]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every lane this run needs is green
+        env:
+          MAC: ${{ needs.route.outputs.mac }}
+          ROUTE: ${{ needs.route.result }}
+          WEB: ${{ needs.tests-web.result }}
+          RUST_LINUX: ${{ needs.tests-rust-linux.result }}
+          FIT: ${{ needs.tests-fit.result }}
+          RUST_MAC: ${{ needs.tests-mac.result }}
+          INSTALLER: ${{ needs.tests-installer.result }}
+        run: |
+          bad=0
+          lane() { # name result needed-on-this-run
+            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = no ]; }; then
+              echo "$1: $2"
+            else
+              echo "::error::$1 is $2"; bad=1
+            fi
+          }
+          mac=no; [ "$MAC" = true ] && mac=yes
+          lane "Route" "$ROUTE" yes
+          lane "Tests · web (Linux)" "$WEB" yes
+          lane "Tests · Rust (Linux)" "$RUST_LINUX" yes
+          lane "Tests · Settings fits its window (Linux)" "$FIT" yes
+          lane "Tests · Rust and media (Mac)" "$RUST_MAC" "$mac"
+          lane "Tests · installer (Mac)" "$INSTALLER" "$mac"
+          exit "$bad"
+
   # ── The release build ────────────────────────────────────────────────────────────────
   # The very build a tag runs — tools/release-build.sh, the same toolchain, environment and
   # target dir (./target) — signed ad hoc, because no identity exists here. It proves the
@@ -252,6 +482,8 @@ jobs:
   # saves the caches the tag's run starts from.
   build:
     name: Release build (ad hoc)
+    needs: route
+    if: needs.route.outputs.mac == 'true'
     runs-on: macos-26
     timeout-minutes: 60
     steps:
@@ -362,6 +594,26 @@ jobs:
             echo '```'
           } >>"$GITHUB_STEP_SUMMARY"
 
+      # The release signs this very bundle after it is built (tools/release-build.sh
+      # --resign), so that is rehearsed here too: with a throwaway identity, imported as the
+      # tag workflow imports the real one.
+      - name: Signed after the build, as a release is (a throwaway identity)
+        run: |
+          .github/scripts/signing-keychain.sh scratch "$RUNNER_TEMP/scratch.keychain-db"
+          tools/make-release-identity.sh "shroom ci resign" --keychain "$RUNNER_TEMP/scratch.keychain-db" --out "$RUNNER_TEMP/resign" --days 365 >/dev/null
+          .github/scripts/signing-keychain.sh drop "$RUNNER_TEMP/scratch.keychain-db"
+          SIGNING_P12_BASE64=$(cat "$RUNNER_TEMP/resign/shroom-ci-resign.p12.base64")
+          SIGNING_P12_PASSWORD=$(cat "$RUNNER_TEMP/resign/shroom-ci-resign.password")
+          export SIGNING_P12_BASE64 SIGNING_P12_PASSWORD
+          GITHUB_OUTPUT=$RUNNER_TEMP/resign/identity.txt .github/scripts/signing-keychain.sh import
+          identity=$(sed -n 's/^identity=//p' "$RUNNER_TEMP/resign/identity.txt")
+          tools/release-build.sh "$RUNNER_TEMP/release" --resign --identity "$identity" --leaf "$(cat "$RUNNER_TEMP/resign/shroom-ci-resign.sha1")"
+          cat "$RUNNER_TEMP/release/signature.txt"
+
+      - name: The signing keychain, gone
+        if: always()
+        run: .github/scripts/signing-keychain.sh delete
+
   # ── The signing rehearsal ────────────────────────────────────────────────────────────
   # A release is signed from a .p12 in a secret, in a throwaway keychain, on a runner that
   # has to be told to trust a self-signed certificate. None of that can be tried on a pull
@@ -421,16 +673,36 @@ jobs:
         with:
           persist-credentials: false
 
+      # cargo-audit itself, built once per version and kept (saved from main only): the
+      # build was three minutes of every run.
+      - name: Restore cargo-audit
+        id: audit
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-0.22.2-ubuntu-24.04
+
+      - name: cargo-audit (built only when the cache has none)
+        if: steps.audit.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --locked --version 0.22.2
+
+      - name: Save cargo-audit (from main only)
+        if: github.ref == 'refs/heads/main' && steps.audit.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ steps.audit.outputs.cache-primary-key }}
+
       - name: The Rust crates (RustSec)
-        run: |
-          cargo install cargo-audit --locked --version 0.22.2
-          cargo audit
+        run: cargo audit
 
       - name: The node packages
         run: npm audit --audit-level=high
 
   signing:
     name: Signing rehearsal
+    needs: route
+    if: needs.route.outputs.mac == 'true'
     runs-on: macos-26
     timeout-minutes: 15
     steps:

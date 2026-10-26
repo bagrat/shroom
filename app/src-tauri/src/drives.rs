@@ -1073,56 +1073,45 @@ fn uninstall(d: &Drive) -> Result<(), String> {
     Ok(())
 }
 
-/// N66, walked as a person does on the Mac that holds the setup key, paced so its video reads:
-/// the popover offers AI (the launch's page check says it's off), Turn on… asks with the cost,
-/// Back keeps the banner, Turn on re-wires the page with Cloudflare's AI, the status line says
-/// so once, and Settings · Space shows the switch on. Against the fake: the page it re-wires
-/// is the fake's, and its ping then says the AI is there.
+/// N76, walked as a person does on the Mac that holds the setup key, paced so its video reads:
+/// the space's AI is off and was never settled here (the launch's page check says it's off),
+/// so the first popover turns it on as it shows “AI features are turned on.”; once it's on,
+/// Turn off re-wires the page without it, the status line says so once, and Settings · Space
+/// shows the switch off. Against the fake: the page it re-wires is the fake's, and its ping
+/// says the AI is there, then gone.
 fn ai(d: &Drive) -> Result<(), String> {
-    use shroom_core::scene::PopoverBody;
     let pause = || std::thread::sleep(Duration::from_millis(1800));
-    let banner = |s: &Scene| s.popover.as_ref().and_then(|p| p.banner.as_ref()).map(|b| b.id);
+    let banner = |s: &Scene| s.popover.as_ref().and_then(|p| p.banner.clone());
+    let ping = || {
+        let host = d.rt.home.read_json::<SpaceIdentity>("space.json").map(|s| s.host).unwrap_or_default();
+        d.rt.page_at(&host).ping()
+    };
     d.wait("ready", 20, |s| s.tray.click == shroom_core::scene::Click::OpenPopover)?;
     click(&d.app, &d.rt);
-    let s = d.wait("the AI banner", 60, |s| banner(s) == Some("ai-offer"))?;
-    let b = s.popover.as_ref().and_then(|p| p.banner.clone()).expect("the banner");
-    d.check("the banner says what shroom can do", b.line == shroom_core::copy::ai_banner(), b.line.clone());
-    d.check("Turn on… and Not now", b.buttons.iter().map(|x| x.label.as_str()).collect::<Vec<_>>() == ["Turn on…", "Not now"], format!("{:?}", b.buttons.iter().map(|x| &x.label).collect::<Vec<_>>()));
+    let s = d.wait("the AI banner", 60, |s| banner(s).is_some_and(|b| b.id == "ai-turned-on"))?;
+    let b = banner(&s).expect("the banner");
+    d.check("the banner says it's on", b.line == shroom_core::copy::ai_turned_on() && b.detail == Some(shroom_core::copy::ai_turned_on_detail()), b.line.clone());
+    d.check("OK and Turn off", b.buttons.iter().map(|x| x.label.as_str()).collect::<Vec<_>>() == ["OK", "Turn off"], format!("{:?}", b.buttons.iter().map(|x| &x.label).collect::<Vec<_>>()));
+    d.wait("on: Turn off live", 60, |s| banner(s).is_some_and(|b| b.buttons.iter().all(|x| x.enabled)))?;
+    let p = ping();
+    d.check("the space's page now carries the AI", matches!(p, shroom_cloud::member::Ping::Shroom { ai: true, .. }), format!("{p:?}"));
     pause();
 
-    d.act(Surface::Popover, Action::AiAsk);
-    let s = d.wait("ai-confirm", 10, |s| s.popover.as_ref().is_some_and(|p| p.id == "ai-confirm"))?;
-    let line = match s.popover.as_ref().map(|p| &p.body) {
-        Some(PopoverBody::Question(q)) => q.line.clone(),
-        _ => String::new(),
-    };
-    d.check("the confirm says what it costs, per video hour", line == shroom_core::copy::ai_cost() && line.contains("per video hour"), line);
-    d.check("no Return default (law 9)", s.popover.as_ref().is_some_and(|p| p.ret.is_none()), "ret");
-    pause();
-    d.act(Surface::Popover, Action::Back);
-    d.wait("back: the banner stays", 10, |s| banner(s) == Some("ai-offer"))?;
-    pause();
-
-    d.act(Surface::Popover, Action::AiAsk);
-    d.wait("ai-confirm again", 10, |s| s.popover.as_ref().is_some_and(|p| p.id == "ai-confirm"))?;
-    pause();
-    d.act(Surface::Popover, Action::AiOn);
-    d.wait("turning on, or on", 10, |s| matches!(banner(s), Some("ai-turning-on")) || s.popover.as_ref().is_some_and(|p| p.status_line.is_some()))?;
-    let s = d.wait("AI is on", 60, |s| s.popover.as_ref().and_then(|p| p.status_line.as_deref()) == Some(shroom_core::copy::ai_on_said().as_str()))?;
-    d.check("the banner is gone once it's on", banner(&s).is_none(), format!("{:?}", banner(&s)));
-    let host = d.rt.home.read_json::<SpaceIdentity>("space.json").map(|s| s.host).unwrap_or_default();
-    let ping = d.rt.page_at(&host).ping();
-    d.check("the space's page now carries the AI", matches!(ping, shroom_cloud::member::Ping::Shroom { ai: true, .. }), format!("{ping:?}"));
+    d.act(Surface::Popover, Action::AiTurnOff);
+    d.wait("turning off, or off", 10, |s| banner(s).is_some_and(|b| b.id == "ai-turning-off") || s.popover.as_ref().is_some_and(|p| p.status_line.is_some()))?;
+    let s = d.wait("AI is off", 60, |s| s.popover.as_ref().and_then(|p| p.status_line.as_deref()) == Some(shroom_core::copy::ai_off_said().as_str()))?;
+    d.check("the banner is gone once it's off", banner(&s).is_none(), format!("{:?}", banner(&s).map(|b| b.id)));
+    let p = ping();
+    d.check("the space's page no longer carries the AI", matches!(p, shroom_cloud::member::Ping::Shroom { ai: false, .. }), format!("{p:?}"));
     pause();
 
     d.act(Surface::Popover, Action::OpenSettings);
     d.wait("settings", 10, |s| s.settings.is_some())?;
     d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Space));
-    let s = d.wait("the switch on in Settings · Space", 30, |s| match s.settings.as_ref().map(|w| &w.body.pane) {
-        Some(SettingsPane::Space(sp)) => sp.ai.as_ref().is_some_and(|t| t.on),
+    d.wait("the switch off in Settings · Space", 30, |s| match s.settings.as_ref().map(|w| &w.body.pane) {
+        Some(SettingsPane::Space(sp)) => sp.ai.as_ref().is_some_and(|t| !t.on),
         _ => false,
     })?;
-    let _ = s;
     pause();
     d.rt.post(Event::WindowClosed(WindowKind::Settings));
     d.wait("closed", 5, |s| s.settings.is_none())?;
@@ -1968,7 +1957,7 @@ pub enum Region6 {
     /// N68 on the owner's token Mac: a space with videos nobody has watched in months, one
     /// played today and one too small to matter. The Library's line, Suggested to clean up,
     /// each row's cost past the free 10 GB, Keep, a one-tap Delete and its Undo, a Delete
-    /// that goes, and Settings · General's Your videos with Count plays switched off and on.
+    /// that goes, and Settings' Space used and its Videos tab, Count plays switched off and on (N79).
     Cleanup,
 }
 
@@ -2095,7 +2084,19 @@ pub fn seed_region6(which: Region6, flags: &crate::runtime::DevFlags) -> Result<
             h.write_json("invite", &installer).map_err(|e| e.to_string())?;
             seed.codes.push(code);
         }
-        Region6::Members | Region6::Cleanup => {
+        Region6::Cleanup => {
+            // The owner's token Mac, provisioned and enrolled (member #1, the token flag), on
+            // the space the fake's account names.
+            seed_provisioned(flags)?;
+            let mut space: SpaceIdentity = h.read_json("space.json").ok_or("no space.json")?;
+            space.owner_name = "Bagrat".into();
+            let key = DeviceKey::generate(&space.host);
+            h.write_json("device.key", &key).map_err(|e| e.to_string())?;
+            h.write_json("space.json", &space).map_err(|e| e.to_string())?;
+            knob(&base, &space.host, "device", serde_json::json!({ "id": key.device, "verifier": key.verifier(), "member": "m1", "name": "MacBook Pro", "token": true }))?;
+            seed.seeded_secret = Some(key.secret);
+        }
+        Region6::Members => {
             // The owner's token Mac, provisioned and enrolled (member #1, the token flag).
             seed_provisioned(flags)?;
             let mut space: SpaceIdentity = h.read_json("space.json").ok_or("no space.json")?;
@@ -2569,6 +2570,10 @@ const CLEANUP_SEEDED: [(&str, &str, i64, u64, Option<(u32, i64, usize)>); 5] = [
     ("Cdrive000standup", "Standup notes", 50, 40_000_000, Some((3, 30, 9))),
 ];
 const DAY_SECS: i64 = 86_400;
+/// The cleanup drive's space: the fake account's own name (`myshroom`), so the launch's
+/// re-probe finds every row sound — a renamed space would be `space-degraded`, whose banner
+/// rightly outranks auto-cleanup's (N75).
+const CLEANUP_HOST: &str = HOST;
 
 /// One of the cleanup drive's videos, as a Mac's drained upload leaves its record (`bytes`).
 fn cleanup_meta(id: &str, title: &str, days: i64, bytes: u64, now: i64) -> shroom_upload::meta::Meta {
@@ -2595,17 +2600,17 @@ fn seed_cleanup(d: &Drive, base: &str) -> Result<(), String> {
     let token_id = cloud.verify(ACCOUNT).map_err(|e| e.to_string())?.id;
     let pair = cloud.s3_credentials(&token_id);
     d.seen.lock().unwrap().push(pair.secret_access_key.clone());
-    knob(base, SPACE_A, "parent", serde_json::json!({ "account_id": ACCOUNT, "bucket": shroom_cloud::wire::BUCKET, "key_id": pair.access_key_id, "secret": pair.secret_access_key }))?;
-    knob(base, SPACE_A, "put", serde_json::json!({ "key": ".shroom/views/since.json", "json": { "since": shroom_cloud::registry::iso((now - 200 * DAY_SECS) as u64) } }))?;
+    knob(base, CLEANUP_HOST, "parent", serde_json::json!({ "account_id": ACCOUNT, "bucket": shroom_cloud::wire::BUCKET, "key_id": pair.access_key_id, "secret": pair.secret_access_key }))?;
+    knob(base, CLEANUP_HOST, "put", serde_json::json!({ "key": ".shroom/views/since.json", "json": { "since": shroom_cloud::registry::iso((now - 200 * DAY_SECS) as u64) } }))?;
     for (id, title, days, bytes, plays) in CLEANUP_SEEDED {
         let m = cleanup_meta(id, title, days, bytes, now);
-        knob(base, SPACE_A, "put", serde_json::json!({ "key": keys::meta(id), "json": m }))?;
+        knob(base, CLEANUP_HOST, "put", serde_json::json!({ "key": keys::meta(id), "json": m }))?;
         if let Some((n, quiet, tenth)) = plays {
             let last = now - quiet * DAY_SECS;
             let day = |t: i64| shroom_cloud::registry::iso(t as u64)[..10].to_string();
             let mut watch = [0u32; 10];
             watch[tenth] = n;
-            knob(base, SPACE_A, "put", serde_json::json!({ "key": format!(".shroom/views/{id}.json"), "json": {
+            knob(base, CLEANUP_HOST, "put", serde_json::json!({ "key": format!(".shroom/views/{id}.json"), "json": {
                 "v": 1, "plays": n, "viewers": n, "ends": n, "watch": watch, "watchedSec": 0,
                 "firstAt": shroom_cloud::registry::iso(last as u64), "lastAt": shroom_cloud::registry::iso(last as u64),
                 "days": serde_json::Map::from_iter([(day(last), serde_json::json!(n))]), "today": { "d": day(last), "h": [], "t": {} },
@@ -2617,9 +2622,9 @@ fn seed_cleanup(d: &Drive, base: &str) -> Result<(), String> {
 
 /// A viewer plays a video on its page today: the page's beacon, as a browser sends it.
 fn play_today(base: &str, id: &str) -> Result<(), String> {
-    let url = format!("{}/{SPACE_A}/_shroom/view/{id}", base.trim_end_matches('/'));
+    let url = format!("{}/{CLEANUP_HOST}/_shroom/view/{id}", base.trim_end_matches('/'));
     for body in [serde_json::json!({ "e": "play", "t": "drivePlay0001" }), serde_json::json!({ "e": "end", "t": "drivePlay0001", "f": 0.9 })] {
-        ureq::post(&url).header("origin", format!("https://{SPACE_A}")).header("content-type", "text/plain").send(body.to_string()).map_err(|e| format!("the page's beacon: {e}"))?;
+        ureq::post(&url).header("origin", format!("https://{CLEANUP_HOST}")).header("content-type", "text/plain").send(body.to_string()).map_err(|e| format!("the page's beacon: {e}"))?;
     }
     Ok(())
 }
@@ -2632,15 +2637,73 @@ fn cleanup_titles(s: &Scene) -> Vec<String> {
     cleanup_view(s).map(|v| v.rows.iter().filter_map(|r| r.title.clone()).collect()).unwrap_or_default()
 }
 
-fn general_videos(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
+/// Settings' Videos tab (N79), when it shows.
+fn videos_pane(s: &Scene) -> Option<shroom_core::scene::VideosGroup> {
     match s.settings.as_ref().map(|w| &w.body.pane) {
-        Some(SettingsPane::General(g)) => g.videos.clone(),
+        Some(SettingsPane::Videos(v)) => Some(v.clone()),
+        _ => None,
+    }
+}
+
+/// Space used, in Settings · Space (N79), when it shows.
+fn space_used(s: &Scene) -> Option<String> {
+    match s.settings.as_ref().map(|w| &w.body.pane) {
+        Some(SettingsPane::Space(sp)) => sp.used.clone(),
         _ => None,
     }
 }
 
 fn worker_object(base: &str, key: &str) -> Option<serde_json::Value> {
-    objects(base, SPACE_A).ok()?.into_iter().find(|o| o["key"] == key).and_then(|o| serde_json::from_str(o["text"].as_str()?).ok())
+    objects(base, CLEANUP_HOST).ok()?.into_iter().find(|o| o["key"] == key).and_then(|o| serde_json::from_str(o["text"].as_str()?).ok())
+}
+
+/// The space's page runs its own schedule (N75's auto-cleanup), `ahead_hours` from now: the
+/// local Worker's clock moved for the cron's runs alone — what a closed Mac sleeps through.
+fn page_schedule(base: &str, ahead_hours: u64, runs: Option<u32>) -> Result<serde_json::Value, String> {
+    let url = format!("{}/_dev/space/{CLEANUP_HOST}/schedule", base.trim_end_matches('/'));
+    let body = match runs {
+        Some(n) => serde_json::json!({ "aheadHours": ahead_hours, "runs": n }),
+        None => serde_json::json!({ "aheadHours": ahead_hours }),
+    };
+    let mut res = ureq::post(&url).header("content-type", "application/json").send(body.to_string()).map_err(|e| format!("the page's schedule: {e}"))?;
+    let text = res.body_mut().read_to_string().map_err(|e| e.to_string())?;
+    serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
+/// `shroom cleanup-candidates --json`, as an agent asks it on this Mac: the dev bundle's own
+/// command, on this home and the local Worker. The ids it lists, in its order.
+fn cli_candidates(d: &Drive, base: &str) -> Result<Vec<String>, String> {
+    let cli = std::env::current_exe().map_err(|e| e.to_string())?.with_file_name("shroom-cli");
+    let out = std::process::Command::new(&cli)
+        .args(["cleanup-candidates", "--json", "--home"])
+        .arg(&d.rt.home.root)
+        .args(["--space-base", base])
+        .output()
+        .map_err(|e| format!("{}: {e}", cli.display()))?;
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).map_err(|e| format!("the command's answer ({}): {e}", out.status))?;
+    let ids = v["candidates"].as_array().ok_or(format!("no candidates in the command's answer: {v}"))?;
+    Ok(ids.iter().filter_map(|c| c["id"].as_str().map(String::from)).collect())
+}
+
+fn lib_view<'a>(s: &'a Scene, rec: &str) -> Option<&'a shroom_core::scene::LibraryRowView> {
+    s.library.as_ref()?.body.rows.iter().find(|r| r.key == rec)
+}
+
+fn going_line(s: &Scene) -> Option<String> {
+    s.library.as_ref()?.body.going_line.as_ref().map(|l| l.line.clone())
+}
+
+fn cleaned_line(s: &Scene) -> Option<String> {
+    s.library.as_ref()?.body.cleaned_line.as_ref().map(|l| l.line.clone())
+}
+
+fn pop_banner(s: &Scene) -> Option<(&'static str, String, Vec<String>)> {
+    s.popover.as_ref()?.banner.as_ref().map(|b| (b.id, b.line.clone(), b.buttons.iter().map(|x| x.label.clone()).collect()))
+}
+
+/// The ids Suggested to clean up shows, in its order: what's going first, then the rest.
+fn cleanup_ids(s: &Scene) -> Vec<String> {
+    cleanup_view(s).map(|v| v.going.iter().flat_map(|g| &g.rows).chain(&v.rows).map(|r| r.key.clone()).collect()).unwrap_or_default()
 }
 
 fn cleanup_drive(d: &Drive) -> Result<(), String> {
@@ -2672,11 +2735,11 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("Delete is red text, Delete all three… too (law 9)", v.rows[0].buttons.iter().any(|b| b.label == "Delete" && b.style == Style::RedText) && v.delete_all.as_ref().is_some_and(|b| b.label == "Delete all three…" && b.style == Style::RedText), "styles");
     d.after(3000);
 
-    // Keep: off the list for good, and the record says so.
+    // Pin (N75, was Keep): off the list for good, and the record says so.
     let migrated = RecId("Cdrive00migrated".into());
-    d.act(Surface::Library, Action::KeepRow(migrated.clone()));
-    let s = d.wait("kept", 15, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 2))?;
-    d.check("Keep takes it off the list", !cleanup_titles(&s).iter().any(|t| t == "Migration dry run"), format!("{:?}", cleanup_titles(&s)));
+    d.act(Surface::Library, Action::PinRow(migrated.clone(), true));
+    let s = d.wait("pinned", 15, |s| cleanup_view(s).is_some_and(|v| v.rows.len() == 2))?;
+    d.check("Pin takes it off the list", !cleanup_titles(&s).iter().any(|t| t == "Migration dry run"), format!("{:?}", cleanup_titles(&s)));
     let kept = poll(10, || worker_object(&base, &keys::meta(&migrated.0)).filter(|m| m["keep"] == true));
     d.check("the record says keep", kept.is_some(), "meta keep");
     d.after(2000);
@@ -2694,6 +2757,33 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     let still = worker_object(&base, &keys::meta(&recap.0));
     d.check("Undo sent nothing: the video is still live", still.as_ref().is_some_and(|m| m["state"] == "live"), format!("{:?}", still.as_ref().map(|m| m["state"].clone())));
 
+    // Delete all… (N75): its own sheet, then every row on one Undo line; Undo sends nothing.
+    let billing = RecId("Cdrive000billing".into());
+    let s = snapshot(&d.rt).ok_or("no scene")?;
+    let all = cleanup_view(&s).and_then(|v| v.delete_all.clone());
+    d.check("Delete both… for two", all.as_ref().is_some_and(|b| b.label == "Delete both…" && b.style == Style::RedText), format!("{:?}", all.as_ref().map(|b| &b.label)));
+    let shown = cleanup_ids(&s);
+    // What the command lists is what the Library shows (N68, N75).
+    let cli = cli_candidates(d, &base)?;
+    d.check("shroom cleanup-candidates lists what the Library suggests, in its order", cli == shown, format!("command {cli:?} / Library {shown:?}"));
+    d.act(Surface::Library, Action::DeleteAllSuggested);
+    let s = d.wait("delete-confirm-cleanup", 5, |s| s.library.as_ref().is_some_and(|l| l.body.sheet.as_ref().is_some_and(|x| x.id == "delete-confirm-cleanup")))?;
+    let sheet = s.library.as_ref().and_then(|l| l.body.sheet.clone()).expect("the sheet");
+    let labels: Vec<&str> = sheet.buttons.iter().map(|b| b.label.as_str()).collect();
+    d.check("the sheet: Delete both suggested videos?, what it frees, Cancel and Delete both", sheet.title == "Delete both suggested videos?" && sheet.lines.first().is_some_and(|l| l.starts_with("That frees ") && l.ends_with("Their links stay, and say the videos are gone.")) && labels == ["Cancel", "Delete both"], format!("{} / {:?} / {labels:?}", sheet.title, sheet.lines));
+    d.after(2000);
+    d.act(Surface::Library, Action::ConfirmDeleteSuggested);
+    let s = d.wait("one Undo line for both", 5, |s| cleanup_view(s).is_some_and(|v| v.undo.is_some() && v.rows.is_empty()))?;
+    let undo = cleanup_view(&s).and_then(|v| v.undo.clone()).expect("undo");
+    d.check("one Undo line: Deleted both videos.", undo.line == "Deleted both videos." && undo.undo.label == "Undo", undo.line.clone());
+    d.after(1500);
+    d.act(Surface::Library, Action::UndoDelete);
+    d.wait("both back", 5, |s| cleanup_view(s).is_some_and(|v| v.undo.is_none() && v.rows.len() == 2))?;
+    std::thread::sleep(Duration::from_secs(6));
+    let live = [&recap, &billing].iter().all(|r| worker_object(&base, &keys::meta(&r.0)).is_some_and(|m| m["state"] == "live"));
+    d.check("one Undo took back both: nothing was sent", live, "meta state");
+    d.after(1500);
+
     // Delete again, and let it go.
     d.act(Surface::Library, Action::DeleteSuggested(recap.clone()));
     d.wait("the Undo line again", 5, |s| cleanup_view(s).is_some_and(|v| v.undo.is_some()))?;
@@ -2705,23 +2795,67 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
 
     // Back to the Library.
     d.act(Surface::Library, Action::Back);
+    let s = d.wait("library", 5, |s| s.library.as_ref().is_some_and(|l| l.body.cleanup.is_none()))?;
+    d.after(1500);
+
+    // Pin and Unpin from a row's menu (N75): the small pin before a pinned title.
+    let row = lib_view(&s, &migrated.0).ok_or("no Migration dry run row")?;
+    let menu: Vec<&str> = row.menu.iter().map(|b| b.label.as_str()).collect();
+    d.check("a pinned row: the pin before its title, and Unpin in its menu", row.kept.as_deref() == Some("Pinned") && row.menu.iter().any(|b| b.label == "Unpin" && b.action == Action::PinRow(migrated.clone(), false)), format!("{:?} / {menu:?}", row.kept));
+    let unpinned = lib_view(&s, "Cdrive000000t502").ok_or("no 502s row")?;
+    d.check("an unpinned row: no pin, and Pin in its menu", unpinned.kept.is_none() && unpinned.menu.iter().any(|b| b.label == "Pin"), format!("{:?}", unpinned.menu.iter().map(|b| &b.label).collect::<Vec<_>>()));
+    d.act(Surface::Library, Action::PinRow(migrated.clone(), false));
+    d.wait("unpinned", 15, |s| lib_view(s, &migrated.0).is_some_and(|r| r.kept.is_none() && r.menu.iter().any(|b| b.label == "Pin")))?;
+    let off = poll(10, || worker_object(&base, &keys::meta(&migrated.0)).filter(|m| m["keep"] != true));
+    d.check("Unpin: the record no longer says keep", off.is_some(), "meta keep");
+    d.after(1500);
+    d.rt.post(Event::WindowClosed(WindowKind::Library));
+    d.wait("closed", 5, |s| s.library.is_none())?;
+    // Unpinned, it is suggested again once the space is asked afresh…
+    d.open(Action::OpenLibrary)?;
+    let s = d.wait("the line again", 30, |s| s.library.as_ref().is_some_and(|l| l.body.cleanup_line.is_some()))?;
+    let review = s.library.as_ref().and_then(|l| l.body.cleanup_line.clone()).expect("the line").review.action;
+    d.act(Surface::Library, review);
+    let s = d.wait("library-cleanup, unpinned", 10, |s| cleanup_view(s).is_some())?;
+    d.check("unpinned, it's suggested again", cleanup_ids(&s).contains(&migrated.0), format!("{:?}", cleanup_titles(&s)));
+    d.after(2000);
+    d.act(Surface::Library, Action::Back);
     d.wait("library", 5, |s| s.library.as_ref().is_some_and(|l| l.body.cleanup.is_none()))?;
+    // …and pinned again from its menu, never.
+    d.act(Surface::Library, Action::PinRow(migrated.clone(), true));
+    d.wait("pinned again", 15, |s| lib_view(s, &migrated.0).is_some_and(|r| r.kept.as_deref() == Some("Pinned")))?;
+    poll(10, || worker_object(&base, &keys::meta(&migrated.0)).filter(|m| m["keep"] == true)).ok_or("the record never said keep again")?;
+    d.rt.post(Event::WindowClosed(WindowKind::Library));
+    d.wait("closed", 5, |s| s.library.is_none())?;
+    d.open(Action::OpenLibrary)?;
+    let s = d.wait("the line, read afresh", 30, |s| s.library.as_ref().is_some_and(|l| l.body.cleanup_line.is_some()))?;
+    let review = s.library.as_ref().and_then(|l| l.body.cleanup_line.clone()).expect("the line").review.action;
+    d.act(Surface::Library, review);
+    let s = d.wait("library-cleanup, pinned", 10, |s| cleanup_view(s).is_some())?;
+    d.check("a pinned video is never suggested", !cleanup_ids(&s).contains(&migrated.0) && cleanup_ids(&s) == [billing.0.clone()], format!("{:?}", cleanup_titles(&s)));
+    let cli = cli_candidates(d, &base)?;
+    d.check("…nor listed by the command", cli == [billing.0.clone()], format!("{cli:?}"));
     d.after(1500);
     d.rt.post(Event::WindowClosed(WindowKind::Library));
     d.wait("closed", 5, |s| s.library.is_none())?;
 
-    // Settings · General: Your videos, the space's size, and Count plays off and on again.
+    // Settings · Space: the space's size (N79); then Videos: Count plays off and on again.
     // The read Settings asks for meets a busy space once: the failure is in the run log.
-    knob(&base, SPACE_A, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
+    knob(&base, CLEANUP_HOST, "fault", serde_json::json!({ "prefix": "/_shroom/api/cleanup", "status": 500, "count": 1 }))?;
     d.open(Action::OpenSettings)?;
-    let s = d.wait("Your videos", 30, |s| general_videos(s).is_some_and(|v| v.used.is_some()))?;
-    let v = general_videos(&s).expect("videos");
-    d.check("Your videos: both switches on", v.heading == "Your videos" && v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
-    d.check("Space used: inside the free 10 GB now", v.used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{:?}", v.used));
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Space));
+    let s = d.wait("Space used", 30, |s| space_used(s).is_some())?;
+    let used = space_used(&s);
+    d.check("Space used: inside the free 10 GB now", used.as_deref().is_some_and(|u| u.ends_with("inside Cloudflare's free 10 GB")), format!("{used:?}"));
+    d.after(2000);
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::Videos));
+    let s = d.wait("Videos", 30, |s| videos_pane(s).is_some_and(|v| v.count.enabled))?;
+    let v = videos_pane(&s).expect("videos");
+    d.check("Videos: both switches on", v.count.on && v.count.enabled && v.suggest.on, format!("count {} suggest {}", v.count.on, v.suggest.on));
     d.after(2500);
     d.act(Surface::Settings, v.count.action.clone());
     // The switch moves at once and stays greyed until the space has taken it.
-    d.wait("Count plays off, taken", 20, |s| general_videos(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
+    d.wait("Count plays off, taken", 20, |s| videos_pane(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is off", sw.as_ref().is_some_and(|o| o["on"] == false), format!("{sw:?}"));
     play_today(&base, "Cdrive000billing")?;
@@ -2729,14 +2863,131 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     d.check("with it off, a play isn't counted", rec.as_ref().is_some_and(|r| r["plays"] == 4), format!("{:?}", rec.as_ref().map(|r| r["plays"].clone())));
     d.after(2000);
     let s = snapshot(&d.rt).ok_or("no scene")?;
-    let v = general_videos(&s).ok_or("no Your videos")?;
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
     d.act(Surface::Settings, v.count.action.clone());
-    d.wait("Count plays on again, taken", 20, |s| general_videos(s).is_some_and(|v| v.count.on && v.count.enabled))?;
+    d.wait("Count plays on again, taken", 20, |s| videos_pane(s).is_some_and(|v| v.count.on && v.count.enabled))?;
     let sw = worker_object(&base, ".shroom/plays.json");
     d.check("the space's switch is on again", sw.as_ref().is_some_and(|o| o["on"] == true), format!("{sw:?}"));
     d.after(2000);
+
+    // Delete videos nobody watches (N75): set here, on the Mac that set up the space.
+    let s = d.wait("the auto-cleanup pop-up, live", 10, |s| videos_pane(s).and_then(|v| v.autoclean).is_some_and(|a| a.choices.iter().all(|c| c.enabled)))?;
+    let a = videos_pane(&s).and_then(|v| v.autoclean).expect("the pop-up");
+    d.check("Your space deletes after Off · 15 · 30 · 60 days · a year", a.label == "Delete videos nobody watches" && a.choices.iter().map(|c| c.label.as_str()).collect::<Vec<_>>() == ["Off", "After 15 days", "After 30 days", "After 60 days", "After a year"], format!("{:?}", a.choices.iter().map(|c| &c.label).collect::<Vec<_>>()));
+    d.check("it's Off as it ships", a.choices.iter().find(|c| c.selected).is_some_and(|c| c.label == "Off") && worker_object(&base, ".shroom/autoclean.json").is_none(), format!("{:?}", a.choices.iter().find(|c| c.selected).map(|c| &c.label)));
+    d.check("its hint: how it counts, and the warning", a.hint.starts_with("Counted from the last time someone watched it"), a.hint.clone());
+    d.step("the pop-up, Off");
+    d.after(2500);
+    d.act(Surface::Settings, Action::SetAutoclean(15));
+    let s = d.wait("autoclean-confirm", 10, |s| s.settings.as_ref().is_some_and(|w| w.body.sheet.as_ref().is_some_and(|x| x.id == "autoclean-confirm")))?;
+    let sheet = s.settings.as_ref().and_then(|w| w.body.sheet.clone()).expect("the question");
+    let labels: Vec<&str> = sheet.buttons.iter().map(|b| b.label.as_str()).collect();
+    d.check("turning it on asks first: two already qualify", sheet.title == "Delete videos nobody watches for 15 days?" && sheet.lines.first().is_some_and(|l| l.starts_with("Two videos already qualify.")) && labels == ["Cancel", "Turn on"], format!("{} / {:?} / {labels:?}", sheet.title, sheet.lines));
+    d.after(2500);
+    d.act(Surface::Settings, Action::ConfirmAutoclean);
+    d.wait("After 15 days, taken", 20, |s| videos_pane(s).and_then(|v| v.autoclean).is_some_and(|a| a.note.is_none() && a.choices.iter().any(|c| c.selected && c.label == "After 15 days")))?;
+    let cfg = worker_object(&base, ".shroom/autoclean.json");
+    d.check("the space holds the setting: 15 days", cfg.as_ref().is_some_and(|c| c["days"] == 15), format!("{cfg:?}"));
+    d.after(2500);
+
+    // It needs Count plays: with the switch off, the pop-up greys and says so.
+    let s = snapshot(&d.rt).ok_or("no scene")?;
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
+    d.act(Surface::Settings, v.count.action.clone());
+    let s = d.wait("Count plays off again", 20, |s| videos_pane(s).is_some_and(|v| !v.count.on && v.count.enabled))?;
+    let a = videos_pane(&s).and_then(|v| v.autoclean).expect("the pop-up");
+    d.check("Needs Count plays: greyed while plays aren't counted", a.hint == "Needs Count plays" && a.choices.iter().all(|c| !c.enabled), format!("{} / {:?}", a.hint, a.choices.iter().map(|c| c.enabled).collect::<Vec<_>>()));
+    d.after(2500);
+    let v = videos_pane(&s).ok_or("no Videos tab")?;
+    d.act(Surface::Settings, v.count.action.clone());
+    d.wait("Count plays on, the pop-up live again", 20, |s| videos_pane(s).is_some_and(|v| v.count.on && v.count.enabled && v.autoclean.as_ref().is_some_and(|a| a.choices.iter().all(|c| c.enabled))))?;
+    d.after(1500);
+    // Settings opens on the last tab used: leave it on General, as it was.
+    d.act(Surface::Settings, Action::SettingsTab(SettingsTab::General));
     d.rt.post(Event::WindowClosed(WindowKind::Settings));
     d.wait("closed", 5, |s| s.settings.is_none())?;
+
+    // The page's schedule walks the space (the Mac asks nothing): two videos go in three days.
+    let run = page_schedule(&base, 0, None)?;
+    let going = run["state"]["going"].as_object().cloned().unwrap_or_default();
+    let mut ids: Vec<&str> = going.keys().map(String::as_str).collect();
+    ids.sort();
+    d.check("the page lists what's going: the billing walkthrough and the standup notes, not the pinned, the played or the deleted", ids == ["Cdrive000billing", "Cdrive000standup"], format!("{ids:?}"));
+    d.step("the page's schedule walked the space");
+
+    // The warning, three days ahead: the Library's line, each row's date and its Pin.
+    d.open(Action::OpenLibrary)?;
+    let s = d.wait("the going line", 30, |s| going_line(s).is_some() && lib_view(s, "Cdrive000standup").is_some_and(|r| r.going.is_some()))?;
+    let line = going_line(&s).unwrap_or_default();
+    let date = line.strip_prefix("Two videos will be deleted on ").and_then(|l| l.strip_suffix(" — nobody has watched them in 15 days.")).unwrap_or("").to_string();
+    d.check("the Library: Two videos will be deleted on <date> — nobody has watched them in 15 days.", !date.is_empty(), line.clone());
+    let notice = s.library.as_ref().and_then(|l| l.body.going_line.clone()).expect("the line");
+    d.check("…with Review…, in the suggestion line's place", notice.buttons.iter().map(|b| b.label.as_str()).collect::<Vec<_>>() == ["Review…"] && s.library.as_ref().is_some_and(|l| l.body.cleanup_line.is_none()), format!("{:?}", notice.buttons.iter().map(|b| &b.label).collect::<Vec<_>>()));
+    let unless = format!("Deleted {date} unless pinned");
+    let standup = lib_view(&s, "Cdrive000standup").expect("the row");
+    d.check("each going row: Deleted <date> unless pinned, and Pin one click away", standup.going.as_deref() == Some(unless.as_str()) && lib_view(&s, "Cdrive000billing").is_some_and(|r| r.going.as_deref() == Some(unless.as_str())) && standup.buttons.iter().any(|b| b.label == "Pin"), format!("{:?} / {:?}", standup.going, standup.buttons.iter().map(|b| &b.label).collect::<Vec<_>>()));
+    d.check("a row that isn't going says nothing", lib_view(&s, "Cdrive000000t502").is_some_and(|r| r.going.is_none()), "the 502s");
+    let cli = cli_candidates(d, &base)?;
+    let mut sorted = cli.clone();
+    sorted.sort();
+    d.check("the command lists what's going too", sorted == ["Cdrive000billing", "Cdrive000standup"], format!("{cli:?}"));
+    d.after(3000);
+    let pin = standup.buttons.iter().find(|b| b.label == "Pin").expect("Pin").action.clone();
+    d.act(Surface::Library, pin);
+    let s = d.wait("one going", 15, |s| going_line(s).is_some_and(|l| l.starts_with("One video")) && lib_view(s, "Cdrive000standup").is_some_and(|r| r.going.is_none()))?;
+    d.check("pinned: its warning goes at once, and the line counts one", going_line(&s).as_deref() == Some(format!("One video will be deleted on {date} — nobody has watched it in 15 days.").as_str()), format!("{:?}", going_line(&s)));
+    let kept = poll(10, || worker_object(&base, &keys::meta("Cdrive000standup")).filter(|m| m["keep"] == true));
+    d.check("…and the record says keep", kept.is_some(), "meta keep");
+    d.after(2500);
+    d.rt.post(Event::WindowClosed(WindowKind::Library));
+    d.wait("closed", 5, |s| s.library.is_none())?;
+
+    // The popover says it too, with Pin it and Review….
+    click(&d.app, &d.rt);
+    let s = d.wait("the popover's warning", 10, |s| pop_banner(s).is_some_and(|b| b.0 == "autoclean-warning"))?;
+    let (_, line, buttons) = pop_banner(&s).expect("the banner");
+    d.check("the popover banner: One video will be deleted on <date>, Not now · Review… · Pin it", line == format!("One video will be deleted on {date} — nobody has watched it in 15 days.") && buttons == ["Not now", "Review…", "Pin it"], format!("{line} / {buttons:?}"));
+    d.after(3000);
+    d.act(Surface::Popover, Action::ReviewGoing);
+    let s = d.wait("library-cleanup, on what's going", 15, |s| cleanup_view(s).is_some_and(|v| !v.going.is_empty()))?;
+    let g = cleanup_view(&s).map(|v| v.going[0].clone()).expect("going");
+    let labels: Vec<&str> = g.rows.first().map(|r| r.buttons.iter().map(|b| b.label.as_str()).collect()).unwrap_or_default();
+    d.check("Review… opens what's going first: its date, the line, Open page and Pin", g.heading == format!("Deleting on {date}") && g.line.as_deref() == Some("Nobody has watched this in 15 days. Pin it to keep it; a watch before then keeps it too.") && g.rows.iter().map(|r| r.key.as_str()).collect::<Vec<_>>() == ["Cdrive000billing"] && labels == ["Open page", "Pin"], format!("{} / {:?} / {labels:?}", g.heading, g.line));
+    d.after(3000);
+    d.rt.post(Event::WindowClosed(WindowKind::Library));
+    d.wait("closed", 5, |s| s.library.is_none() && s.popover.is_none())?;
+
+    // Three days on, the page deletes it on its own schedule — the Mac asked nothing of it
+    // (every window closed), as when it's shut.
+    let run = page_schedule(&base, 75, Some(4))?;
+    let gone = worker_object(&base, &keys::meta("Cdrive000billing"));
+    d.check("the page deleted it on its schedule: a tombstone, by auto", gone.as_ref().is_some_and(|m| m["state"] == "deleted" && m["by"] == "auto"), format!("{:?}", gone.as_ref().map(|m| (&m["state"], &m["by"]))));
+    d.check("the round remembered: one video, 3.2 GB", run["state"]["last"]["ids"] == serde_json::json!(["Cdrive000billing"]) && run["state"]["last"]["bytes"] == 3_200_000_000u64, format!("{}", run["state"]["last"]));
+    let left = objects(&base, CLEANUP_HOST)?.iter().filter(|o| o["key"].as_str().is_some_and(|k| k.starts_with("rec/Cdrive000billing/"))).count();
+    d.check("its bytes went with it", left == 0, format!("{left} left"));
+    let standup = worker_object(&base, &keys::meta("Cdrive000standup"));
+    d.check("the pinned one stays", standup.as_ref().is_some_and(|m| m["state"] == "live"), "standup live");
+    d.step("the page deleted the billing walkthrough");
+
+    // The Mac hears it once: the Library's line and the popover's, until OK.
+    d.open(Action::OpenLibrary)?;
+    let s = d.wait("the cleaned line", 30, |s| cleaned_line(s).is_some() && !lib_row(s, "Cdrive000billing"))?;
+    let said = "Auto-cleanup deleted one video nobody had watched in 15 days, freeing 3.2 GB.";
+    d.check("the Library: Auto-cleanup deleted one video …, freeing 3.2 GB., with OK", cleaned_line(&s).as_deref() == Some(said) && s.library.as_ref().and_then(|l| l.body.cleaned_line.as_ref()).is_some_and(|n| n.buttons.iter().map(|b| b.label.as_str()).collect::<Vec<_>>() == ["OK"]), format!("{:?}", cleaned_line(&s)));
+    d.check("…and the row is gone", !lib_row(&s, "Cdrive000billing"), format!("{:?}", titles(&s)));
+    d.after(3000);
+    d.rt.post(Event::WindowClosed(WindowKind::Library));
+    d.wait("closed", 5, |s| s.library.is_none())?;
+    click(&d.app, &d.rt);
+    let s = d.wait("the popover's round", 10, |s| pop_banner(s).is_some_and(|b| b.1 == said))?;
+    d.check("the popover says it too, with OK", pop_banner(&s).is_some_and(|b| b.2 == ["OK"]), format!("{:?}", pop_banner(&s)));
+    d.after(2500);
+    d.act(Surface::Popover, Action::CleanedOk);
+    // Put away: the next banner in rank may take its place (this Mac's AI line, N76).
+    d.wait("OK: put away", 5, |s| pop_banner(s).is_none_or(|b| b.0 != "autoclean-warning"))?;
+    d.after(1500);
+    d.act(Surface::Popover, Action::Dismiss);
+    d.wait("popover closed", 5, |s| s.popover.is_none())?;
 
     // What a problem report would carry of all this: the run log's lines, as a report
     // cleans them (no title, no link, no whole id).
@@ -2749,8 +3000,12 @@ fn cleanup_drive(d: &Drive) -> Result<(), String> {
     let has = |want: &str| cleaned.lines().any(|l| l.contains(want));
     d.check("the log: the read, its size and how counting fares", has("library suggestions: 3 of 5 videos, 6.4 GB of 10.6 GB, counting on; plays read 4, unreadable 0, newest play 0h ago"), "library suggestions: …");
     d.check("the log: each candidate by a short id, why, its score and facts", has("library suggested: Cdri… not-lately s0.") && has(" never-played s0.") && has(" stopped-early s0."), "library suggested: …");
-    d.check("the log: the line showing and going, Keep, the delete and its Undo", ["library: the cleanup line shows", "core cleanup-opened", "library kept Cdri…", "core delete-undone", "library deleted Cdri…"].iter().all(|w| has(w)), "the steps");
+    // N75 made Keep a Pin: the log says pinned (and unpinned) since.
+    let steps = ["library: the cleanup line shows", "core cleanup-opened", "library pinned Cdri…", "library unpinned Cdri…", "core delete-undone", "core delete-all", "library deleted Cdri…"];
+    let missing: Vec<&str> = steps.iter().copied().filter(|w| !has(w)).collect();
+    d.check("the log: the line showing and going, Pin and Unpin, the deletes and their Undo", missing.is_empty(), format!("missing {missing:?}"));
     d.check("the log: the read that met a busy space", has("library Suggest: failed (Transport)"), "the failure");
+    d.check("the log: auto-cleanup's setting and what's going", has("library auto-cleanup: 15 days, 2 going"), "library auto-cleanup: …");
     d.check("the log names no video", !CLEANUP_SEEDED.iter().any(|(id, title, ..)| log.contains(title) || log.contains(id)), "no titles, no whole ids");
     Ok(())
 }

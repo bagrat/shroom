@@ -26,11 +26,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { webkit } from "playwright";
-import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowPage } from "./gallery-kit.mjs";
+import { collect, dist, gallery, hex, isButton, norm, out, repo, serve, stub, texts, windowFrame, windowPage } from "./gallery-kit.mjs";
 import { editorDrives, editorLooks, makeMedia, serveMedia } from "./editor-preview.mjs";
 import { editorScenes, REC } from "./editor-fixture.mjs";
 
-for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html", "label.html"]) {
+for (const f of ["library.html", "settings.html", "feedback.html", "popover.html", "countdown.html", "editor.html", "label.html", "toast.html"]) {
   if (!existsSync(join(dist, f))) {
     console.error(`app/dist/${f} is missing — run \`npm run build --workspace app\` first.`);
     process.exit(2);
@@ -38,21 +38,13 @@ for (const f of ["library.html", "settings.html", "feedback.html", "popover.html
 }
 mkdirSync(out, { recursive: true });
 
-// The windows' inner sizes, as the runner builds them (runtime/presenter.rs's WindowSpecs —
-// read from there so the gallery and the runner stay in step; the fallbacks are the sizes
-// they were written against). The Library resizes down to its minimum; Settings is fixed,
-// tall enough for its tallest pane (checked below).
-function spec(label, fallback) {
-  try {
-    const src = readFileSync(join(repo, "app/src-tauri/src/runtime/presenter.rs"), "utf8");
-    const m = src.match(new RegExp(`label: ${label},[^}]*?width: ([\\d.]+), height: ([\\d.]+)`));
-    if (m) return { width: Number(m[1]), height: Number(m[2]) };
-  } catch {}
-  return fallback;
-}
+// The windows' sizes, as the runner builds them (runtime/presenter.rs's WindowSpecs — read
+// from there so the gallery and the runner stay in step). The Library resizes down to its
+// minimum. Settings is fixed: its page is the frame less macOS's title bar (688 under a
+// 720 frame, as on a Mac), and every tab must fit it (checked below; N79).
 export const SIZES = {
-  library: { ...spec("LIBRARY", { width: 680, height: 560 }), min: { width: 520, height: 360 } },
-  settings: spec("SETTINGS", { width: 600, height: 620 }),
+  library: { ...windowFrame("LIBRARY", { width: 680, height: 560 }), min: { width: 520, height: 360 } },
+  settings: windowPage("SETTINGS", { width: 600, height: 720 }),
   // Send feedback (N60): its page under the title bar.
   feedback: windowPage("FEEDBACK", { width: 520, height: 600 }),
   // The popover is 320 wide and fits its content's height (commands.rs's popover_fit, up to 720).
@@ -61,6 +53,9 @@ export const SIZES = {
   countdown: { width: 1512, height: 982 },
   // The agent label's panel (overlay.rs LABEL_SIZE): the pill at its right edge.
   label: { width: 380, height: 30 },
+  // The marker toast's panel (overlay.rs TOAST_SIZE): its pill at the top right, inside the
+  // margin its shadow fits in (TOAST_MARGIN: 16 right, 12 above, 20 below).
+  toast: { width: 470, height: 62, margin: { right: 16, top: 12, bottom: 20 }, pill: 30 },
 };
 
 // Region 6's entries ride along, each in its own window (`-- members`).
@@ -72,6 +67,7 @@ const region3 = gallery("region3");
 const popovers = [...members, ...region3].filter((e) => e.window === "popover");
 const countdowns = region3.filter((e) => e.window === "countdown");
 const labels = region3.filter((e) => e.window === "label");
+const toasts = region3.filter((e) => e.window === "toast");
 // Send feedback (`-- feedback`): the form in each of its faces, and the sent face (N60).
 const feedbacks = gallery("feedback");
 // The editor (`-- editor`, N63): its faces over one recording.
@@ -86,8 +82,9 @@ const TEXT = new Set([
   // Region 6: the member's label on a row, Settings · Space's beneath-the-rows lines, the
   // Members tab's You row, a row's fact, the composer's line, a born link's address.
   "member", "mark_line", "you", "fact", "invite_line", "prefix",
-  // Naming (N66): the setup Mac's switch line under it.
-  "ai_line",
+  // Naming (N66): the setup Mac's switch line under it; its quiet and failed lines under its
+  // parts (N80).
+  "ai_line", "ai_long", "ai_failed", "clock",
   // A line in runs (Rich): who invites say they're from (B158).
   "text",
   // Report a problem (B180): General's help row and its sent line; the sheet's field label,
@@ -101,6 +98,9 @@ const TEXT = new Set([
   "intro", "foot", "heading", "count_hint", "count_note", "suggest_hint", "used_label", "used",
   // Your coding agent (spec N62, DECISIONS B219): the prompt in its well.
   "prompt",
+  // Pin and auto-cleanup (N75): a going row's date, the heading over the suggestions while
+  // videos are going. (A pinned row's “Pinned” is its pin's name, checked by itself.)
+  "going", "suggest_heading",
 ]);
 
 /** The sheets that ask no destructive question: law 9's colours aren't theirs (B180, as
@@ -121,7 +121,7 @@ async function open(surface, scene, { colorScheme = "light", size = SIZES[surfac
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.addInitScript(stub, scene);
   await page.goto(`${server.origin}/${surface}.html`);
-  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])" }[surface]);
+  await page.waitForSelector({ library: ".lib", settings: ".set", feedback: "main.fb", popover: "main.pop", countdown: "#digit:not(:empty)", label: "#pill:not([hidden])", toast: "#pill:not([hidden])" }[surface]);
   await page.waitForTimeout(60);
   return { ctx, page, errors };
 }
@@ -240,7 +240,15 @@ for (const entry of library) {
     const v = await vars(page);
     await common(tag, page, errors, "library", sceneForText, { hidden: [...hidden, ...renamed.filter((t) => !shownElsewhere.has(t))] });
     // N68's line above the rows: its words, Review… and Not now.
-    check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline").count()) === (b.cleanup_line ? 1 : 0));
+    check(`${tag}: the cleanup line ${b.cleanup_line ? "shows" : "absent"}`, (await page.locator(".cline[data-line=cleanup]").count()) === (b.cleanup_line ? 1 : 0));
+    // N75: auto-cleanup's amber line and the line after a round, each with its buttons.
+    check(`${tag}: auto-cleanup's line ${b.going_line ? "shows, amber" : "absent"}`, (await page.locator(".cline.going[data-line=going]").count()) === (b.going_line ? 1 : 0));
+    check(`${tag}: the after-line ${b.cleaned_line ? "shows" : "absent"}`, (await page.locator(".cline[data-line=cleaned]").count()) === (b.cleaned_line ? 1 : 0));
+    for (const r of b.rows) {
+      const pin = await page.locator(`li.lrow[data-key="${r.key}"] .line1 svg.kept`).count();
+      const named = r.kept ? await page.locator(`li.lrow[data-key="${r.key}"] .line1 svg.kept`).getAttribute("aria-label") : null;
+      check(`${tag}: row ${r.key} ${r.kept ? `shows its pin, named “${r.kept}”` : "no pin"}`, pin === (r.kept ? 1 : 0) && named === r.kept);
+    }
 
     // The search field reads the Scene.
     const s = page.locator('input[data-field="library-search"]');
@@ -267,6 +275,7 @@ for (const entry of library) {
       check(`${tag}: row ${r.key} ${r.member ? `carries “${r.member}”` : "carries no member's label"}`, JSON.stringify(tagged) === JSON.stringify(r.member ? [r.member] : []), JSON.stringify(tagged));
     }
     let expected = (b.sheet ? b.sheet.buttons.length : 0) + b.scope.length + (b.cleanup_line && !b.sheet ? 2 : 0);
+    if (!b.sheet) expected += [b.going_line, b.cleaned_line].filter(Boolean).reduce((n, l) => n + l.buttons.length, 0);
     for (const r of b.rows) {
       const row = page.locator(`li.lrow[data-key="${r.key}"]`);
       const rt = `${tag}: row ${r.key}`;
@@ -528,16 +537,22 @@ for (const variant of ["library-delete-sheet", "library-delete-sheet-several"]) 
  * its minimum; then each button sends the Scene's action. */
 async function cleanupChecks(entry, w) {
   const c = w.body.cleanup;
+  const sheet = w.body.sheet;
+  // What auto-cleanup will delete leads the view (N75), then the suggestions.
+  const rows = [...c.going.flatMap((g) => g.rows), ...c.rows];
   for (const [scheme, size] of [["light", SIZES.library], ["dark", SIZES.library], ["light", SIZES.library.min]]) {
     const tag = `library/${entry.variant} [${scheme}${size === SIZES.library.min ? ", min width" : ""}]`;
     const { ctx, page, errors } = await open("library", w, { colorScheme: scheme, size });
     const v = await vars(page);
-    await common(tag, page, errors, "library", { ...w, body: { cleanup: c } });
+    await common(tag, page, errors, "library", { ...w, body: { cleanup: c, sheet } });
     check(`${tag}: the list gives way to the view`, (await page.locator(".toolbar").count()) === 0 && (await page.locator(".cview").count()) === 1);
     const keys = await page.locator(".cview li.lrow").evaluateAll((els) => els.map((e) => e.dataset.key));
-    check(`${tag}: rows in the Scene's order`, keys.join("|") === c.rows.map((r) => r.key).join("|"), keys.join("|"));
+    check(`${tag}: rows in the Scene's order`, keys.join("|") === rows.map((r) => r.key).join("|"), keys.join("|"));
+    const heads = await page.locator(".cview .gohead h2").allInnerTexts();
+    const want = [...c.going.map((g) => g.heading), ...(c.suggest_heading ? [c.suggest_heading] : [])];
+    check(`${tag}: the headings, what's going first`, heads.join("|") === want.join("|"), heads.join("|"));
     check(`${tag}: ${c.empty ? "the empty line" : "no empty line"}`, (await page.locator(".cview .empty").count()) === (c.empty ? 1 : 0));
-    for (const r of c.rows) {
+    for (const r of rows) {
       const row = page.locator(`.cview li.lrow[data-key="${r.key}"]`);
       const cut = await unclipped(row);
       check(`${tag}: row ${r.key} title and meta unclipped`, cut.length === 0, cut.join(" "));
@@ -553,13 +568,19 @@ async function cleanupChecks(entry, w) {
       check(`${tag}: “${c.delete_all.label}” red text (law 9)`, c.delete_all.style === "red-text" && !bad, bad ?? "");
     }
     check(`${tag}: the Undo line ${c.undo ? "shows" : "absent"}`, (await page.locator(".cview .undo").count()) === (c.undo ? 1 : 0));
-    const expected = 1 + c.rows.reduce((n, r) => n + r.buttons.length, 0) + (c.delete_all ? 1 : 0) + (c.undo ? 1 : 0);
+    // Delete all's sheet over the view (N75): a sheet's checks, and nothing behind it acts.
+    if (sheet) {
+      await sheetChecks(tag, page, "library", w, v);
+      await ctx.close();
+      continue;
+    }
+    const expected = 1 + rows.reduce((n, r) => n + r.buttons.length, 0) + (c.delete_all ? 1 : 0) + (c.undo ? 1 : 0);
     const shown = await page.locator("button:visible").count();
     check(`${tag}: ${expected} buttons showing, no others`, shown === expected, `shown ${shown}`);
     if (size !== SIZES.library.min) await page.screenshot({ path: join(out, `library-${entry.variant}-${scheme}.png`), animations: "disabled" });
     // Every button sends the Scene's action.
     if (scheme === "light" && size !== SIZES.library.min) {
-      const where = [[".chead", c.back], ...c.rows.flatMap((r) => r.buttons.map((x) => [`li.lrow[data-key="${r.key}"]`, x])), ...(c.delete_all ? [[".cfoot", c.delete_all]] : []), ...(c.undo ? [[".undo", c.undo.undo]] : [])];
+      const where = [[".chead", c.back], ...rows.flatMap((r) => r.buttons.map((x) => [`li.lrow[data-key="${r.key}"]`, x])), ...(c.delete_all ? [[".cfoot", c.delete_all]] : []), ...(c.undo ? [[".undo", c.undo.undo]] : [])];
       for (const [scope, x] of where.filter(([, x]) => x.enabled)) {
         await clear(page);
         await page.locator(`.cview ${scope} button`, { hasText: x.label }).first().click();
@@ -579,7 +600,15 @@ for (const entry of settings) {
     const tag = `settings/${entry.variant} [${scheme}]`;
     const { ctx, page, errors } = await open("settings", w, { colorScheme: scheme });
     const v = await vars(page);
-    await common(tag, page, errors, "settings", w);
+    // Auto-cleanup's pop-up (N75): its choices live in a select — the chosen one shows, the
+    // rest when it opens; they're its options, in the Scene's order.
+    const picks = b.pane.kind === "videos" ? (b.pane.autoclean?.choices ?? []) : [];
+    await common(tag, page, errors, "settings", w, { hidden: picks.map((c) => c.label) });
+    if (picks.length) {
+      const opts = await page.locator(".videos select.pop option").evaluateAll((els) => els.map((e) => ({ label: e.textContent.trim(), on: e.selected })));
+      check(`${tag}: auto-cleanup's pop-up offers the Scene's choices`, JSON.stringify(opts) === JSON.stringify(picks.map((c) => ({ label: c.label, on: c.selected }))), JSON.stringify(opts));
+      check(`${tag}: the pop-up ${picks.some((c) => c.enabled) ? "live" : "greyed"}`, (await page.locator(".videos select.pop").isEnabled()) === picks.some((c) => c.enabled));
+    }
 
     // The toolbar: the Scene's tabs, the selected one marked.
     const tabs = await page.locator("[role=tab]").evaluateAll((els) => els.map((e) => ({ label: e.textContent.trim(), on: e.getAttribute("aria-selected") === "true", en: !e.disabled })));
@@ -646,8 +675,31 @@ for (const entry of settings) {
       check(`${tag}: the composer has the keyboard ${w.activates && !b.sheet ? "(activates)" : "only when it may"}`, (await who.evaluate((e) => e === document.activeElement)) === (w.activates && !b.sheet));
       check(`${tag}: Return in the composer is the Scene's Invite`, w.ret?.do === "invite" || !!b.sheet);
       check(`${tag}: no paste field`, (await page.locator("input.paste").count()) === 0);
+    } else if (b.pane.kind === "videos") {
+      // Videos (N79): the switches and the pop-up, in one card; no heading over it — the
+      // tab is its name.
+      const g = b.pane;
+      for (const t of [g.count, g.suggest]) {
+        const box = page.getByRole("checkbox", { name: t.label });
+        check(`${tag}: “${t.label}” ${t.on ? "on" : "off"}, ${t.enabled ? "live" : "greyed"}`, (await box.isChecked()) === t.on && (await box.isEnabled()) === t.enabled);
+      }
+      check(`${tag}: one card, no heading`, (await page.locator(".videos > .card").count()) === 1 && (await page.locator(".videos h2").count()) === 0);
     } else {
       const p = b.pane.plan;
+      // Space used (N79; Bagrat, 2026-10-25): its own row in the plan's card, right under
+      // “Cloudflare billing set up” (the third row), owner-class Macs only.
+      check(
+        `${tag}: Space used ${b.pane.used ? "right under the billing row" : "absent"}`,
+        b.pane.used
+          ? await page.evaluate((want) => {
+              const u = document.querySelector("ol.rows > li.used-row");
+              const rows = document.querySelectorAll("ol.rows > li.row");
+              let prev = u?.previousElementSibling;
+              while (prev?.classList.contains("under")) prev = prev.previousElementSibling;
+              return !!u && prev === rows[2] && u.querySelector(".used")?.textContent === want;
+            }, b.pane.used)
+          : (await page.locator(".used-row").count()) === 0,
+      );
       const glyphs = await page.locator("li.row .glyph").evaluateAll((els) => els.map((e) => getComputedStyle(e).color));
       // A row ahead's dot is the canvas's #7b8494 (--dim), as the wizard draws it.
       const want = { current: v.frost, done: v.green, ahead: v.dim };
@@ -658,8 +710,12 @@ for (const entry of settings) {
         : await page.locator(`ol.rows > li.row:nth-of-type(${p.current}) + li.under > .nest`).count();
       check(`${tag}: nest ${p.current === null ? "below the plan" : `under row ${p.current}`}`, placed === 1);
       check(`${tag}: the nest is the Scene's (${p.nest.kind})`, (await page.locator(`.nest[data-nest="${p.nest.kind}"]`).count()) === 1);
-      const spinning = ["checking", "gate", "calm", "priming"].includes(p.nest.kind) || (p.nest.kind === "token" && p.nest.checking);
-      check(`${tag}: spinner ${spinning ? "turns" : "absent"}`, (await page.locator(".spin:not(.rest)").count()) === (spinning ? 1 : 0));
+      // Once the card watch is a part of its own, the card row keeps its arrow; each part
+      // underway turns its own spinner (N74).
+      const spinning = ["checking", "check", "calm", "priming"].includes(p.nest.kind) || (p.nest.kind === "gate" && !p.nest.watch) || (p.nest.kind === "token" && p.nest.checking);
+      // The AI switch's parts under it (N80) turn theirs too.
+      const parts = [...(p.nest.parts ?? []), ...(p.nest.watch ? [p.nest.watch] : []), ...(b.pane.ai_parts ?? [])].filter((x) => x.glyph === "working").length;
+      check(`${tag}: spinner ${spinning ? "turns" : "absent"}`, (await page.locator(".spin:not(.rest)").count()) === (spinning ? 1 : 0) + parts);
       if (p.nest.kind === "token") check(`${tag}: token placeholder`, await page.locator(`input.paste[placeholder="${p.nest.placeholder}"]`).isVisible());
       if (p.nest.kind === "token") {
         const shown = await page.locator(".nest input.paste").inputValue();
@@ -693,6 +749,7 @@ for (const entry of settings) {
     await page.screenshot({ path: join(out, `settings-${entry.variant}-${scheme}.png`), fullPage: true, animations: "disabled" });
     const bottom = await page.evaluate(() => Math.ceil(document.querySelector(".set > .behind > .pane").getBoundingClientRect().bottom));
     if (b.pane.kind === "members") check(`${tag}: the toolbar's tabs include Members`, b.tabs.some((t) => t.label === "Members"));
+    // Every tab fits the page whole (N79), Members with the gallery's people.
     heights.push(bottom);
     check(`${tag}: the pane fits the window (${bottom} ≤ ${SIZES.settings.height})`, bottom <= SIZES.settings.height);
     if (b.sheet) {
@@ -708,9 +765,9 @@ for (const entry of settings) {
 
 const set = (variant) => settings.find((e) => e.variant === variant).scene;
 {
-  // Your videos (N68): each switch sends the Scene's action and keeps the Scene's state.
-  const w = set("general-your-videos");
-  const v = w.body.pane.videos;
+  // Videos (N79; Your videos, N68): each switch sends the Scene's action and keeps the Scene's state.
+  const w = set("videos");
+  const v = w.body.pane;
   const { ctx, page } = await open("settings", w);
   for (const t of [v.count, v.suggest]) {
     await clear(page);
@@ -972,6 +1029,28 @@ for (const variant of ["remove-member", "remove-invite", "remove-mac"]) {
   await ctx.close();
 }
 {
+  // N80: while the page is re-wired the switch shows where it's going, greyed, and its parts
+  // list under the cost line — the one underway with its clock; done ends in bold; a stop is
+  // crossed with the failure's line; from 20 s, the quiet line.
+  const { ctx, page } = await open("settings", set("space-ai-turning-on"));
+  const sw = page.getByRole("switch", { name: "AI for new videos", exact: true });
+  check("space · AI parts: the switch shows where it's going, greyed", (await sw.isChecked()) && (await sw.isDisabled()));
+  check("space · AI parts: three parts", (await page.locator(".ai-parts .part").count()) === 3);
+  check("space · AI parts: the one underway with its clock", (await page.locator(".ai-parts .part.working .clock").textContent()) === "0:04");
+  check("space · AI parts: the parts never grey", (await page.locator(".beneath > .mark.busy").evaluate((e) => getComputedStyle(e).opacity)) === "1");
+  await ctx.close();
+  const done = await open("settings", set("space-ai-on-done"));
+  check("space · AI parts done: the last in bold", (await done.page.locator(".ai-parts .part:last-child .line").evaluate((e) => getComputedStyle(e).fontWeight)) === "600");
+  await done.ctx.close();
+  const stopped = await open("settings", set("space-ai-off-stopped"));
+  check("space · AI parts stopped: crossed where it stopped", (await stopped.page.locator(".ai-parts .part.stopped .cross").count()) === 1);
+  check("space · AI parts stopped: the failure's line", (await stopped.page.locator(".ai-parts .ai-after").textContent()) === "Couldn't change that just now — try again in a moment.");
+  await stopped.ctx.close();
+  const long = await open("settings", set("space-ai-long"));
+  check("space · AI parts long: the quiet line", (await long.page.locator(".ai-parts .ai-after").textContent()) === "Cloudflare is slower than usual just now — hang tight.");
+  await long.ctx.close();
+}
+{
   const { ctx, page } = await open("settings", set("space-member"));
   await page.locator(".plan h1").click();
   await pasteAt(page, null, "https://v.myshroom.workers.dev/join/abc");
@@ -1182,22 +1261,27 @@ for (const entry of countdowns) {
   }
 }
 
-// N66: the AI banner and its confirm send the Scene's actions.
+// N76: the AI banners say both their lines and send the Scene's actions.
 {
   const pop = (variant) => popovers.find((e) => e.variant === variant).scene;
-  const ban = await open("popover", pop("ai-offer"));
+  const ban = await open("popover", pop("ai-turned-on"));
+  check("ai-turned-on: both lines", (await ban.page.locator(".banner .head").textContent()) === "AI features are turned on." && (await ban.page.locator(".banner .detail").count()) === 1);
   await clear(ban.page);
-  await ban.page.getByRole("button", { name: "Turn on…", exact: true }).click();
-  check("ai-offer: Turn on… sends ai-ask", acted(await calls(ban.page), "popover", { do: "ai-ask" }));
+  await ban.page.getByRole("button", { name: "Turn off", exact: true }).click();
+  check("ai-turned-on: Turn off sends ai-turn-off", acted(await calls(ban.page), "popover", { do: "ai-turn-off" }));
   await clear(ban.page);
-  await ban.page.getByRole("button", { name: "Not now", exact: true }).click();
-  check("ai-offer: Not now sends ai-not-now", acted(await calls(ban.page), "popover", { do: "ai-not-now" }));
+  await ban.page.getByRole("button", { name: "OK", exact: true }).click();
+  check("ai-turned-on: OK sends ai-ok", acted(await calls(ban.page), "popover", { do: "ai-ok" }));
   await ban.ctx.close();
-  const ask = await open("popover", pop("ai-confirm"));
-  await clear(ask.page);
-  await ask.page.getByRole("button", { name: "Turn on", exact: true }).click();
-  check("ai-confirm: Turn on sends ai-on", acted(await calls(ask.page), "popover", { do: "ai-on" }));
-  await ask.ctx.close();
+  // N80: the banner's Turn off lists its parts under its line, the one underway with its clock.
+  const off = await open("popover", pop("ai-turning-off"));
+  check("ai-turning-off: its parts under its line", (await off.page.locator(".banner .parts .part").count()) === 3 && (await off.page.locator(".banner .part.working .clock").textContent()) === "0:03");
+  await off.ctx.close();
+  const member = await open("popover", pop("ai-on-in-space"));
+  await clear(member.page);
+  await member.page.getByRole("button", { name: "OK", exact: true }).click();
+  check("ai-on-in-space: OK sends ai-ok", acted(await calls(member.page), "popover", { do: "ai-ok" }));
+  await member.ctx.close();
 }
 
 // ── The agent label (N62, B216): the Scene's line in a pill at the panel's right edge, the
@@ -1214,6 +1298,35 @@ for (const entry of labels) {
     check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
     check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "label");
     await page.screenshot({ path: join(out, `label-${entry.variant}-${scheme}.png`), animations: "disabled", omitBackground: true });
+    await ctx.close();
+  }
+}
+
+// ── The marker toast (N78): the Scene's words and hint in a pill at the panel's right edge,
+// the page clear around it; it fades in, and a new press starts its fade again ──
+check("the gallery has the marker toast's three faces", toasts.length === 3, toasts.map((e) => e.variant).join(", "));
+for (const entry of toasts) {
+  for (const scheme of ["light", "dark"]) {
+    const tag = `toast/${entry.variant} [${scheme}]`;
+    const { ctx, page, errors } = await open("toast", entry.scene, { colorScheme: scheme });
+    const pill = page.locator("#pill");
+    check(`${tag}: the words and the hint are the Scene's, and nothing else`, norm(await pill.innerText()) === norm(`${entry.scene.line} ${entry.scene.hint}`), await pill.innerText());
+    const box = await pill.boundingBox();
+    const m = SIZES.toast.margin;
+    check(
+      `${tag}: the pill sits at the panel's top right, its margin around it for its shadow`,
+      !!box && Math.abs(box.x + box.width - (SIZES.toast.width - m.right)) <= 1 && Math.abs(box.y - m.top) <= 1 && box.height === SIZES.toast.pill && box.x >= 14 && SIZES.toast.height - (box.y + box.height) >= m.bottom,
+      JSON.stringify(box),
+    );
+    check(`${tag}: the pill casts its own shadow (the panel casts none)`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).boxShadow)) !== "none");
+    check(`${tag}: the page is clear around the pill`, (await page.evaluate(() => getComputedStyle(document.body).backgroundColor)) === "rgba(0, 0, 0, 0)");
+    check(`${tag}: it fades in on its two seconds`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).animationName)) === "toast");
+    check(`${tag}: no page errors`, errors.length === 0, errors.join(" | "));
+    check(`${tag}: listens to its own slice`, (await page.evaluate(() => window.__listenTarget()))?.label === "toast");
+    // Held mid-way through its two seconds, fully in (a disabled animation would end it faded out).
+    await page.evaluate(() => document.getElementById("pill").getAnimations().forEach((a) => { a.pause(); a.currentTime = 600; }));
+    check(`${tag}: mid-way it shows in full`, (await page.evaluate(() => getComputedStyle(document.getElementById("pill")).opacity)) === "1");
+    await page.screenshot({ path: join(out, `toast-${entry.variant}-${scheme}.png`), omitBackground: true });
     await ctx.close();
   }
 }
@@ -1455,5 +1568,5 @@ console.log(`windows: library ${SIZES.library.width}×${SIZES.library.height} (m
 
 const failed = results.filter((r) => !r.ok);
 for (const f of failed) console.log(`FAIL ${f.name}${f.detail ? ` — ${f.detail}` : ""}`);
-console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
+console.log(`\n${library.length} library + ${settings.length} settings + ${feedbacks.length} feedback + ${editors.length} editor + ${popovers.length} popover + ${countdowns.length} countdown + ${labels.length} label + ${toasts.length} toast scenes × 2 schemes · ${results.length - failed.length}/${results.length} checks passed · screenshots in ${out}`);
 process.exit(failed.length ? 1 : 0);

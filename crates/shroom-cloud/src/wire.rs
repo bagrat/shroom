@@ -240,18 +240,49 @@ fn await_page(page: &PageCheck, host: &str) -> Result<(), WireError> {
 /// re-placed (§3.4) — so an older app never lowers a newer page; and after the route is
 /// switched on, wiring waits for the page to answer before it reports done.
 pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Result<Wired, WireError> {
+    wire_parts(cloud, spec, page, &|_| {})
+}
+
+/// Wiring's parts as the setup names them (N74), each said as it begins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WirePart {
+    /// The bucket, the player, the cookie key and the roster.
+    Storage = 1,
+    /// The script with its bindings (or the parent alone over a current page).
+    Page = 2,
+    /// The workers.dev route switched on, and the wait until the page answers.
+    Name = 3,
+    /// The write-read-delete self-check and the space's marker.
+    Check = 4,
+}
+
+/// [`wire_with`], saying each part as it begins (N74) — the caller shows the wait.
+pub fn wire_parts(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart)) -> Result<Wired, WireError> {
+    wire_any(cloud, spec, page, part, false)
+}
+
+/// [`wire_parts`] for a space being set up (N76; Bagrat, 2026-10-25: AI on by default): a
+/// page put up where there was none carries the AI and its schedule. A page already there
+/// keeps whatever it had, as every wiring does.
+pub fn wire_fresh_parts(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart)) -> Result<Wired, WireError> {
+    wire_any(cloud, spec, page, part, true)
+}
+
+fn wire_any(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>, part: &dyn Fn(WirePart), fresh: bool) -> Result<Wired, WireError> {
     let subdomain = cloud.subdomain(spec.account_id)?.ok_or(WireError::NoName)?;
     let host = format!("{}.{subdomain}.workers.dev", spec.label);
     let (fact, ai) = crate::sweep::worker_fact_ai(cloud, spec.account_id, spec.label, spec.bucket)?;
     if !matches!(fact, crate::sweep::WorkerFact::Absent | crate::sweep::WorkerFact::Ours) {
         return Err(WireError::Foreign);
     }
+    let ai = ai || fresh && fact == crate::sweep::WorkerFact::Absent;
     // Our page, answering at this version or a newer one: its script stays.
     let current = fact == crate::sweep::WorkerFact::Ours
         && page.is_some_and(|p| match (p.at)(&host).ping() {
             Ping::Shroom { version, .. } => !may_deploy_over(&version, p.version),
             _ => false,
         });
+    part(WirePart::Storage);
     cloud.create_bucket(spec.account_id, spec.bucket)?;
     let s3 = bucket_client(cloud, spec.account_id, spec.bucket, spec.token_id);
     for (key, bytes, ct) in spec.assets {
@@ -263,6 +294,7 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
     // Region 6 gets it from the token Mac's page refresh (`refresh_page`, DECISIONS B50 c)
     // before an iface-2 page goes up; an existing one is left exactly as found.
     let _ = registry::seed(&s3, None, unix_now())?;
+    part(WirePart::Page);
     if current {
         // The page stays as it is; its parent is this token's (space-found's second
         // placement, §3.4) — a fresh paste's pair, never the previous token's.
@@ -272,10 +304,12 @@ pub fn wire_with(cloud: &Cloud, spec: &WireSpec, page: Option<&PageCheck>) -> Re
         // page had it (N66: a re-wiring never turns naming off).
         put_page(cloud, spec, ai)?;
     }
+    part(WirePart::Name);
     cloud.enable_workers_dev(spec.account_id, spec.label)?;
     if let Some(p) = page {
         await_page(p, &host)?;
     }
+    part(WirePart::Check);
     // The silent self-check: write, read, delete one tiny object through the real path.
     let probe = ".shroom/self-check";
     s3.put(probe, b"ok", "text/plain")?;
@@ -298,6 +332,15 @@ pub const AI_SCHEDULE: &str = "* * * * *";
 /// The script PUT with its bindings: the bucket and the parent, and with naming on (N66)
 /// Cloudflare's AI, whose schedule is put beside it.
 fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> {
+    put_script(cloud, spec, ai)?;
+    if ai {
+        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
+    }
+    Ok(())
+}
+
+/// The script alone, with its bindings (the AI's when `ai`).
+fn put_script(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> {
     let mut bindings = vec![
         Binding::R2Bucket { name: "BUCKET".into(), bucket: spec.bucket.into() },
         Binding::SecretText { name: PARENT_BINDING.into(), text: parent_text(cloud, spec.account_id, spec.bucket, spec.token_id) },
@@ -305,24 +348,63 @@ fn put_page(cloud: &Cloud, spec: &WireSpec, ai: bool) -> Result<(), CloudError> 
     if ai {
         bindings.push(Binding::Ai { name: "AI".into() });
     }
-    cloud.put_worker(spec.account_id, spec.label, "worker.js", spec.worker_module, &bindings, spec.compatibility_date)?;
-    if ai {
-        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
-    }
-    Ok(())
+    cloud.put_worker(spec.account_id, spec.label, "worker.js", spec.worker_module, &bindings, spec.compatibility_date)
+}
+
+/// Turning the AI on or off, part by part as the switch names them (N80); part 1, checking
+/// the space, is the caller's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiPart {
+    /// The page put up again with Cloudflare's AI, or without it.
+    Page = 2,
+    /// Its schedule, then the page saying so.
+    Schedule = 3,
 }
 
 /// Naming on or off (N66, DECISIONS B206 a): the space's own page put up again with
 /// Cloudflare's AI and its schedule, or without them. Only ever over shroom's own page; the
-/// names, chapters and captions already made stay where they are.
-pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool) -> Result<(), WireError> {
+/// names, chapters and captions already made stay where they are. `autoclean`: the space's
+/// auto-cleanup is on (N75), so naming off keeps the one schedule both use.
+pub fn set_ai(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool) -> Result<(), WireError> {
+    set_ai_parts(cloud, spec, on, autoclean, None, &|_| {})
+}
+
+/// [`set_ai`], saying each part as it begins (N80), and with `confirm` (the page's check and
+/// its host) done only once the page itself says its AI is on, or off — asked every
+/// `every`, for at most `within`: a page that never says so didn't go through.
+pub fn set_ai_parts(cloud: &Cloud, spec: &WireSpec, on: bool, autoclean: bool, confirm: Option<(&PageCheck, &str)>, part: &dyn Fn(AiPart)) -> Result<(), WireError> {
     if crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)? != crate::sweep::WorkerFact::Ours {
         return Err(WireError::Foreign);
     }
-    put_page(cloud, spec, on)?;
-    if !on {
+    part(AiPart::Page);
+    put_script(cloud, spec, on)?;
+    part(AiPart::Schedule);
+    if on {
+        cloud.put_schedules(spec.account_id, spec.label, &[AI_SCHEDULE])?;
+    } else if !autoclean {
         cloud.put_schedules(spec.account_id, spec.label, &[])?;
     }
+    if let Some((page, host)) = confirm {
+        let space = (page.at)(host);
+        let until = Instant::now() + page.within;
+        while !matches!(space.ping(), Ping::Shroom { ai, .. } if ai == on) {
+            if Instant::now() >= until {
+                return Err(WireError::NotAnswering);
+            }
+            std::thread::sleep(page.every);
+        }
+    }
+    Ok(())
+}
+
+/// The space's page given its schedule, or not (N75, DECISIONS B232): the one Cron Trigger
+/// naming uses (`AI_SCHEDULE`), while auto-cleanup or naming is on. Only ever over shroom's
+/// own page; the page itself isn't put up again.
+pub fn set_schedule(cloud: &Cloud, spec: &WireSpec, on: bool) -> Result<(), WireError> {
+    if crate::sweep::worker_fact(cloud, spec.account_id, spec.label, spec.bucket)? != crate::sweep::WorkerFact::Ours {
+        return Err(WireError::Foreign);
+    }
+    cloud.put_schedules(spec.account_id, spec.label, if on { &[AI_SCHEDULE] } else { &[] })?;
     Ok(())
 }
 

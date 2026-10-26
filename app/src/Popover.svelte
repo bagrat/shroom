@@ -6,6 +6,7 @@
   import { onMount, tick } from "svelte";
   import { act, fit, key, keyed, onScene, sceneGet, type Action } from "./lib/ipc";
   import Mushroom from "./lib/Mushroom.svelte";
+  import Parts from "./onboarding/Parts.svelte";
   import Picker from "./popover/Picker.svelte";
 
   type Button = { action: Action; label: string; style: string; enabled: boolean; note?: string | null };
@@ -105,8 +106,15 @@
     {/if}
 
     {#if p.banner}
-      <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"}>
-        <div class="bline"><span class="dot" aria-hidden="true"></span><p>{p.banner.line}</p></div>
+      <section class="banner {p.banner.tone}" class:inline={p.banner.tone === "frost"} class:two={!!p.banner.detail || !!p.banner.parts}>
+        {#if p.banner.parts}
+          <!-- A re-wiring's parts under its bold line, as they land (N80: the AI's Turn off). -->
+          <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines wide"><p class="head">{p.banner.line}</p><Parts parts={p.banner.parts} />{#if p.banner.long}<p class="detail long">{p.banner.long}</p>{/if}</div></div>
+        {:else if p.banner.detail}
+          <div class="bline"><span class="dot" aria-hidden="true"></span><div class="lines"><p class="head">{p.banner.line}</p><p class="detail">{p.banner.detail}</p></div></div>
+        {:else}
+          <div class="bline"><span class="dot" aria-hidden="true"></span><p>{p.banner.line}</p></div>
+        {/if}
         {#if p.banner.buttons.length}
           <div class="row">{#each p.banner.buttons as b}{@render btn(b)}{/each}</div>
         {/if}
@@ -215,11 +223,24 @@
   .bline { display: flex; gap: 8px; align-items: flex-start; }
   .bline .dot { margin-top: 5px; }
   .banner.frost .bline .dot { margin-top: 0; }
+  /* a bold line with a quieter one under it (N76's AI banners), the buttons beneath */
+  .banner.frost.two { flex-direction: column; align-items: stretch; padding: 9px 10px; }
+  .banner.frost.two .bline { flex: none; align-items: flex-start; }
+  .banner.frost.two .bline .dot { margin-top: 5px; }
+  .banner .lines { display: flex; flex-direction: column; gap: 2px; }
+  .banner .lines p { margin: 0; }
+  .banner .head { font-weight: 600; }
+  .banner .detail { color: var(--muted); font-size: 12px; }
+  /* the parts fill the banner's width, whatever their lines (N80) */
+  .banner .lines.wide { flex: 1 1 auto; min-width: 0; }
+  .banner .lines :global(.parts) { margin-top: 4px; background: rgba(0, 0, 0, 0.12); padding: 6px 8px; gap: 2px; }
+  .banner .detail.long { padding: 2px 0 0 21px; }
   .dot { width: 8px; height: 8px; border-radius: 4px; flex: none; display: block; }
   .amber .dot, .dot.amber { background: var(--amber); }
   .frost .dot { background: var(--accent); }
   .banner .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
   .banner.frost .row { justify-content: flex-end; flex-direction: row-reverse; gap: 10px; }
+  .banner.frost.two .row { justify-content: flex-start; } /* reversed: the buttons sit right */
   .banner .b { min-height: 30px; }
   .banner.amber .b.filled { background: var(--amber-fill); border-color: var(--amber-fill); color: var(--on-amber); }
   .banner.amber .b.red-text { color: var(--red-on-amber); }

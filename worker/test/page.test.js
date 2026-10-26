@@ -58,6 +58,32 @@ describe("the player (Region 4: first frame, play, scrub bar, 0:00 / 4:32, fulls
     expect(embed).toContain(`<span class="time">0:00 / 4:32</span>`);
   });
 
+  // Bagrat, 2026-10-25: at the end the head stopped short of the bar's end, the fill running
+  // past it — a 0.1 s step held the value under a length that isn't a multiple of it. The bar
+  // keeps its tenth-of-a-second step (a screen reader's adjust moves by it; "any" makes Safari's
+  // VoiceOver adjust nothing), its length rounded to a tenth, and the end is that length. The
+  // head travels inside the bar, and the played part (and the chapters) on the head's travel.
+  // Measured in real browsers by tests/e2e/pages-gallery.mjs (the seek-head faces).
+  it("lets the head reach the very end, and lays the played part and the chapters on the head's travel", async () => {
+    const env = space({ objects: { [metaKey(REC)]: live() } });
+    const odd = await html(space({ objects: { [metaKey(REC)]: live({ durationSec: 8.0667 }) } }), `/${REC}`);
+    expect(odd).toMatch(/<input type="range" class="seek" min="0" max="8\.1" step="0\.1"/);
+    for (const body of [await html(env, `/${REC}`), await html(env, `/${REC}`, { headers: { cookie: ownerCookie() } }), await html(env, `/${REC}?embed=1`)]) {
+      expect(body).toMatch(/<input type="range" class="seek" min="0" max="272\.4" step="0\.1"/);
+      const css = body.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+      expect(css).toContain(`--th:14px`);
+      expect(css).toContain(`calc(var(--th)/2 + var(--p)*(100% - var(--th)))`);
+      expect(css).toContain(`calc(var(--th)/2 + var(--b)*(100% - var(--th)/2))`);
+    }
+    // The bar's length is a whole number of steps, and the end is that length: the head reaches
+    // it. The played part follows what the bar holds, so the two never part at the end.
+    expect(PLAYER_JS).toContain(`var m=Math.round((d||0)*10)/10;sk.max=String(m);if(!held)sk.value=String(e&&m?m:t);`);
+    expect(PLAYER_JS).toContain(`sk.style.setProperty("--p",String(m?Math.min(1,(+sk.value||0)/m):0))`);
+    // Fully loaded reads fully loaded: the buffered part reaches the bar's end (a stream's
+    // buffered end can stop a breath short of its length).
+    expect(PLAYER_JS).toContain(`String(d?(d-b<.25?1:Math.min(1,b/d)):0)`);
+  });
+
   it("prints time the same on the server and in the page's script", () => {
     const shroomClock = new Function(`${PLAYER_JS};return shroomClock`)();
     for (const [s, want] of [[0, "0:00"], [0.9, "0:00"], [7, "0:07"], [59.99, "0:59"], [60, "1:00"], [272.4, "4:32"], [3599, "59:59"], [3600, "1:00:00"], [3729, "1:02:09"], [-3, "0:00"]]) {
@@ -108,10 +134,10 @@ describe("the owner page before and after the go-live (N26, N40)", () => {
     expect(textOf(body)).toContain(COPY.finishing);
     expect(textOf(body)).not.toContain("25%");
     // A small spinner in front of the words, no bar (Bagrat, 2026-10-18).
-    expect(body).toContain(`<div class="upl" id="ul"><span class="spin" id="b" aria-hidden="true"></span><span class="up" id="u">${COPY.finishing}</span></div>`);
+    expect(body).toContain(`<div class="upl" id="ul" data-room><span class="spin" id="b" aria-hidden="true"></span><span class="up" id="u">${COPY.finishing}</span></div>`);
     const stalled = await html(space({ objects: { [metaKey(REC)]: uploading(1, 4, STALL_SECONDS + 1) } }), `/${REC}`, { headers: { cookie: ownerCookie() } });
     // Stalled, its words say why and the spinner rests.
-    expect(stalled).toContain(`<div class="upl" id="ul"><span class="spin rest" id="b" aria-hidden="true"></span><span class="up" id="u">${COPY.waitingConnection}</span></div>`);
+    expect(stalled).toContain(`<div class="upl" id="ul" data-room><span class="spin rest" id="b" aria-hidden="true"></span><span class="up" id="u">${COPY.waitingConnection}</span></div>`);
   });
 
   it("hands its poll the player to swap in, the lines for a removed video and unavailable, and Download's word", async () => {
@@ -120,8 +146,8 @@ describe("the owner page before and after the go-live (N26, N40)", () => {
     expect(cfg).toMatchObject({ id: REC, live: false, mp4: false, notFound: COPY.notFound, unavailable: COPY.unavailable, dl: COPY.download });
     expect(cfg.finishing).toBe(COPY.finishing);
     expect(cfg.player).toContain(`<video id="v" playsinline preload="metadata"></video>`);
-    // The poll's branches: Download once the MP4 lands, the tombstone, unavailable.
-    expect(body).toContain(`if(s.mp4){if(!dl.firstChild)`);
+    // The poll's branches: Download wakes once the MP4 lands, the tombstone, unavailable.
+    expect(body).toContain(`if(da){if(s.mp4)wake(da,"/d/"+c.id);else rest(da)}`);
     expect(body).toContain(`if(s.state==="removed")`);
     expect(body).toContain(`if(s.state==="unavailable")`);
   });

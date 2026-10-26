@@ -77,7 +77,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: each editor window's video, as the editor's lane registered it, by byte ranges, and its peaks — to that window's webview alone (N73) | `media::tests` |
 | `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
-| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
+| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217; the app links it once for a Mac installed before it, D:B239); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
 
 **Flavors** come from the bundle identifier alone (`runtime::Flavor::of`, D:B97; the
@@ -264,8 +264,8 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
 **Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
-`run.log` on a dev-build law breach, a rescued take, a panic and each harness run's end
-(D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
+`run.log` on a dev-build law breach, a rescued take, a panic (after the panic's own line:
+its thread, where, and its message cut to 160 characters) and each harness run's end (D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
 one line a run — stamped as `run.log`'s are, the verb and the options' names, `ok` or the
 code and exit, what it counted, the space's or the app's refusal, the time it took; never a
 word it was given. Report a problem and Copy diagnostics carry its last 30 lines among the
@@ -335,7 +335,14 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
   once capture runs, a panel made then could miss that take's list of what it leaves out.
   Made at start or not at all; without it, the tray shows the take.
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
+- The marker toast (N78, D:B246): the fourth, made and held as the label is. While
+  `Scene.toast` is set — two seconds after ⌥⌘M answered, until a popover or a count comes
+  up over it — the presenter puts it where the label goes, or just under the label when
+  that shows (`presenter::toast_frame`). Its page (`app/toast.html`) draws the pill inside
+  the panel's margin with its own shadow (the panel casts none, so the shadow fades with
+  the pill), fades it in and out, and starts again on a new press (`pressed`). Made at
+  start or not at all; without it, ⌥⌘M still drops its marker, unanswered on screen.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×720 (B247), Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
 - Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
   the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
@@ -667,7 +674,8 @@ One H.264 variant with AAC, under `v0/`; players and unfurls use the master. A l
 **The door follows token presence** (#58, `runtime/uploader.rs:Door`): a token Mac mints
 locally, writing its ledger entry create-only first; every other Mac calls `POST /api/mint`
 under its device key and the Worker signs the byte-identical JWT. Minted per recording when
-its upload starts, so removal stops new mints while minted ones finish (≤ 7 d, N32). Instant
+its upload starts and minted again as it nears the end of its hour, so removal stops new
+mints and a minted one ends within the hour (N32). Instant
 cut-off is parent-token rotation, docs only.
 
 **Law 13:** secrets ride files only — never argv, logs, slices or the core. The installer
@@ -725,13 +733,13 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 | `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
 | `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`; an edit's `keep` and `copy`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`, `named`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
 | `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone, ai, cue`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
-| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way |
+| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way, with the chapters and captions it puts in place (B241) |
 
 Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bodies
 ≤ 16 KiB (library 128 KiB); a browser Origin is refused on the API.
@@ -751,8 +759,9 @@ Macs deploy — at wiring and once a launch (`wire::refresh_page`) — and only 
 `VERSION`, never down (D:B50, B53 a); naming's switch (`wire::set_ai`) puts the page up again
 with or without the AI binding and its schedule, and a refresh or a re-wiring keeps what the
 live page has (the ping says `"ai":true`). Members compare `iface` with `member::IFACE_MIN` (2)
-and show needs-update below it (DV #30). `VERSION` moves with every page change;
-`page-version.json` fingerprints each and a test enforces it (D:B61).
+and show needs-update below it (DV #30). A published `VERSION`'s page never changes;
+`page-version.json` fingerprints each, and a page change re-stamps an unpublished VERSION's
+row or takes the next VERSION once it's out (D:B61, B248).
 
 ---
 
@@ -791,7 +800,7 @@ relaunch (N9).
 
 R2's single PUT tops out at 4.995 GiB; `put_file` sends ≤ `SINGLE_PUT_MAX` (256 MiB) whole and
 multipart above in `PART_SIZE` (128 MiB) parts (D:B15, B70 b). R2 aborts stale multiparts
-after 7 d. The MP4 never gates "watchable"; Download appears once `media.mp4` exists.
+after 7 d. The MP4 never gates "watchable"; Download works once `media.mp4` exists (the owner page draws it greyed until then, D:B250).
 
 ### 9.3 Progress truth for the page
 

@@ -269,6 +269,68 @@ pub fn name_taken() -> String { "That name's taken — try another.".into() }
 pub fn wiring() -> String { "Setting up your space… switching your name on takes about a minute, one time only.".into() }
 /// N45: the setup's last step, when the permissions finished before wiring.
 pub fn wiring_last() -> String { "Almost there — switching your name on takes a few minutes the first time, and only once.".into() }
+
+// ── N74: the waits say what's happening ──
+
+/// The card step's check, part by part (N74): 1 the token, 2 the email gate, 3 storage
+/// (the card gate), 4 the look for a link name and an earlier space.
+const CHECK_NOW: [&str; 4] = [
+    "Checking your token…",
+    "Checking your Cloudflare email is confirmed…",
+    "Checking that storage is switched on…",
+    "Looking for your link name and any earlier space…",
+];
+/// The last part has no done form: the step moves on the moment it answers.
+const CHECK_DONE: [&str; 3] = ["Your token works", "Your Cloudflare email is confirmed", "Storage is switched on"];
+/// Wiring, part by part (N74): 1 your storage, 2 your page, 3 your name, 4 the last check,
+/// 5 this Mac.
+const WIRE_NOW: [&str; 5] = ["Making your private storage…", "Putting up your video page…", "Switching your name on…", "Checking it all works…", "Adding this Mac to your space…"];
+const WIRE_DONE: [&str; 4] = ["Your private storage", "Your video page", "Your name is on", "Last check passed"];
+const WIRE_AHEAD: [&str; 5] = ["Making your private storage", "Putting up your video page", "Switching your name on", "A last check that it all works", "Adding this Mac to your space"];
+
+fn part_line(now: &[&str], done: &[&str], ahead: Option<&[&str]>, part: u8, glyph: crate::scene::Glyph) -> String {
+    use crate::scene::Glyph;
+    let i = usize::from(part.clamp(1, now.len() as u8) - 1);
+    match glyph {
+        Glyph::Done => done.get(i).unwrap_or(&now[i]).to_string(),
+        Glyph::Ahead => ahead.map_or_else(|| now[i].trim_end_matches('…').to_string(), |a| a[i].to_string()),
+        _ => now[i].into(),
+    }
+}
+// ── N80: turning the AI on or off says its parts ──
+
+/// Turning the AI on or off, part by part (N80; Bagrat's words, 2026-10-25): 1 checking the
+/// space, 2 the page with the AI or without it, 3 the AI for new videos — off's, then on's.
+const AI_NOW: [[&str; 3]; 2] = [
+    ["Checking your space…", "Disconnecting AI…", "Switching AI off for new videos…"],
+    ["Checking your space…", "Connecting AI to your space…", "Switching AI on for new videos…"],
+];
+const AI_DONE: [[&str; 3]; 2] = [["Your space is ready", "AI disconnected", "AI is off for new videos"], ["Your space is ready", "AI connected", "AI is on for new videos"]];
+/// One part of the AI's re-wiring, as its mark shows it; a part that stopped there reads as
+/// one still to come (N80).
+pub fn ai_part(on: bool, part: u8, glyph: crate::scene::Glyph) -> String {
+    let glyph = if glyph == crate::scene::Glyph::Stopped { crate::scene::Glyph::Ahead } else { glyph };
+    part_line(&AI_NOW[usize::from(on)], &AI_DONE[usize::from(on)], None, part, glyph)
+}
+/// Under the AI's parts once one has run 20 s (N80).
+pub fn ai_long() -> String { "Cloudflare is slower than usual just now — hang tight.".into() }
+/// One part of the card step's check, as its mark shows it: underway, done, or to come.
+pub fn check_part(part: u8, glyph: crate::scene::Glyph) -> String { part_line(&CHECK_NOW, &CHECK_DONE, None, part, glyph) }
+/// One part of wiring, as its mark shows it.
+pub fn wire_part(part: u8, glyph: crate::scene::Glyph) -> String { part_line(&WIRE_NOW, &WIRE_DONE, Some(&WIRE_AHEAD), part, glyph) }
+/// The wiring row under the chapter, naming the part underway (N74).
+pub fn row_working_part(part: u8) -> String {
+    let now = WIRE_NOW[usize::from(part.clamp(1, 5) - 1)].trim_end_matches('…');
+    let mut chars = now.chars();
+    let first = chars.next().map(|c| c.to_lowercase().collect::<String>()).unwrap_or_default();
+    format!("• {} (shroom is doing this part now · {first}{})", row_title(5), chars.as_str())
+}
+/// The card gate's watch once the billing page was opened (N74; Bagrat's words).
+pub fn card_waiting() -> String { "Waiting for Cloudflare to confirm your card is in place…".into() }
+/// Under the watch from 45 s (N74).
+pub fn card_long() -> String { "A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!".into() }
+/// Under wiring's parts once switching the name on has run 3 min (N74).
+pub fn wiring_long() -> String { "New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.".into() }
 pub fn offline_wizard() -> String { "Everything so far is saved — I'll pick up right here when you're back online.".into() }
 /// The wizard's one face for a failure nothing else classifies (DEVIATIONS #25) — written
 /// during the build, awaiting ratification (DECISIONS' copy table).
@@ -447,16 +509,89 @@ pub fn cleanup_reason(plays: u32, quiet_days: u32, stopped_early: bool) -> Strin
         n => format!("Watched {n} times, {early}the last {} ago", ago(quiet_days)),
     }
 }
-pub fn keep() -> String { "Keep".into() }
+pub fn pin() -> String { "Pin".into() }
+pub fn unpin() -> String { "Unpin".into() }
+/// A pinned row's small pin, as VoiceOver and a hover say it (N75).
+pub fn pinned() -> String { "Pinned".into() }
 pub fn deleted_title(title: &str) -> String { format!("Deleted “{title}”.") }
 pub fn undo() -> String { "Undo".into() }
 pub fn delete_all(n: u64) -> String {
     if n == 2 { "Delete both…".into() } else { format!("Delete all {}…", count_word(n)) }
 }
-pub fn cleanup_foot() -> String { "Keep takes a video off this list for good. Plays are counted in your own Cloudflare account.".into() }
+pub fn cleanup_foot() -> String { "A pinned video is never suggested; unpin it in the Library. Plays are counted in your own Cloudflare account.".into() }
+/// Delete all's Undo line (N75).
+pub fn deleted_count(n: u64) -> String { if n == 2 { "Deleted both videos.".into() } else { format!("Deleted {} videos.", count_word(n)) } }
+pub fn delete_all_title(n: u64) -> String { if n == 2 { "Delete both suggested videos?".into() } else { format!("Delete all {} suggested videos?", count_word(n)) } }
+pub fn delete_all_frees(bytes: u64) -> String { format!("That frees {}. They're removed everywhere. Their links stay, and say the videos are gone.", size(bytes)) }
+pub fn delete_all_button(n: u64) -> String { if n == 2 { "Delete both".into() } else { format!("Delete all {}", count_word(n)) } }
+
+// ── auto-cleanup (N75) ──
+
+/// Auto-cleanup's wait in words: “a year” at 365 days (N77, the landing's words), else the days.
+pub fn wait(days: u32) -> String {
+    if days == 365 { "a year".into() } else { format!("{days} days") }
+}
+
+/// The Library's amber line, and the popover's banner, three days ahead.
+pub fn autoclean_warning(n: u64, date: &str, days: u32) -> String {
+    if n == 1 {
+        format!("One video will be deleted on {date} — nobody has watched it in {}.", wait(days))
+    } else {
+        format!("{} videos will be deleted on {date} — nobody has watched them in {}.", count_word_cap(n), wait(days))
+    }
+}
+pub fn deleted_unless_pinned(date: &str) -> String { format!("Deleted {date} unless pinned") }
+/// Once a round went: what, and what it freed.
+pub fn autoclean_cleaned(n: u64, days: u32, bytes: u64) -> String {
+    let what = if n == 1 { "one video".to_string() } else { format!("{} videos", count_word(n)) };
+    format!("Auto-cleanup deleted {what} nobody had watched in {}, freeing {}.", wait(days), size(bytes))
+}
+pub fn ok() -> String { "OK".into() }
+pub fn deleting_on(date: &str) -> String { format!("Deleting on {date}") }
+pub fn nobody_watched_these(n: u64, days: u32) -> String {
+    if n == 1 {
+        format!("Nobody has watched this in {}. Pin it to keep it; a watch before then keeps it too.", wait(days))
+    } else {
+        format!("Nobody has watched these in {}. Pin one to keep it; a watch before then keeps it too.", wait(days))
+    }
+}
+pub fn might_be_worth_deleting() -> String { "Might be worth deleting".into() }
+pub fn pin_going(n: u64) -> String {
+    match n {
+        1 => "Pin it".into(),
+        2 => "Pin both".into(),
+        n => format!("Pin all {}", count_word(n)),
+    }
+}
+pub fn pinned_going(n: u64, date: &str) -> String {
+    let what = match n {
+        1 => "it".to_string(),
+        2 => "both".to_string(),
+        n => format!("all {}", count_word(n)),
+    };
+    format!("Pinned {what}. Nothing will be deleted on {date}.")
+}
+pub fn autoclean_label() -> String { "Delete videos nobody watches".into() }
+pub fn autoclean_hint() -> String {
+    "Counted from the last time someone watched it, or from when it was shared. Pinned videos are never deleted, and the Library says which ones are going a few days before.".into()
+}
+pub fn autoclean_off() -> String { "Off".into() }
+pub fn after_days(days: u32) -> String { format!("After {}", wait(days)) }
+/// Every Mac but the one that sets it.
+pub fn space_deletes(days: u32) -> String {
+    format!("Your space deletes videos nobody has watched in {}. It's set on the Mac that set up your space. Pin a video in the Library to keep it.", wait(days))
+}
+pub fn needs_count_plays() -> String { "Needs Count plays".into() }
+pub fn autoclean_confirm_title(days: u32) -> String { format!("Delete videos nobody watches for {}?", wait(days)) }
+pub fn autoclean_qualify(n: u64, date: &str) -> String {
+    if n == 1 {
+        format!("One video already qualifies. It'll be deleted on {date} unless someone watches it or you pin it — the Library shows which. Its link will say the video is gone.")
+    } else {
+        format!("{} videos already qualify. They'll be deleted on {date} unless someone watches them or you pin them — the Library shows which. Their links will say the videos are gone.", count_word_cap(n))
+    }
+}
 pub fn cleanup_empty() -> String { "Nothing to clean up right now.".into() }
 
-pub fn your_videos() -> String { "Your videos".into() }
 pub fn count_plays() -> String { "Count plays".into() }
 pub fn count_plays_hint() -> String { "How often each video is played and how far, kept in your Cloudflare account. No cookies, nothing about who watched.".into() }
 /// The play-count switch didn't go through (law 12).
@@ -471,6 +606,8 @@ pub fn space_used_free(bytes: u64) -> String { format!("{} — inside Cloudflare
 // ── Settings (N36) ──
 pub fn tab_general() -> String { "General".into() }
 pub fn tab_space() -> String { "Space".into() }
+/// Settings' Videos tab (N79; Bagrat named it, 2026-10-25).
+pub fn tab_videos() -> String { "Videos".into() }
 pub fn updates() -> String { "Updates".into() }
 pub fn up_to_date(version: &str) -> String { format!("shroom {version} — up to date.") }
 /// The running version when nothing is known about a newer one yet (no check answered, or
@@ -498,6 +635,15 @@ pub fn agent_line() -> String { "Paste it into your coding agent. It can find, s
 pub fn agent_recording() -> String { "Let it start and stop recordings".into() }
 /// The agent label (N62, B216): top right of the display a take the command started records.
 pub fn agent_label_line() -> String { "Your coding agent is recording your screen".into() }
+/// The marker toast (N78): ⌥⌘M's answer, top right of the display being recorded — the
+/// take's first marker, then its later ones by number.
+pub fn marker_toast(n: u32) -> String {
+    if n <= 1 { "Marker dropped".into() } else { format!("Marker {n} dropped") }
+}
+/// The marker toast's quieter hint, on every toast (N78).
+pub fn marker_toast_hint() -> String { "Only you see this, not the video".into() }
+/// The marker toast at a pause that has its marker (N78): nothing drops.
+pub fn already_marked() -> String { "Already marked at this pause".into() }
 pub fn report_a_problem() -> String { "Report a problem…".into() }
 pub fn report_sent() -> String { "Sent — thank you. If you left your email, you’ll hear back.".into() }
 pub fn report_title() -> String { "Report a problem".into() }
@@ -747,7 +893,7 @@ pub fn link_prefix(host: &str) -> String { format!("{host}/join/") }
 pub fn own_mac_link_line() -> String { "Open this link on your other Mac — it's good for one hour.".into() }
 pub fn remove_title(name: &str) -> String { format!("Remove {name}?") }
 pub fn remove_member_line(label: &str) -> String {
-    format!("{label} won't be able to record to your space anymore — a video already on its way can still finish. {label}'s videos stay; you'll find them in your Library.")
+    format!("{label} won't be able to record to your space anymore — a video already on its way has up to an hour to finish. {label}'s videos stay; you'll find them in your Library.")
 }
 pub fn remove() -> String { "Remove".into() }
 pub fn cancel_invite_title(label: &str) -> String { format!("Cancel {label}'s invite?") }
@@ -894,18 +1040,26 @@ pub fn reconnect_here() -> String { "Reconnect here".into() }
 // Settings · Space on every kind of Mac, and the Library across members.
 pub fn mark_label() -> String { "“made with shroom” on your pages".into() }
 pub fn mark_line() -> String { "The small mark on every video page. You can flip it right on a page, too.".into() }
-// AI for new videos (N66; Bagrat, 2026-10-18): the setup Mac's one switch, and the popover's
-// banner and its confirm. The cost line is said in the confirm and under the switch.
+// AI for new videos (N66; Bagrat, 2026-10-18): the setup Mac's one switch, with its cost line;
+// on by default (N76; Bagrat, 2026-10-25), said once in the popover's banner.
 pub fn ai_label() -> String { "AI for new videos".into() }
 pub fn ai_cost() -> String {
     "Titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account. Free for about 2½ hours of new video a day; more is about 4¢ per video hour on Cloudflare’s $5 plan.".into()
 }
-pub fn ai_banner() -> String { "shroom can name your videos, add chapters and cut your slips for you.".into() }
-pub fn turn_on_ask() -> String { "Turn on…".into() }
-pub fn ai_confirm_title() -> String { "Turn on AI for new videos?".into() }
-pub fn ai_turning_on() -> String { "Turning on — a few seconds.".into() }
-pub fn ai_on_said() -> String { "AI is on for new videos ✓".into() }
+pub fn ai_turned_on() -> String { "AI features are turned on.".into() }
+pub fn ai_turned_on_detail() -> String {
+    "New videos get titles, chapters and captions from what’s said, and your “shroom cut” slips cut — on your own Cloudflare account.".into()
+}
+pub fn turn_off() -> String { "Turn off".into() }
 pub fn turn_on() -> String { "Turn on".into() }
+pub fn ai_turning_on() -> String { "Turning on — a few seconds.".into() }
+pub fn ai_turning_off() -> String { "Turning off — a few seconds.".into() }
+pub fn ai_turn_off_failed() -> String { "Couldn't turn it off just now — try again in a moment.".into() }
+pub fn ai_off_said() -> String { "AI is off — turn it on any time in Settings.".into() }
+pub fn ai_on_in_space(name: &str) -> String { format!("AI is on in {name}'s space.") }
+pub fn ai_on_in_space_detail(name: &str) -> String {
+    format!("Your new videos there get titles, chapters and captions from what’s said — on {name}'s Cloudflare account.")
+}
 /// A re-wiring that didn't go through: in place of the switch's or the banner's line (law 12).
 pub fn ai_failed() -> String { "Couldn't change that just now — try again in a moment.".into() }
 pub fn repairs_elsewhere() -> String {
@@ -1055,6 +1209,18 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("gate-card", add_card()),
         ("gate-card", card_where()),
         ("gate-card", card_opened()),
+        ("gate-card", card_waiting()),
+        ("gate-card", card_long()),
+        ("card", check_part(1, crate::scene::Glyph::Working)),
+        ("card", check_part(1, crate::scene::Glyph::Done)),
+        ("card", check_part(2, crate::scene::Glyph::Working)),
+        ("card", check_part(2, crate::scene::Glyph::Done)),
+        ("card", check_part(2, crate::scene::Glyph::Ahead)),
+        ("card", check_part(3, crate::scene::Glyph::Working)),
+        ("card", check_part(3, crate::scene::Glyph::Done)),
+        ("card", check_part(3, crate::scene::Glyph::Ahead)),
+        ("card", check_part(4, crate::scene::Glyph::Working)),
+        ("card", check_part(4, crate::scene::Glyph::Ahead)),
         ("name", name_prefix("v")),
         ("name", name_suffix()),
         ("name", keeper()),
@@ -1065,12 +1231,32 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("name-v-clash", row_done(4, Some(&name_fact("shroom.myname.workers.dev", true)))),
         ("wiring", wiring()),
         ("wiring", wiring_last()),
+        ("wiring", wiring_long()),
+        ("wiring", wire_part(1, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(1, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(1, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(2, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(2, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(2, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(3, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(3, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(3, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(4, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(4, crate::scene::Glyph::Done)),
+        ("wiring", wire_part(4, crate::scene::Glyph::Ahead)),
+        ("wiring", wire_part(5, crate::scene::Glyph::Working)),
+        ("wiring", wire_part(5, crate::scene::Glyph::Ahead)),
         ("wizard-offline", offline_wizard()),
         ("space-found", found("v.myshroom.workers.dev", 14)),
         ("done", done_ask()),
         ("done", done_flip()),
         ("done", allow_recording()),
         ("done", row_working()),
+        ("done", row_working_part(1)),
+        ("done", row_working_part(2)),
+        ("done", row_working_part(3)),
+        ("done", row_working_part(4)),
+        ("done", row_working_part(5)),
         ("perm-screen", perm_screen()),
         ("perm-screen", perm_screen_asking()),
         ("perm-screen", closed_its_window()),
@@ -1115,7 +1301,45 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("library-cleanup", cleanup_reason(4, 300, false)),
         ("library-cleanup", cleanup_reason(0, 45, false)),
         ("library-cleanup", open_page()),
-        ("library-cleanup", keep()),
+        ("library-cleanup", pin()),
+        ("library-cleanup", deleted_count(6)),
+        ("library-cleanup", deleting_on("Oct 27")),
+        ("library-cleanup", nobody_watched_these(2, 30)),
+        ("library-cleanup", deleted_unless_pinned("Oct 27")),
+        ("library-cleanup", might_be_worth_deleting()),
+        ("library", pin()),
+        ("library", unpin()),
+        ("library", pinned()),
+        ("library", autoclean_warning(2, "Oct 27", 30)),
+        ("library", deleted_unless_pinned("Oct 27")),
+        ("library", autoclean_cleaned(2, 30, 1_700_000_000)),
+        ("library", ok()),
+        ("library", plays_failed()),
+        ("settings-videos", ai_turning_on()),
+        ("delete-confirm-cleanup", delete_all_title(6)),
+        ("delete-confirm-cleanup", delete_all_frees(11_000_000_000)),
+        ("delete-confirm-cleanup", delete_all_button(6)),
+        ("delete-confirm-cleanup", cancel()),
+        ("autoclean-warning", autoclean_warning(2, "Oct 27", 30)),
+        ("autoclean-warning", pin_going(2)),
+        ("autoclean-warning", review()),
+        ("autoclean-warning", not_now()),
+        ("autoclean-warning", pinned_going(2, "Oct 27")),
+        ("autoclean-warning", autoclean_cleaned(2, 30, 1_700_000_000)),
+        ("autoclean-warning", ok()),
+        ("settings-videos", autoclean_label()),
+        ("settings-videos", autoclean_hint()),
+        ("settings-videos", autoclean_off()),
+        ("settings-videos", after_days(15)),
+        ("settings-videos", after_days(30)),
+        ("settings-videos", after_days(60)),
+        ("settings-videos", after_days(365)),
+        ("settings-videos", space_deletes(30)),
+        ("settings-videos", needs_count_plays()),
+        ("autoclean-confirm", autoclean_confirm_title(30)),
+        ("autoclean-confirm", autoclean_qualify(4, "Oct 27")),
+        ("autoclean-confirm", cancel()),
+        ("autoclean-confirm", turn_on()),
         ("library-cleanup", delete()),
         ("library-cleanup", deleted_title("Old onboarding take")),
         ("library-cleanup", undo()),
@@ -1133,17 +1357,17 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("delete-confirm-several", delete_many_line()),
         // ── Settings ──
         ("settings", tab_general()),
+        ("settings", tab_videos()),
         ("settings", tab_space()),
         ("settings-general", login_box()),
-        ("settings-general", your_videos()),
-        ("settings-general", count_plays()),
-        ("settings-general", count_plays_hint()),
-        ("settings-general", plays_failed()),
-        ("settings-general", suggest_cleanup()),
-        ("settings-general", suggest_cleanup_hint()),
-        ("settings-general", space_used()),
-        ("settings-general", space_used_past(34_000_000_000, 36)),
-        ("settings-general", space_used_free(8_200_000_000)),
+        ("settings-videos", count_plays()),
+        ("settings-videos", count_plays_hint()),
+        ("settings-videos", plays_failed()),
+        ("settings-videos", suggest_cleanup()),
+        ("settings-videos", suggest_cleanup_hint()),
+        ("settings-space", space_used()),
+        ("settings-space", space_used_past(34_000_000_000, 36)),
+        ("settings-space", space_used_free(8_200_000_000)),
         ("settings-general", updates()),
         ("settings-general", up_to_date("1.2.0")),
         ("settings-general", update_ready("1.3.0")),
@@ -1163,6 +1387,10 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-general", agent_line()),
         ("settings-general", agent_recording()),
         ("recording", agent_label_line()),
+        ("recording", marker_toast(1)),
+        ("recording", marker_toast(3)),
+        ("recording", marker_toast_hint()),
+        ("tray-pause-bars", already_marked()),
         ("report-problem", report_title()),
         ("report-problem", report_line()),
         ("report-problem", report_placeholder()),
@@ -1358,18 +1586,46 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("settings-space", ai_label()),
         ("settings-space", ai_cost()),
         ("settings-space", ai_failed()),
-        ("ai-offer", ai_banner()),
-        ("ai-offer", turn_on_ask()),
-        ("ai-offer", not_now()),
-        ("ai-confirm", ai_confirm_title()),
-        ("ai-confirm", ai_cost()),
-        ("ai-confirm", back()),
-        ("ai-confirm", turn_on()),
-        ("ai-turning-on", ai_turning_on()),
-        ("ai-offer-failed", ai_failed()),
-        ("ai-offer-failed", turn_on_ask()),
-        ("ai-offer-failed", not_now()),
-        ("ai-on", ai_on_said()),
+        ("settings-space", ai_part(true, 1, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(true, 1, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(true, 2, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(true, 2, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(true, 2, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(true, 3, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(true, 3, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(true, 3, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(false, 1, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(false, 1, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(false, 2, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(false, 2, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(false, 2, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(false, 3, crate::scene::Glyph::Working)),
+        ("settings-space", ai_part(false, 3, crate::scene::Glyph::Done)),
+        ("settings-space", ai_part(false, 3, crate::scene::Glyph::Ahead)),
+        ("settings-space", ai_part(true, 1, crate::scene::Glyph::Stopped)),
+        ("settings-space", ai_part(false, 1, crate::scene::Glyph::Stopped)),
+        ("settings-space", ai_long()),
+        ("ai-turned-on", ai_turned_on()),
+        ("ai-turned-on", ai_turned_on_detail()),
+        ("ai-turned-on", turn_off()),
+        ("ai-turned-on", ok()),
+        ("ai-turning-off", ai_turning_off()),
+        ("ai-turning-off", ai_part(false, 1, crate::scene::Glyph::Working)),
+        ("ai-turning-off", ai_part(false, 1, crate::scene::Glyph::Done)),
+        ("ai-turning-off", ai_part(false, 2, crate::scene::Glyph::Working)),
+        ("ai-turning-off", ai_part(false, 2, crate::scene::Glyph::Done)),
+        ("ai-turning-off", ai_part(false, 2, crate::scene::Glyph::Ahead)),
+        ("ai-turning-off", ai_part(false, 3, crate::scene::Glyph::Working)),
+        ("ai-turning-off", ai_part(false, 3, crate::scene::Glyph::Ahead)),
+        ("ai-turning-off", ai_long()),
+        ("ai-turn-off-failed", ai_turned_on()),
+        ("ai-turn-off-failed", ai_turn_off_failed()),
+        ("ai-turn-off-failed", turn_off()),
+        ("ai-turn-off-failed", ok()),
+        ("ai-off", ai_off_said()),
+        ("ai-on-in-space", ai_on_in_space("Bagrat")),
+        ("ai-on-in-space", ai_on_in_space_detail("Bagrat")),
+        ("ai-on-in-space", ok()),
         ("settings-space", leave_space_ellipsis()),
         ("settings-space-no-token", space_row_done(None, "v.myshroom.workers.dev")),
         ("settings-space-no-token", space_done(6, Some(&on_this_mac()))),

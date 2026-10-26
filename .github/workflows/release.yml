@@ -8,9 +8,10 @@
 #
 #   check    the tag is the version every version file holds, the commit is on `main`, and
 #            the repo pins the release certificate. No secret, no approval.
-#   build    in the `release` environment (its two secrets; Bagrat's approval, if he turned
-#            that on): the one release build (tools/release-build.sh), signed with the
-#            release identity from a throwaway keychain, then packaged
+#   build    the one release build (tools/release-build.sh), built with no key on the runner;
+#            then, in the `release` environment (its two secrets, and Bagrat's approval:
+#            docs/RELEASING.md, one-time setup), signed with the release identity from a
+#            throwaway keychain — after every build script and package has run — then packaged
 #            (tools/package-release.sh) — manifest.txt, update.txt (the same bytes, the
 #            name the app's updater asks for: DECISIONS B136) and shroom-<version>-arm64.zip.
 #   publish  the only job that may write to the repo: a GitHub release for the tag with
@@ -24,13 +25,16 @@
 # `the_tag_workflow_builds_what_ci_cached`. Nothing here saves a cache.
 #
 # "Run workflow" with Publish and Early ticked publishes an early build (DECISIONS B220): a
-# GitHub pre-release, from any branch CI is green on — GitHub's "latest" never points at
-# one, so the official channel never sees it. Every publish, early or not, then puts its
+# GitHub pre-release, from the early branch (EARLY_BRANCH below) when CI is green on it,
+# and from no other — GitHub's "latest" never points at one, so the official channel never
+# sees it. Every publish, early or not, then puts its
 # manifest on the `early` pointer (a pre-release of its own whose update.txt and
 # manifest.txt the early channel reads), so an early Mac takes whichever is newest.
 #
-# "Run workflow" without Publish is a rehearsal: it builds and signs exactly as a release
-# does, keeps the result as a workflow artifact for a few days, and publishes nothing.
+# "Run workflow" without Publish is a rehearsal: it builds exactly as a release does, keeps
+# the result as a workflow artifact for a few days, and publishes nothing. On `main` it signs
+# with the release identity too; off `main` it never touches the identity (nor the
+# `release` environment) and keeps the build signed ad hoc.
 #
 # Every action is pinned to a full commit SHA — the version is in the comment beside it.
 name: Release
@@ -45,7 +49,7 @@ on:
         type: boolean
         default: false
       early:
-        description: An early build — a pre-release, from any branch CI is green on (with Publish)
+        description: An early build — a pre-release, from early-release only (with Publish)
         type: boolean
         default: false
 
@@ -66,6 +70,11 @@ env:
   RELEASE_CACHE: release-v1
   # The end-to-end lanes' browsers are never needed on a runner.
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  # The one branch an early build is published from (docs/RELEASING.md, "Branches"); the
+  # `release` environment allows it, `main` and `v*` tags, and nothing else. It isn't a
+  # claude/ branch, so no session pushes it: early-release.yml moves it to the integration
+  # branch's head once CI is green there.
+  EARLY_BRANCH: early-release
 
 jobs:
   check:
@@ -77,6 +86,7 @@ jobs:
       checks: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      signs: ${{ steps.signs.outputs.signs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -123,7 +133,11 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           EARLY: ${{ inputs.early }}
         run: |
-          [ "$GITHUB_REF" = refs/heads/main ] || [ "$EARLY" = true ] || { echo "::error::A release is published from main — run it on main (or tick Early for a pre-release)."; exit 1; }
+          if [ "$EARLY" = true ]; then
+            [ "$GITHUB_REF" = "refs/heads/$EARLY_BRANCH" ] || { echo "::error::An early build is published from $EARLY_BRANCH only — run it there."; exit 1; }
+          else
+            [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::A release is published from main — run it on main (or tick Early on $EARLY_BRANCH for a pre-release)."; exit 1; }
+          fi
           if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
             echo "::error::v$VERSION is already tagged — a version is released once: tools/bump-version.sh to the next, then run again."
             exit 1
@@ -140,6 +154,21 @@ jobs:
             [ "$got" = "completed/success" ] || { echo "::error::CI's $job on $GITHUB_SHA is $got — a release waits for CI to be green on the commit it ships."; exit 1; }
           done
           echo "Publishing v$VERSION from $GITHUB_SHA — CI is green on it."
+
+      # Who is signed with the release identity: a tag, a run on main (a release or its
+      # rehearsal), and an early build published from the early branch. Any other run is a
+      # rehearsal off main — built and kept ad hoc, outside the `release` environment.
+      - name: Whether this run signs with the release identity
+        id: signs
+        env:
+          PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+          EARLY: ${{ github.event_name == 'workflow_dispatch' && inputs.early }}
+        run: |
+          signs=false
+          if [ "$GITHUB_REF_TYPE" = tag ] || [ "$GITHUB_REF" = refs/heads/main ]; then signs=true; fi
+          if [ "$PUBLISH" = true ] && [ "$EARLY" = true ] && [ "$GITHUB_REF" = "refs/heads/$EARLY_BRANCH" ]; then signs=true; fi
+          echo "signs=$signs" >>"$GITHUB_OUTPUT"
+          if [ "$signs" = true ]; then echo "Signed with the release identity."; else echo "A rehearsal off main: built and signed ad hoc, never with the release identity."; fi
 
       - name: The tagged commit is on main
         if: github.ref_type == 'tag'
@@ -182,11 +211,13 @@ jobs:
     name: Build, sign, package
     needs: check
     runs-on: macos-26
-    # The signing secrets live in this environment and reach this job only.
-    environment: release
+    # The signing secrets live in this environment and reach this job only — and only on a
+    # run that signs with them; a rehearsal off main runs outside it.
+    environment: ${{ needs.check.outputs.signs == 'true' && 'release' || '' }}
     timeout-minutes: 90
     env:
       VERSION: ${{ needs.check.outputs.version }}
+      SIGNS: ${{ needs.check.outputs.signs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -251,14 +282,21 @@ jobs:
             tools/build-ffmpeg.sh
           fi
 
+      # Built before the identity is on the runner: every build script, proc-macro and
+      # package runs with no key here.
+      - name: The release build, signed ad hoc
+        run: tools/release-build.sh "$RUNNER_TEMP/release" --adhoc
+
       - name: The release identity, into a throwaway keychain
         id: identity
+        if: env.SIGNS == 'true'
         env:
           SIGNING_P12_BASE64: ${{ secrets.RELEASE_CERT_P12_BASE64 }}
           SIGNING_P12_PASSWORD: ${{ secrets.RELEASE_CERT_PASSWORD }}
         run: .github/scripts/signing-keychain.sh import
 
       - name: It is the certificate the repo pins
+        if: env.SIGNS == 'true'
         env:
           LEAF: ${{ steps.identity.outputs.leaf }}
         run: |
@@ -268,13 +306,15 @@ jobs:
             exit 1
           }
 
-      - name: The release build, signed
+      # Only codesign uses the key: the finished bundle, its encoder and its command.
+      - name: The release build, signed with the release identity
+        if: env.SIGNS == 'true'
         env:
           IDENTITY: ${{ steps.identity.outputs.identity }}
-        run: tools/release-build.sh "$RUNNER_TEMP/release" --identity "$IDENTITY" --leaf "$(tr -d ' \n' <tools/release-identity.sha1)"
+        run: tools/release-build.sh "$RUNNER_TEMP/release" --resign --identity "$IDENTITY" --leaf "$(tr -d ' \n' <tools/release-identity.sha1)"
 
       - name: The signing keychain, gone
-        if: always()
+        if: always() && env.SIGNS == 'true'
         run: .github/scripts/signing-keychain.sh delete
 
       # The script shows the last lines of a failed build; a runner can't be asked for more
@@ -326,9 +366,9 @@ jobs:
   publish:
     name: Publish the release
     needs: [check, build]
-    # A tag publishes, and so does Run workflow on main with Publish, or on any branch with
-    # Publish and Early (a pre-release); a rehearsal stops after the build.
-    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && (github.ref == 'refs/heads/main' || inputs.early))
+    # A tag publishes, and so does Run workflow on main with Publish, or on the early branch
+    # with Publish and Early (a pre-release); a rehearsal stops after the build.
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.publish && (github.ref == 'refs/heads/main' || (inputs.early && github.ref == 'refs/heads/early-release')))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

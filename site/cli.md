@@ -35,6 +35,8 @@ wording of `message`; pass `message` on to the person when it helps.
 | Open it | `shroom open <id> --json` |
 | Rename it | `shroom rename <id> "<new title>" --json` |
 | Which videos could go? | `shroom cleanup-candidates --json` (`--older-than 180`) — see below |
+| Keep this one | `shroom pin <id> --json` (`shroom unpin <id>` undoes it) |
+| Does shroom delete videos by itself? | `shroom autoclean --json` |
 | Delete it | see *Deleting* below |
 | Who's in my space? | `shroom members --json` |
 | Invite Sam | `shroom invite "Sam" --json` — see *Invites* below |
@@ -53,6 +55,11 @@ Cleanup candidates are their space's own suggestions where it makes them (`"by":
 off): read every `plays` as not known. A space that doesn't make them answers by age alone
 (`"by": "age"`, `reason` `old`), and then `plays`, `last_played` and `quiet_days` are
 `null`: that means *not known*, never zero, so don't say nobody watched it.
+
+A pinned video is never a candidate. When their space's auto-cleanup is on, what it will
+delete comes first, each with `deletes_at`: tell them, and that `shroom pin <id>` keeps one.
+`shroom autoclean --json` says whether it's on (`days`), what goes next (`going`, `next_at`)
+and what went last; it's changed only in shroom's Settings, on the Mac that set up the space.
 
 ## Many at once
 
@@ -125,6 +132,8 @@ The link stays the same, and the recording itself is kept for a while, so it can
      `shroom delete <id> --yes --json`. Name videos by id here — never by title words.
   3. Never delete because a video is old or listed as a cleanup candidate. The list is
      for them to look at, not for you to act on.
+- **A pin is theirs.** Pin a video when they ask to keep it. Unpin one only when they ask
+  for that very video: a pin they made is theirs to undo, never yours.
 - **Removing someone works the same way:** `--dry-run`, show who, ask, then `--yes` on a
   clear yes. They leave the space; the videos they made stay.
 - **Recording is theirs.** Start a recording only when they asked you to, right now.

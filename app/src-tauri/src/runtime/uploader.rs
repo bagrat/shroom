@@ -1,7 +1,8 @@
 //! The uploader lane (ARCHITECTURE §9.1): segments of the open take go up while it records;
 //! a published take (publish.json) goes up in full, then is marked `uploaded`. Credentials
-//! are minted per recording (N4) and kept in the take's own `cred.json` (mode 600), so an
-//! upload resumes after a relaunch within their lifetime.
+//! are minted per recording (N4), live an hour, and are kept in the take's own `cred.json`
+//! (mode 600); one nearer its end than `CRED_LEFT_MS` is minted again before it's used, so
+//! an upload longer than an hour, or resumed after a relaunch, goes on with a fresh one.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -25,9 +26,11 @@ use super::Runtime;
 use super::recorder::LiveTake;
 use super::takes::{Kind, classify, dirs};
 
-/// Seven days — the most shroom allows (R2 sets no ceiling, B35 P6; N4); keeps N32's “a
-/// video already on its way can still finish” true without re-minting.
-const TTL_SECONDS: u64 = 604_800;
+/// An hour, as the space's own mint gives (WORKER-INTERFACE §3.7): a removed Mac's upload
+/// stops within it (N32), and a longer one is re-minted as it goes.
+const TTL_SECONDS: u64 = 3_600;
+/// Below this much life left, a credential is minted again before it's used.
+const CRED_LEFT_MS: i64 = shroom_core::derive::members::CRED_LEFT_MS;
 /// Discard's credential: long enough for one delete (§4.8's `manage` life).
 const MANAGE_SECONDS: u64 = 900;
 
@@ -139,15 +142,15 @@ enum NoCred {
     Deleted,
 }
 
-/// A recording's credential: the one in its take (`cred.json`) while it has more than an
-/// hour left, else a fresh mint written there first. `fresh`: minted this call. Without a
+/// A recording's credential: the one in its take (`cred.json`) while it has more than
+/// [`CRED_LEFT_MS`] left, else a fresh mint written there first. `fresh`: minted this call. Without a
 /// take (`dir: None`, Discard) the credential stays in memory.
 fn creds_for(rt: &Runtime, c: &Ctx, dir: Option<&Path>, rec: &str, purpose: Purpose) -> Result<(Client, bool), NoCred> {
     let path = dir.map(|d| d.join("cred.json"));
     if let Some(path) = &path {
         if let Some(f) = super::home::read_json::<CredFile>(path) {
             let left = super::member::iso_ms(&f.expires_at).unwrap_or(0) - now_secs() as i64 * 1000;
-            if f.purpose == "upload" && left > 3_600_000 {
+            if f.purpose == "upload" && left > CRED_LEFT_MS {
                 return Ok((client(rt, &c.identity, &f), false));
             }
         }
@@ -315,12 +318,20 @@ pub fn spawn(rt: Runtime, live: Arc<Mutex<Option<LiveTake>>>) -> Sender<UpCmd> {
     tx
 }
 
-/// Whether the take holds an upload credential with more than an hour left — one a space
-/// that refuses new mints still honors (N32: “a video already on its way can still finish”).
+/// Whether the take holds an upload credential with more than [`CRED_LEFT_MS`] left — one a
+/// space that refuses new mints still honors for the rest of its hour (N32).
 fn has_live_cred(dir: &Path) -> bool {
     super::home::read_json::<CredFile>(&dir.join("cred.json")).is_some_and(|f| {
-        f.purpose == "upload" && super::member::iso_ms(&f.expires_at).unwrap_or(0) - now_secs() as i64 * 1000 > 3_600_000
+        f.purpose == "upload" && super::member::iso_ms(&f.expires_at).unwrap_or(0) - now_secs() as i64 * 1000 > CRED_LEFT_MS
     })
+}
+
+/// A take's own credential as a bucket client, minted again when it's near its end: what the
+/// voice lane reads and writes the take's record with, long after the upload. `None` when
+/// the space can't give one now.
+pub(crate) fn take_client(rt: &Runtime, dir: &Path, rec: &str) -> Option<Client> {
+    let c = ctx(rt).ok()?;
+    creds_for(rt, &c, Some(dir), rec, Purpose::Upload).ok().map(|(s3, _)| s3)
 }
 
 /// One pass over the open take and the published ones. Returns whether work remains
@@ -333,9 +344,14 @@ fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut 
     // becomes a link only by Stop or Get link (law 3, DEVIATIONS #4).
     let open = live.lock().unwrap().clone();
     if let Some(l) = &open {
-        if !lives.contains_key(&l.dir) {
-            if let Ok((s3, _)) = creds_for(rt, c, Some(&l.dir), &l.rec, Purpose::Upload) {
-                lives.insert(l.dir.clone(), LiveUpload::new(s3, &l.rec, &l.dir));
+        // Asked every pass: a take longer than its credential's hour goes on with a new one.
+        if let Ok((s3, fresh)) = creds_for(rt, c, Some(&l.dir), &l.rec, Purpose::Upload) {
+            match lives.get_mut(&l.dir) {
+                Some(up) if fresh => up.renew(s3),
+                Some(_) => {}
+                None => {
+                    lives.insert(l.dir.clone(), LiveUpload::new(s3, &l.rec, &l.dir));
+                }
             }
         }
         if let Some(up) = lives.get_mut(&l.dir) {
@@ -401,7 +417,14 @@ fn pass(rt: &Runtime, c: &Ctx, live: &Arc<Mutex<Option<LiveTake>>>, lives: &mut 
                         rt.post(Event::Upload(UploadNews::Minted { dir: q.dir.clone(), until: None }));
                         Blocked::Offline
                     }
-                    (Door::Token { .. }, true) => Blocked::Space,
+                    // The token's own mint, refused when fresh: the space can't take videos.
+                    (Door::Token { .. }, true) if fresh => Blocked::Space,
+                    // An older one (past its hour mid-upload): minted again on the next pass.
+                    (Door::Token { .. }, true) => {
+                        let _ = std::fs::remove_file(dir.join("cred.json"));
+                        rt.post(Event::Upload(UploadNews::Minted { dir: q.dir.clone(), until: None }));
+                        Blocked::Offline
+                    }
                     _ => Blocked::Offline,
                 };
                 rt.post(Event::Upload(UploadNews::Blocked(q.dir, blocked)));
@@ -699,13 +722,14 @@ mod tests {
     }
 
     #[test]
-    fn a_take_holding_a_credential_with_an_hour_left_can_still_finish() {
+    fn a_take_holding_a_credential_with_time_left_can_still_finish() {
         let tmp = tempfile::tempdir().unwrap();
         assert!(!has_live_cred(tmp.path()), "no credential");
-        cred(tmp.path(), "upload", 5 * 86_400);
-        assert!(has_live_cred(tmp.path()));
-        cred(tmp.path(), "upload", 30 * 60);
-        assert!(!has_live_cred(tmp.path()), "under an hour: re-minted, so it needs the space");
+        cred(tmp.path(), "upload", 40 * 60);
+        assert!(has_live_cred(tmp.path()), "forty minutes of its hour left");
+        cred(tmp.path(), "upload", 10 * 60);
+        assert!(!has_live_cred(tmp.path()), "under a quarter of an hour: re-minted, so it needs the space");
+        assert_eq!(TTL_SECONDS, 3_600, "an hour, as the space mints");
         cred(tmp.path(), "manage", 5 * 86_400);
         assert!(!has_live_cred(tmp.path()), "only an upload credential sends bytes");
     }
@@ -763,7 +787,7 @@ mod tests {
         let (rt, rx) = super::super::Runtime::for_test(tmp.path().join("home"), None, None);
         let dir = rt.home.takes().join("20261002-101500-ab12");
         std::fs::create_dir_all(&dir).unwrap();
-        let expires = shroom_cloud::registry::iso(now_secs() + 5 * 86_400);
+        let expires = shroom_cloud::registry::iso(now_secs() + 3_600);
         let base = one_mint(expires.clone());
         let identity = SpaceIdentity {
             account_id: "acc".into(),
@@ -788,7 +812,8 @@ mod tests {
         });
         assert_eq!(posted, [want], "the core hears of the mint, not only the next scan");
 
-        // A credential already held (more than an hour left) is reused — nothing new to say.
+        // A credential already held (more than a quarter of an hour left) is reused — nothing
+        // new to say.
         let (_, fresh) = creds_for(&rt, &c, Some(&dir), "QrStUvWxYz012345", Purpose::Upload).unwrap_or_else(|_| panic!("held"));
         assert!(!fresh);
         assert_eq!(rx.try_iter().count(), 0);

@@ -741,15 +741,15 @@ fn classed<T>(rt: &Runtime, op: Op, what: &str, a: &Answer<T>) -> Option<Event> 
 /// The ping and `/me` (§4.2, §4.7): law 1's re-probe of this Mac's standing.
 fn probe(rt: &Runtime, space: &Space, key: &DeviceKey) -> Option<Event> {
     let standing = |a: StandingAnswer| Some(Event::Member(MemberNews::Standing(a)));
-    let iface = match space.ping() {
-        Ping::Shroom { iface, .. } => iface,
+    let (iface, ai) = match space.ping() {
+        Ping::Shroom { iface, ai, .. } => (iface, ai),
         Ping::NotShroom { .. } => return standing(StandingAnswer::Gone),
         Ping::Unanswered(e) if no_such_host(&e) => return standing(StandingAnswer::Gone),
         Ping::Unanswered(_) => return failed(Op::Standing, FailClass::Transport),
     };
     if iface < IFACE_MIN {
         // The page has no `/me` yet: it needs an update (the needs-update line, §6.10).
-        return standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None });
+        return standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: Some(ai) });
     }
     let me = space.me(key);
     if let Answer::Refused(r) = &me {
@@ -761,7 +761,7 @@ fn probe(rt: &Runtime, space: &Space, key: &DeviceKey) -> Option<Event> {
     let answer = match MeNext::of(me) {
         MeNext::Me(m) => {
             let only_holder = m.owner.as_ref().map(|_| m.only_token_holder());
-            StandingAnswer::Fine { current: true, only_holder, mark: m.owner.as_ref().map(|o| o.mark) }
+            StandingAnswer::Fine { current: true, only_holder, mark: m.owner.as_ref().map(|o| o.mark), ai: Some(ai) }
         }
         MeNext::Dead => StandingAnswer::Revoked,
         MeNext::SpaceSide(_) => StandingAnswer::SpaceSide,

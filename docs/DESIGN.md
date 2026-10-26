@@ -42,6 +42,7 @@ Board titles read "Surface — state" (e.g. "Popover — paused", "The page — 
 | Setup and joining | `app/src/Onboarding.svelte`, `app/src/onboarding/`, `app/src/join/` |
 | Library and Settings | `app/src/library/`, `app/src/settings/`, `app/src/members/` |
 | The shroom command (“The shroom command — recording off…”, “…recording without the countdown, and the label…”) | its words, `crates/shroom-cli/src/say.rs`; the switch's light, `app/src/settings/General.svelte`; the agent label, `app/label.html` (its panel, `app/src-tauri/src/runtime/overlay.rs`) |
+| The marker toast (“The bubble — ⌥⌘M answers: the “Marker dropped” toast…”) | `app/toast.html` (its panel, `app/src-tauri/src/runtime/overlay.rs`; its place, `presenter::toast_frame`) |
 | The page, embed, invite page | `worker/src/worker.js` |
 | shroom.am (the boards “shroom.am — the index page, as built” and “shroom.am on a phone, as built”) | `site/index.html`; the other pages' header and footer, and what's new, `site/build.mjs` (`HEADER`, `FOOTER`, `whatsNewPage`) |
 | Tokens (both themes) | `app/src/lib/theme.css` |
@@ -111,6 +112,9 @@ uploads the picture as the `machine-picture` artifact.
 - **Boards for review go as images.** Bagrat reviews on his phone. When boards wait on
   his review, export each one as a phone-readable PNG ahead of time, so they can be sent
   (SendUserFile) the moment he asks, rather than only the canvas link (Bagrat, 2026-10-19).
+  Each image holds a whole board: when one is too tall for a phone, split it only between
+  rows or frames, never through one, and look at every image before sending it (Bagrat,
+  2026-10-25, after an icon sheet was cut mid-row).
 - **Proving the build matches**: `npm run -s test:gallery --workspace app` and
   `gallery:pages` screenshot every state (`app/test/gallery-out/`,
   `tests/e2e/gallery-out/`). The hosted Mac (the `shroom-cloud` skill, §5) shows the real

@@ -223,12 +223,12 @@ pub enum Action {
     /// Settings · Space's AI switch (N66): the setup Mac re-wires the page with the AI and
     /// its schedule, or without them.
     SetAi(bool),
-    /// The popover's AI banner (N66): Turn on… — its confirm, which says the cost.
-    AiAsk,
-    /// The confirm's Turn on — as the switch.
-    AiOn,
-    /// The banner's Not now: hidden for good on this Mac; the switch in Settings · Space stays.
-    AiNotNow,
+    /// The popover's AI banner (N76): OK — AI stays as it is, and the banner is answered for
+    /// good on this Mac (the setup Mac's, or a member's).
+    AiOk,
+    /// The setup Mac's AI banner (N76): Turn off — the page is re-wired without the AI, as
+    /// the switch in Settings · Space does.
+    AiTurnOff,
     /// The Library's *Mine · Everyone*.
     SetScope(LibraryScope),
     // ── Suggested to clean up (N68) ──
@@ -236,14 +236,30 @@ pub enum Action {
     ReviewCleanup,
     /// The suggestion line's ✕: put away until the suggestions change.
     DismissCleanup,
-    /// Keep on a suggestion: off the list for good (the record's `keep`).
-    KeepRow(RecId),
+    /// Pin (or Unpin) a row (N75, the record's `keep`): a selected row acts for every row
+    /// selected; on a suggestion, it leaves the list for good.
+    PinRow(RecId, bool),
     /// Delete on a suggestion: one tap, its Undo line first.
     DeleteSuggested(RecId),
     /// The Undo line's Undo.
     UndoDelete,
-    /// Delete all…: the several-videos sheet, over every suggestion shown.
+    /// Delete all…: its own sheet, over every suggestion shown (N75).
     DeleteAllSuggested,
+    /// The sheet's Delete all: every row leaves, held on one Undo line (N75).
+    ConfirmDeleteSuggested,
+    // ── auto-cleanup (N75) ──
+    /// The popover banner's Review…: the Library, on what's going.
+    ReviewGoing,
+    /// The popover banner's Not now: put away on this Mac until the list changes.
+    DismissGoing,
+    /// The popover banner's Pin both: every video going, pinned.
+    PinGoing,
+    /// OK on the line after a round went: put away here and in the popover.
+    CleanedOk,
+    /// Settings · General's Delete videos nobody watches (0: off).
+    SetAutoclean(u32),
+    /// Its question's Turn on.
+    ConfirmAutoclean,
     /// Settings · General's Count plays (the space's switch, owner-class).
     SetPlays(bool),
     /// Settings · General's Suggest videos to clean up (this Mac's).
@@ -371,7 +387,16 @@ pub struct Banner {
     pub id: &'static str,
     pub tone: Tone,
     pub line: String,
+    /// A second, quieter line under a bold `line` (N76's AI banners); most banners have one line.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
     pub buttons: Vec<Button>,
+    /// The parts of a re-wiring under its line, as they land (N80: the AI's Turn off).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<Part>,
+    /// The quiet line under the parts once one has run long (N80).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub long: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -600,6 +625,15 @@ pub struct WelcomeBody {
     pub sheet: Option<Sheet>,
 }
 
+/// One part of a wait (N74): its mark (✓ done · a spinner underway · • to come), its line,
+/// and, while it spins, its running clock from its first second.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Part {
+    pub glyph: Glyph,
+    pub line: String,
+    pub clock: Option<String>,
+}
+
 /// → current (Frost) · ✓ done (green) · • still ahead (N13) · a small spinner: a row ahead
 /// shroom is already doing, out of sight (wiring under the permissions chapter, N45).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -609,6 +643,8 @@ pub enum Glyph {
     Done,
     Ahead,
     Working,
+    /// A part that stopped there: its run didn't go through (N80, law 12).
+    Stopped,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -625,6 +661,9 @@ pub struct PlanRow {
     pub title: String,
     pub aside: Vec<Run>,
     pub fact: Option<String>,
+    /// A spinning row's running clock (N74), “0:48” — only while it spins, from its first
+    /// second.
+    pub clock: Option<String>,
 }
 
 impl PlanRow {
@@ -647,7 +686,7 @@ impl PlanRow {
             },
         };
         let aside = if aside.is_empty() { vec![] } else { self::runs(&aside, marks) };
-        PlanRow { glyph, line, runs, title, aside, fact }
+        PlanRow { glyph, line, runs, title, aside, fact, clock: None }
     }
 }
 
@@ -683,10 +722,13 @@ pub enum Nest {
     PickAccount { line: String, accounts: Vec<Choice>, choose: Button },
     /// The row's spinner: an answer this row needs isn't in yet.
     Checking,
+    /// The card step's check under the card row (N74): its parts, each as its probe stands.
+    Check { parts: Vec<Part> },
     /// A dashboard gate under the card row: its line, its button, the auto-poll spinner.
     /// `quiet`: the card gate's line under its button — where it goes, and that shroom is
-    /// watching (N45).
-    Gate { line: String, button: Option<Button>, quiet: Option<String> },
+    /// watching (N45). `watch`: once the billing page was opened, the watch as a part of its
+    /// own with its clock; `long`: its quiet line once it has run long (N74).
+    Gate { line: String, button: Option<Button>, quiet: Option<String>, watch: Option<Part>, long: Option<String> },
     Name {
         prefix: String,
         value: String,
@@ -703,8 +745,9 @@ pub enum Nest {
         /// Claim stays the way on.
         unexpected: Option<String>,
     },
-    /// Wiring: the spinner and the calm line, zero affordances.
-    Calm { line: String },
+    /// Wiring: the spinner and the calm line, zero affordances. In the setup, wiring's parts
+    /// under it, and its quiet line once the name has run long (N74).
+    Calm { line: String, parts: Vec<Part>, long: Option<String> },
     Found { line: String },
     /// wizard-offline: the spinner rests, one amber line, no retry.
     Offline { line: String },
@@ -860,6 +903,10 @@ pub struct LibraryRowView {
     pub progress: Option<u32>,
     /// A recovered take, pinned to the top under the amber dot.
     pub pinned: bool,
+    /// Pinned to keep (N75): “Pinned”, said by the small pin before its title.
+    pub kept: Option<String>,
+    /// Auto-cleanup will delete it (N75): “Deleted Oct 27 unless pinned”, amber.
+    pub going: Option<String>,
     pub selected: bool,
     pub gestures: Gestures,
     /// Always visible.
@@ -894,6 +941,26 @@ pub struct LibraryBody {
     pub cleanup_line: Option<CleanupLine>,
     /// Suggested to clean up, in place of the list (N68).
     pub cleanup: Option<CleanupBody>,
+    /// Auto-cleanup's amber line, three days ahead (N75): in the suggestion line's place.
+    pub going_line: Option<Notice>,
+    /// Once a round of auto-cleanup went (N75): what went and what it freed, with OK.
+    pub cleaned_line: Option<Notice>,
+}
+
+/// A line above the Library's rows and its buttons (N75).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Notice {
+    pub line: String,
+    pub buttons: Vec<Button>,
+}
+
+/// What auto-cleanup will delete on one date (N75): its heading, the line under the first,
+/// and each video with Open page and Pin.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct GoingGroup {
+    pub heading: String,
+    pub line: Option<String>,
+    pub rows: Vec<CleanupRowView>,
 }
 
 /// The Library's line about the videos worth deleting (N68).
@@ -913,6 +980,10 @@ pub struct CleanupBody {
     /// “‹ Library”.
     pub back: Button,
     pub intro: Option<String>,
+    /// What auto-cleanup will delete, by date, ahead of the suggestions (N75).
+    pub going: Vec<GoingGroup>,
+    /// “Might be worth deleting”, over the suggestions while anything is going (N75).
+    pub suggest_heading: Option<String>,
     pub rows: Vec<CleanupRowView>,
     /// Once the last suggestion is kept or deleted.
     pub empty: Option<String>,
@@ -931,7 +1002,9 @@ pub struct CleanupRowView {
     pub meta: String,
     /// Where its poster is, as `LibraryRowView::poster`.
     pub poster: Option<String>,
-    /// Open page, Keep, Delete (red text).
+    /// Going with auto-cleanup (N75): “Deleted Oct 27 unless pinned”, amber, after the facts.
+    pub going: Option<String>,
+    /// Open page, Pin, Delete (red text).
     pub buttons: Vec<Button>,
 }
 
@@ -962,14 +1035,11 @@ pub struct GeneralBody {
     pub uninstall: Button,
     /// “Your coding agent” (dev/proposals/cli-agent-skill.md, provisional).
     pub agent: AgentCard,
-    /// Your videos (N68): Count plays, Suggest videos to clean up, Space used.
-    pub videos: Option<VideosGroup>,
 }
 
-/// Settings · General's group Your videos (N68).
+/// Settings' Videos tab (N79; General's group Your videos until then, N68).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct VideosGroup {
-    pub heading: String,
     /// The space's switch: owner-class Macs change it; elsewhere it shows greyed.
     pub count: Toggle,
     pub count_hint: String,
@@ -978,10 +1048,21 @@ pub struct VideosGroup {
     /// This Mac's.
     pub suggest: Toggle,
     pub suggest_hint: String,
-    /// “Space used”, with `used`.
-    pub used_label: Option<String>,
-    /// The space's size and what it costs — owner-class Macs, once the space has said.
-    pub used: Option<String>,
+    /// Delete videos nobody watches (N75), once the space has said.
+    pub autoclean: Option<AutocleanRow>,
+}
+
+/// Auto-cleanup's pop-up (N75): live on the Mac that holds the setup key, greyed elsewhere
+/// and while Count plays is off.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct AutocleanRow {
+    pub label: String,
+    /// The line under it: how it counts, or who sets it, or what it needs.
+    pub hint: String,
+    /// Off · After 15 days · After 30 days · After 60 days · After a year.
+    pub choices: Vec<Choice>,
+    /// “Turning on — a few seconds.” the first time, or why it didn't change (law 12).
+    pub note: Option<String>,
 }
 
 /// General's card for a coding agent: the prompt to paste, Copy, “Read it first”, the line
@@ -1100,7 +1181,7 @@ pub struct EditorBody {
     /// failure, then the question of the original — in the timeline's place. `None` until
     /// then.
     pub after: Option<EditorAfterView>,
-    /// ✕ with changes not saved (N71): the question, in the footer's place. `None`
+    /// ✕ with changes not saved (N71): the question, in a sheet over the window. `None`
     /// otherwise.
     pub closing: Option<EditorClosingView>,
 }
@@ -1129,7 +1210,7 @@ pub enum EditorAfterView {
     Failed,
     /// It's up: “Delete the original?”, its line, then Keep for 2 days and Yes, delete
     /// (filled and leading, but a click: Return never deletes — law 9; DEVIATIONS #55) —
-    /// in the footer's place.
+    /// in a sheet over the window.
     Asking { title: String, line: String, keep: Button, delete: Button },
 }
 
@@ -1197,6 +1278,17 @@ pub struct SpaceBody {
     /// said whether it names videos.
     pub ai: Option<Toggle>,
     pub ai_line: Option<String>,
+    /// The switch's parts under its line while the page is re-wired, and once it's done or
+    /// didn't go through, this visit (N80).
+    pub ai_parts: Vec<Part>,
+    /// The quiet line under the parts once one has run long (N80).
+    pub ai_long: Option<String>,
+    /// The re-wiring didn't go through: said under the parts (law 12, N80).
+    pub ai_failed: Option<String>,
+    /// “Space used”, with `used` (N79, moved from Your videos).
+    pub used_label: Option<String>,
+    /// The space's size and what it costs — owner-class Macs, once the space has said.
+    pub used: Option<String>,
     /// Quiet text at the foot.
     pub exits: Vec<Button>,
 }
@@ -1259,6 +1351,7 @@ pub enum FromName {
 #[serde(rename_all = "kebab-case", tag = "kind")]
 pub enum SettingsPane {
     General(GeneralBody),
+    Videos(VideosGroup),
     Space(SpaceBody),
     Members(MembersBody),
 }
@@ -1287,13 +1380,15 @@ impl Window<LibraryBody> {
         // Suggested to clean up stands in place of the list (N68).
         if let Some(c) = &self.body.cleanup {
             return std::iter::once(&c.back)
+                .chain(c.going.iter().flat_map(|g| g.rows.iter().flat_map(|r| &r.buttons)))
                 .chain(c.rows.iter().flat_map(|r| &r.buttons))
                 .chain(&c.delete_all)
                 .chain(c.undo.as_ref().map(|u| &u.undo))
                 .collect();
         }
         let line = self.body.cleanup_line.iter().flat_map(|l| [&l.review, &l.dismiss]);
-        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).chain(line).collect()
+        let notices = self.body.going_line.iter().chain(&self.body.cleaned_line).flat_map(|n| &n.buttons);
+        self.body.rows.iter().flat_map(|r| r.buttons.iter().chain(&r.hover).chain(&r.menu)).chain(line).chain(notices).collect()
     }
 
     pub fn offers(&self, action: &Action) -> bool {
@@ -1376,6 +1471,7 @@ impl Window<SettingsBody> {
                     .chain(std::iter::once(&g.uninstall))
                     .collect()
             }
+            SettingsPane::Videos(_) => vec![],
             SettingsPane::Space(sp) => {
                 let mut out = nest_buttons(&sp.plan.nest);
                 out.extend(sp.mic.iter());
@@ -1410,9 +1506,10 @@ impl Window<SettingsBody> {
             return true;
         }
         match &self.body.pane {
-            SettingsPane::General(g) => {
-                let toggles = [&g.login, &g.agent.recording].into_iter().chain(g.videos.iter().flat_map(|v| [&v.count, &v.suggest]));
-                toggles.into_iter().any(|t| t.enabled && &t.action == action)
+            SettingsPane::General(g) => [&g.login, &g.agent.recording].into_iter().any(|t| t.enabled && &t.action == action),
+            SettingsPane::Videos(v) => {
+                let picks = v.autoclean.iter().flat_map(|a| &a.choices);
+                [&v.count, &v.suggest].into_iter().any(|t| t.enabled && &t.action == action) || picks.into_iter().any(|c| c.enabled && &c.action == action)
             }
             SettingsPane::Space(sp) => [&sp.mark, &sp.ai].into_iter().flatten().any(|t| t.enabled && &t.action == action),
             // Esc in the name being changed puts it back (B158).
@@ -1456,6 +1553,7 @@ pub fn nest_buttons(nest: &Nest) -> Vec<&Button> {
         Nest::NoToken { button, .. } => button.iter().collect(),
         Nest::Unexpected { button, .. } => vec![button],
         Nest::Checking
+        | Nest::Check { .. }
         | Nest::JoinRefused { .. }
         | Nest::Calm { .. }
         | Nest::Found { .. }
@@ -1483,6 +1581,20 @@ pub struct Countdown {
 pub struct AgentLabel {
     pub display: u32,
     pub line: String,
+}
+
+/// The marker toast (N78; Bagrat, 2026-10-25): ⌥⌘M's answer, the agent label's pill with the
+/// marker's flag, top right of the display the take records — under the label when it
+/// shows. Left out of the take, as the label is, and passing every click through.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct MarkerToast {
+    pub display: u32,
+    pub line: String,
+    pub hint: String,
+    /// The agent label shows on the same display: the toast sits just under it.
+    pub under_label: bool,
+    /// When the press it answers came (ms): a new press starts its two seconds again.
+    pub pressed: u64,
 }
 
 /// The camera bubble (N22): round, mirrored, on the display being recorded —
@@ -1526,6 +1638,8 @@ pub struct Scene {
     pub preview: Option<Preview>,
     /// The agent label (N62, B216): while a take the `shroom` command started records.
     pub label: Option<AgentLabel>,
+    /// The marker toast (N78): two seconds after ⌥⌘M answers.
+    pub toast: Option<MarkerToast>,
     /// The Dock icon shows while a window of shroom's is open — the setup window, the
     /// Library, Settings, Send feedback or the editor — never for a popover alone (law 6,
     /// SM:133).

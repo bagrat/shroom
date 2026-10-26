@@ -16,10 +16,12 @@ export type Rich = { text: string; runs: Run[] };
 /** `uninstall`: quiet at the foot (B160); `sheet`: its question over the window, once asked. */
 export type WelcomeBody = { kind: "welcome"; paragraphs: Rich[]; login: Toggle; buttons: Button[]; uninstall: Button; sheet: Sheet | null };
 
-export type Glyph = "current" | "done" | "ahead" | "working";
+export type Glyph = "current" | "done" | "ahead" | "working" | "stopped";
 /** A row and its parts as the core split them (DEVIATIONS #45): the title, the aside under it,
  * a done row's fact at its end. */
-export type PlanRow = { glyph: Glyph; line: string; runs: Run[]; title: string; aside: Run[]; fact: string | null };
+export type PlanRow = { glyph: Glyph; line: string; runs: Run[]; title: string; aside: Run[]; fact: string | null; clock: string | null };
+/** One part of a wait (N74): its mark, its line, and while it spins its running clock. */
+export type Part = { glyph: Glyph; line: string; clock: string | null };
 
 export type Nest =
   | { kind: "account"; question: string; buttons: Button[] }
@@ -27,9 +29,14 @@ export type Nest =
   | { kind: "token"; line: string; create: Button; placeholder: string; held: boolean; checking: boolean; error: string | null; quiet: string | null }
   | { kind: "pick-account"; line: string; accounts: Choice[]; choose: Button }
   | { kind: "checking" }
-  | { kind: "gate"; line: string; button: Button | null; quiet: string | null }
+  // The card step's check, part by part (N74).
+  | { kind: "check"; parts: Part[] }
+  // `watch`: once the billing page is open, the watch with its clock; `long`: its quiet
+  // line once it has run long (N74).
+  | { kind: "gate"; line: string; button: Button | null; quiet: string | null; watch: Part | null; long: string | null }
   | { kind: "name"; prefix: string; value: string; edits: number; suffix: string; line: string; claim: Button; hint: string | null; taken: string | null; unexpected: string | null }
-  | { kind: "calm"; line: string }
+  // `parts`: wiring's parts in the setup; `long`: the name's quiet line from 3 min (N74).
+  | { kind: "calm"; line: string; parts: Part[]; long: string | null }
   | { kind: "found"; line: string }
   | { kind: "offline"; line: string }
   // A failure nothing else classifies (DEVIATIONS #25): the resting spinner, its amber line,

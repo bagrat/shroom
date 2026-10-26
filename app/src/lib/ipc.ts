@@ -5,7 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 export type Action = { do: string; arg?: unknown };
-export type Surface = "popover" | "countdown" | "label" | "onboarding" | "library" | "settings" | "feedback" | "editor";
+export type Surface = "popover" | "countdown" | "label" | "toast" | "onboarding" | "library" | "settings" | "feedback" | "editor";
 
 export const act = (surface: Surface, action: Action) => invoke("act", { surface, action });
 export const key = (surface: Surface, key: "return" | "esc") => invoke("key", { surface, key });

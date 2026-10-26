@@ -173,7 +173,7 @@ fn stranded(n: usize) -> Vec<Queued> {
 }
 
 fn lib_row(id: &str, title: &str, at: i64, owner: &str) -> LibraryRow {
-    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(95_000), live: true, owner: Some(owner.into()), poster: false, edited_ms: None }
+    LibraryRow { rec: RecId(id.into()), title: title.into(), created: Wall(at), length_ms: Some(95_000), live: true, owner: Some(owner.into()), poster: false, edited_ms: None, pinned: false }
 }
 
 /// Bagrat's video and Mher's, as the space lists them.
@@ -255,11 +255,11 @@ fn standing(a: StandingAnswer) -> Event {
 }
 
 fn fine() -> StandingAnswer {
-    StandingAnswer::Fine { current: true, only_holder: None, mark: None }
+    StandingAnswer::Fine { current: true, only_holder: None, mark: None, ai: None }
 }
 
 fn owner_facts(only_holder: bool, mark: bool) -> StandingAnswer {
-    StandingAnswer::Fine { current: true, only_holder: Some(only_holder), mark: Some(mark) }
+    StandingAnswer::Fine { current: true, only_holder: Some(only_holder), mark: Some(mark), ai: None }
 }
 
 /// Invite answered 201 for Ani: her row, and her new link in the stash under 7.
@@ -655,10 +655,10 @@ fn rows() -> Vec<(&'static str, World, Check)> {
         let w = library_with(owner(), mixed_rows());
         feed(w, [news(MemberNews::Roster(roster())), lib(Action::SetScope(LibraryScope::Everyone)), lib(Action::DeleteRow(RecId(s("r_mher"))))])
     }, Full));
-    rows.push(("space-needs-update-member", feed(with_popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None })]), Full));
+    rows.push(("space-needs-update-member", feed(with_popover(member()), [standing(StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None })]), Full));
     rows.push((
         "space-needs-update-no-token",
-        feed(with_popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true) })]),
+        feed(with_popover(owner_class()), [standing(StandingAnswer::Fine { current: false, only_holder: Some(false), mark: Some(true), ai: None })]),
         Full,
     ));
     rows.push(("space-degraded-no-token-mac", struck(with_popover(owner_class()), StandingAnswer::SpaceSide), Full));
@@ -847,7 +847,7 @@ fn an_owner_invites_from_members_and_the_born_link_copies_only_on_its_click() {
     let mut r = Run::new(with_popover(owner()));
     r.act(Action::OpenSettings);
     let tabs: Vec<String> = r.scene.settings.as_ref().unwrap().body.tabs.iter().map(|t| t.label.clone()).collect();
-    assert_eq!(tabs, ["General", "Space", "Members"], "the third tab, owner-class Macs only (N36)");
+    assert_eq!(tabs, ["General", "Videos", "Space", "Members"], "Members, owner-class Macs only (N36); Videos before Space (N79)");
     r.set(Action::SettingsTab(SettingsTab::Members));
     assert!(r.has(|e| *e == Effect::Member(MemberCmd::Roster)), "every entry reads the rows (law 1)");
     r.hear(MemberNews::Roster(roster()));
@@ -978,7 +978,7 @@ fn removing_asks_at_its_own_beat_and_never_on_return() {
     assert_eq!(sh.title, "Remove Mher?");
     assert_eq!(
         sh.lines,
-        ["Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library."]
+        ["Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library."]
     );
     assert_eq!(sh.buttons.iter().map(|b| (b.label.as_str(), b.style)).collect::<Vec<_>>(), [("Cancel", Style::Plain), ("Remove", Style::RedOutline)]);
     r.key(Surface::Settings, Key::Return);
@@ -1625,7 +1625,7 @@ fn a_stop_the_space_cant_take_stays_safe_on_this_mac() {
 
 #[test]
 fn space_needs_an_update_reads_by_role() {
-    let behind = StandingAnswer::Fine { current: false, only_holder: None, mark: None };
+    let behind = StandingAnswer::Fine { current: false, only_holder: None, mark: None, ai: None };
     let mut r = Run::new(with_popover(member()));
     r.send(standing(behind.clone()));
     assert_eq!(banner(&r.scene), Some("space-needs-update-member"));

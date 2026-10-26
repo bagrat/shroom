@@ -6,8 +6,8 @@ pub mod apply;
 pub mod copy;
 pub mod derive;
 pub mod effect;
-pub mod report;
 pub mod event;
+pub mod report;
 pub mod scene;
 pub mod settle;
 pub mod time;
@@ -33,6 +33,17 @@ pub fn update(w: &mut World, env: Envelope) -> (Vec<Effect>, Arm) {
     if take_was && w.take.is_none() {
         w.display_pick.by_hand = false;
     }
+    // Pin both's word lasts while the popover stays open (N75).
+    if w.session.popover.is_none() {
+        w.session.fields.library.pinned_note = None;
+    }
+    // The marker toast goes once the popover or a count comes up over it (N78): it doesn't
+    // come back when they go.
+    if w.session.popover.is_some() || w.session.arming.as_ref().is_some_and(|a| !a.fired) {
+        if let Some(t) = w.take.as_mut() {
+            t.toast = None;
+        }
+    }
     mark(w, &fx);
     let more = settle::settle(w);
     mark(w, &more);
@@ -57,5 +68,14 @@ fn mark(w: &mut World, fx: &[Effect]) {
         if let Effect::Editor(effect::EditCmd::Copy { rec, rev }) = e {
             w.library_ops.copies.insert(rec.clone(), world::CopyOwed { rev: *rev, asked: true });
         }
+        // An editor's mark for the space's auto-cleanup (N75): again in five minutes.
+        if let Effect::Library(effect::LibCmd::Editing(recs)) = e {
+            for r in recs {
+                w.library_ops.marked.insert(r.clone(), w.now);
+            }
+        }
     }
+    // A closed editor's video is marked no more.
+    let open: Vec<world::RecId> = w.session.fields.editors.values().map(|e| e.rec.clone()).collect();
+    w.library_ops.marked.retain(|r, _| open.contains(r));
 }

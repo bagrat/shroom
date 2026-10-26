@@ -5,7 +5,7 @@
 
 use crate::copy;
 use crate::scene::{
-    Action, Button, Choice, Glyph, Nest, OnboardingBody, PlanRow, PlanView, Rich, Style, Toggle, WelcomeBody, Window,
+    Action, Button, Choice, Glyph, Nest, OnboardingBody, Part, PlanRow, PlanView, Rich, Style, Toggle, WelcomeBody, Window,
 };
 use crate::time::Mono;
 use crate::world::{Access, Confirm, FailClass, Fork, LaunchKind, Op, Paste, Role, TokenVerdict, WindowKind, World};
@@ -14,6 +14,12 @@ use crate::world::{Access, Confirm, FailClass, Fork, LaunchKind, Op, Paste, Role
 pub const HINT_MS: u64 = 3_000;
 /// The gates' auto-poll interval while one shows (N14).
 pub const GATE_POLL_MS: u64 = 5_000;
+/// How long the card watch runs before its quiet line (N74).
+pub const CARD_LONG_MS: u64 = 45_000;
+/// How long switching the name on runs before wiring's quiet line (N74).
+pub const NAME_LONG_MS: u64 = 180_000;
+/// Wiring's part that switches the name on: the long one (N74).
+const NAME_PART: u8 = 3;
 
 /// Where the onboarding window stands — derived, never stored.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -385,7 +391,9 @@ fn plan(w: &World, at: &At, offline: bool) -> PlanView {
             } else if Some(r) == current {
                 PlanRow::new(Glyph::Current, copy::row_current(r), &[])
             } else if r == 5 && working {
-                PlanRow::new(Glyph::Working, copy::row_working(), &[])
+                // The part underway, named, with its clock (N74).
+                let line = w.sweep.wiring.map_or_else(copy::row_working, |p| copy::row_working_part(p.part));
+                PlanRow { clock: w.sweep.wiring.and_then(|p| clock(p.since, w.now)), ..PlanRow::new(Glyph::Working, line, &[]) }
             } else {
                 PlanRow::new(Glyph::Ahead, copy::row_ahead(r), copy::row_ahead_marks(r))
             }
@@ -431,11 +439,51 @@ fn token_nest(w: &World, checking: bool, error: Option<String>) -> Nest {
 /// The card gate (N14), and the quiet line under its button: where it goes until it's
 /// clicked, then that the page is open (N45).
 pub(crate) fn card_gate(w: &World) -> Nest {
+    let opened = w.session.fields.billing_at;
     Nest::Gate {
         line: copy::gate_card(),
         button: Some(Button::new(Action::AddCard, copy::add_card(), Style::Filled)),
         quiet: Some(if w.session.fields.billing_opened { copy::card_opened() } else { copy::card_where() }),
+        // Once the billing page is open, the watch is a part of its own with its clock, and
+        // its quiet line from 45 s (N74).
+        watch: opened.map(|t| Part { glyph: Glyph::Working, line: copy::card_waiting(), clock: clock(t, w.now) }),
+        long: opened.filter(|t| w.now.0.saturating_sub(t.0) >= CARD_LONG_MS).map(|_| copy::card_long()),
     }
+}
+
+/// A spinning row's running clock (N74): from its first second, as a length (“0:48”).
+fn clock(since: Mono, now: Mono) -> Option<String> {
+    let ms = now.0.saturating_sub(since.0);
+    (ms >= 1_000).then(|| copy::length(ms))
+}
+
+/// A run's parts as they stand (N74): the ones before the part underway done, it spinning
+/// with its clock, the rest to come — nothing ticked that the run hasn't answered.
+fn parts(count: u8, at: Option<crate::world::Progress>, now: Mono, line: fn(u8, Glyph) -> String) -> Vec<Part> {
+    let current = at.map_or(1, |p| p.part);
+    (1..=count)
+        .map(|n| {
+            let glyph = match n.cmp(&current) {
+                std::cmp::Ordering::Less => Glyph::Done,
+                std::cmp::Ordering::Equal => Glyph::Working,
+                std::cmp::Ordering::Greater => Glyph::Ahead,
+            };
+            let clock = if glyph == Glyph::Working { at.and_then(|p| clock(p.since, now)) } else { None };
+            Part { glyph, line: line(n, glyph), clock }
+        })
+        .collect()
+}
+
+/// The card step's check (N74): the token, the email gate, storage, the look around.
+fn check_nest(w: &World) -> Nest {
+    Nest::Check { parts: parts(4, w.sweep.check, w.now, copy::check_part) }
+}
+
+/// The last step (N74): the calm line, wiring's parts, and the name's quiet line from 3 min.
+fn wiring_nest(w: &World) -> Nest {
+    let at = w.sweep.wiring;
+    let long = at.filter(|p| p.part == NAME_PART && w.now.0.saturating_sub(p.since.0) >= NAME_LONG_MS).map(|_| copy::wiring_long());
+    Nest::Calm { line: copy::wiring_last(), parts: parts(5, at, w.now, copy::wire_part), long }
 }
 
 pub(crate) fn nest(w: &World, at: &At) -> Nest {
@@ -458,7 +506,7 @@ pub(crate) fn nest(w: &World, at: &At) -> Nest {
         },
         At::Token => token_nest(w, false, None),
         At::TokenChecking => token_nest(w, true, None),
-        At::Card => Nest::Checking,
+        At::Card => check_nest(w),
         At::Garbled => token_nest(w, false, Some(copy::token_garbled())),
         At::WrongPowers => token_nest(w, false, Some(copy::token_wrong_powers())),
         At::PickAccount => {
@@ -473,7 +521,7 @@ pub(crate) fn nest(w: &World, at: &At) -> Nest {
                 choose: Button::new(Action::UseAccount, copy::use_account(), Style::Filled),
             }
         }
-        At::GateEmail => Nest::Gate { line: copy::gate_email(), button: None, quiet: None },
+        At::GateEmail => Nest::Gate { line: copy::gate_email(), button: None, quiet: None, watch: None, long: None },
         At::GateCard => card_gate(w),
         At::Name | At::NameTaken => Nest::Name {
             prefix: copy::name_prefix(w.sweep.label().unwrap_or("v")),
@@ -488,7 +536,7 @@ pub(crate) fn nest(w: &World, at: &At) -> Nest {
             unexpected: unexpected_in(w, &[Op::Claim]).then(copy::unexpected_wizard),
         },
         // The last step, the permissions done first (N45).
-        At::Wiring => Nest::Calm { line: copy::wiring_last() },
+        At::Wiring => wiring_nest(w),
         At::Found(n) => Nest::Found { line: copy::found(&host(w).unwrap_or_default(), *n) },
         At::Done => Nest::Done {
             lines: vec![copy::done_ask(), copy::done_flip()],
@@ -537,6 +585,19 @@ pub fn wakes(w: &World, out: &mut Vec<Mono>) {
     if w.session.windows.contains_key(&WindowKind::Onboarding) && matches!(at(w), At::GateEmail | At::GateCard) {
         if let Some(t) = w.sweep.gates.at() {
             out.push(t.plus(GATE_POLL_MS));
+        }
+    }
+    // A running clock's next second (N74): the check's part, the card watch, wiring's part
+    // (the last step, or the working row under the chapter).
+    if w.window_visible(WindowKind::Onboarding) {
+        let at = at(w);
+        let since = match at {
+            At::Card => w.sweep.check.map(|p| p.since),
+            At::GateCard => f.billing_at,
+            _ => w.sweep.wiring.map(|p| p.since),
+        };
+        if let Some(s) = since {
+            out.push(Mono(s.0 + (w.now.0.saturating_sub(s.0) / 1_000 + 1) * 1_000));
         }
     }
 }

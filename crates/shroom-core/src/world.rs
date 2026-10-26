@@ -398,6 +398,21 @@ pub struct Sweep {
     /// gate still up) is still a whole answer: the plan re-probes on its next entry, the
     /// gate on its poll — never in a loop.
     pub pass: Option<Mono>,
+    /// The card step's check, while a full pass runs: the part underway and since when
+    /// (N74). Gone once the pass answers — a part is ticked only by its own probe, this pass.
+    pub check: Option<Progress>,
+    /// Wiring, while it runs: the furthest part reached and since when (N74). Every call is
+    /// idempotent, so a retry re-runs the parts before it quickly: they stay ticked, and the
+    /// clock counts from the first try. Gone once wiring answers.
+    pub wiring: Option<Progress>,
+}
+
+/// A run's part underway (N74), 1-based, and when it began: what a wait shows of itself.
+/// Never stored on disk (law 1) — the run says it again as it goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Progress {
+    pub part: u8,
+    pub since: Mono,
 }
 
 impl Sweep {
@@ -430,12 +445,16 @@ pub struct Space {
     /// follows the app — at launch, so after every update). `None`: not yet this process.
     pub page_checked: Option<Mono>,
     /// Whether the space's page names its videos (N66: it carries Cloudflare's AI), as the
-    /// token Mac's page check or its own switch last left it. `None`: not known yet.
+    /// token Mac's page check or its own switch last left it — on a Mac without the token,
+    /// its space's ping (N76). `None`: not known yet.
     pub ai: Option<bool>,
-    /// The AI banner's Turn on (N66): re-wiring the page until it answers or the try fails;
-    /// then, once through, `config` says so once — behind us when the popover that said it
-    /// closes.
+    /// The AI's turn on the setup Mac (N76): on by default, or the banner's Turn off —
+    /// re-wiring the page until it answers, tried again quietly while it doesn't; a Turn off,
+    /// once through, `config` says once — behind us when the popover that said it closes.
     pub ai_turn: Option<AiTurn>,
+    /// The AI's re-wiring as it goes (N80): which way, its part underway and since when, and
+    /// how it ended. Never stored (law 1); a new try starts over.
+    pub ai_run: Option<AiRun>,
 }
 
 impl Space {
@@ -533,12 +552,24 @@ pub struct OpenTake {
     /// A marker was dropped at this pause (N64): the paused popover's row reads Marker
     /// dropped, greyed, until the take resumes.
     pub marked_at_pause: bool,
+    /// The marker toast (N78): what ⌥⌘M's last press said, and when — it shows for
+    /// `MARKER_TOAST_MS` from then, and goes with the take.
+    pub toast: Option<(MarkerToastSays, Mono)>,
     /// The microphone this take records from, by uid (`None` = silent): the one chosen when
     /// capture began, then whichever Resume used (N39's `mic-lost` fallback).
     pub mic: Option<String>,
     /// Camera as the source: the camera recorded, by uid — `camera-lost` is about this one
     /// leaving, never about some other camera (N39).
     pub camera: Option<String>,
+}
+
+/// What the marker toast says (N78).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarkerToastSays {
+    /// A marker dropped: the take's count of them, after it.
+    Dropped(u32),
+    /// Pressed again at a pause that has its marker: nothing dropped.
+    Already,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -604,6 +635,8 @@ pub struct LibraryRow {
     /// The edited length, when the record holds an edit that changes what plays (N63,
     /// `meta.edits`): the row shows it in place of the recording's.
     pub edited_ms: Option<u64>,
+    /// Pinned (N75, the record's `keep`): never suggested, never taken by auto-cleanup.
+    pub pinned: bool,
 }
 
 /// The Library's writes under way — facts about what was asked and not yet answered, so
@@ -634,8 +667,17 @@ pub struct LibraryOps {
     /// When the editor's upkeep last answered (B197 (d)): originals kept past their two days
     /// baked, and copies an edit is missing made.
     pub upkept: Option<Mono>,
-    /// Keeps under way (N68): the record's `keep`, so the suggestion leaves at once.
-    pub keeping: BTreeSet<RecId>,
+    /// When voice cuts last landed on a video of this Mac's (`CutsLanded`): the upkeep is due
+    /// from then, not at its six-hour turn, until one runs or fails after it.
+    pub upkeep_asked: Option<Mono>,
+    /// Pins and unpins under way (N75, the record's `keep`): what was asked, so a row reads
+    /// it at once and a suggestion leaves while the write runs.
+    pub pinning: BTreeMap<RecId, bool>,
+    /// Auto-cleanup's setting asked and not yet answered: the days (N75).
+    pub autoclean: Option<u32>,
+    /// When each video an open editor holds was last marked for the space's auto-cleanup
+    /// (N75): again every `EDITING_MARK_MS` while its window stays open.
+    pub marked: BTreeMap<RecId, Mono>,
     /// The space's play-count switch, asked and not yet answered: what was asked (N68).
     pub plays: Option<bool>,
 }
@@ -658,6 +700,47 @@ pub struct Suggestions {
     pub space_bytes: u64,
     /// The videos worth deleting, costliest per remaining play first.
     pub rows: Vec<Suggestion>,
+    /// What auto-cleanup will delete, three days ahead (N75): earliest first.
+    pub going: Vec<Going>,
+    /// Every live, unpinned video in this Mac's scope and how long nobody has played it:
+    /// what turning auto-cleanup on, or shortening it, would already take.
+    pub idle: Vec<Idle>,
+    /// The space's auto-cleanup, as its page has it.
+    pub autoclean: AutoClean,
+}
+
+/// A video auto-cleanup will delete on `deletes_at` unless it's pinned or watched (N75).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Going {
+    pub rec: RecId,
+    pub bytes: u64,
+    pub plays: u32,
+    pub quiet_days: u32,
+    pub stopped_early: bool,
+    pub deletes_at: Wall,
+}
+
+/// A live, unpinned video and the days nobody has played it (N75).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Idle {
+    pub rec: RecId,
+    pub quiet_days: u32,
+}
+
+/// The space's auto-cleanup (N75): the days a video may go unwatched (0: off), and the
+/// newest round that went, in this Mac's scope.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct AutoClean {
+    pub days: u32,
+    pub last: Option<Cleaned>,
+}
+
+/// A round of auto-cleanup: when, which videos, and the bytes they took.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Cleaned {
+    pub at: Wall,
+    pub recs: Vec<RecId>,
+    pub bytes: u64,
 }
 
 /// One video worth deleting, and the facts its reason reads.
@@ -677,8 +760,8 @@ pub struct Suggestion {
 pub enum Landed {
     Deleted,
     Renamed(String),
-    /// Kept (N68): off the suggestions for good.
-    Kept,
+    /// Pinned or unpinned (N75, the record's `keep`).
+    Pinned(bool),
 }
 
 // ── Region 6: members (N28–N34) ──
@@ -713,7 +796,7 @@ pub struct Members {
     pub left_behind: BTreeSet<TakeDir>,
     /// Published takes already holding an upload credential, and until when (each take's
     /// `cred.json`, from the takes scan): a space that stops minting for this Mac still
-    /// lets these finish (N32: “a video already on its way can still finish”).
+    /// lets these finish (N32, N81: a video already on its way has up to an hour to finish).
     pub minted: BTreeMap<TakeDir, Wall>,
 }
 
@@ -971,8 +1054,10 @@ pub enum Op {
     Ai,
     /// What the space says is worth deleting, read to its end (N68, `POST /cleanup`).
     Suggest,
-    /// A record's `keep` written (N68).
-    Keep,
+    /// A record's `keep` written, on or off (N75's Pin).
+    Pin,
+    /// Auto-cleanup's setting (N75): the space's page told, and given its schedule.
+    Autoclean,
     /// The space's play-count switch (N68, `POST /plays`).
     Plays,
 }
@@ -991,7 +1076,7 @@ impl Op {
             Op::OpenPage | Op::Upload | Op::Validate | Op::SaveToken | Op::Sweep | Op::Claim => 60_000,
             Op::Wire | Op::Refresh | Op::Ai => 180_000,
             Op::Relaunch => 10_000,
-            Op::LibRefresh | Op::Rename | Op::Delete | Op::Suggest | Op::Keep | Op::Plays => 60_000,
+            Op::LibRefresh | Op::Rename | Op::Delete | Op::Suggest | Op::Pin | Op::Plays | Op::Autoclean => 60_000,
             Op::LibCache => 5_000,
             Op::UpdateCheck => 10_000,
             Op::UpdateDownload => 1_800_000,
@@ -1075,6 +1160,13 @@ pub struct Prefs {
     /// The suggestions whose line ✕ put away, until they change (N68): their ids, sorted.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cleanup_dismissed: Vec<String>,
+    /// What auto-cleanup had going when the popover's banner was put away (N75, Not now):
+    /// their ids, sorted — back once the list changes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub going_dismissed: Vec<String>,
+    /// The round of auto-cleanup whose line OK put away (N75): its time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cleaned_seen: Option<Wall>,
     /// General's “Let it start and stop recordings”: a coding agent may record through the
     /// `shroom` command (dev/proposals/cli-agent-skill.md). Off by default (Bagrat,
     /// 2026-10-18: a Settings switch, off).
@@ -1104,6 +1196,8 @@ impl Default for Prefs {
             settings_tab: None,
             suggest_cleanup: true,
             cleanup_dismissed: Vec::new(),
+            going_dismissed: Vec::new(),
+            cleaned_seen: None,
             agent_recording: false,
         }
     }
@@ -1114,6 +1208,8 @@ impl Default for Prefs {
 pub enum SettingsTab {
     #[default]
     General,
+    /// Your videos, a tab of its own since General outgrew the window (N79).
+    Videos,
     Space,
     /// Owner-class Macs only — Region 6's tab.
     Members,
@@ -1125,9 +1221,11 @@ pub struct Once {
     /// launch other than an update relaunch found running): only an `--updated` relaunch
     /// leaves a newer running version unacknowledged, and that says once that it landed.
     pub seen_version: Option<String>,
-    /// The popover's AI banner was answered on this Mac (N66; Bagrat, 2026-10-18: off by
-    /// default, but visible): a Not now hides it for good, and so does AI on, from the banner
-    /// or the switch in Settings · Space.
+    /// The space's AI is settled on this Mac (N76; Bagrat, 2026-10-25: on by default): the
+    /// setup Mac's “AI features are turned on.” was answered (OK, or Turn off once it went
+    /// through), its switch in Settings · Space was used, or this Mac set the space up; a
+    /// member's Mac read “AI is on in …'s space.” and pressed OK. Before N76 it was the old
+    /// offer's Not now (or AI turned on): an explicit no stays a no.
     #[serde(default)]
     pub ai_offer_answered: bool,
 }
@@ -1188,8 +1286,10 @@ pub enum Confirm {
     /// Settings · General's Report a problem sheet (B180); `sending` once Send was clicked,
     /// until shroom.am answers.
     Report { sending: bool },
-    /// The AI banner's Turn on… (N66): what it does and costs, before it costs anything.
-    Ai,
+    /// Delete all… on Suggested to clean up (N75): these, on one Undo line.
+    DeleteSuggested(Vec<RecId>),
+    /// Auto-cleanup turned on or shortened to these days while videos already qualify (N75).
+    Autoclean(u32),
 }
 
 /// The countdown: armed by Start, fired at its deadline, cancelled by any click or Esc.
@@ -1256,6 +1356,8 @@ pub struct Fields {
     /// Add credit card was clicked in this window: the card gate's quiet line says the
     /// billing page is open (N45).
     pub billing_opened: bool,
+    /// When Add credit card was first clicked: the watch's clock counts from it (N74).
+    pub billing_at: Option<Mono>,
     /// The link name as typed, already filtered (lowercase, charset, length).
     pub name: String,
     /// How many edits of the name were taken in — the Scene carries it, so the window can
@@ -1311,7 +1413,7 @@ pub struct EditorFields {
     pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
-    /// ✕ with changes not saved asked first (N71): the question takes the footer's place,
+    /// ✕ with changes not saved asked first (N71): the question in a sheet over the window,
     /// the edit held behind it, until Save, Keep editing or Discard.
     pub closing: bool,
 }
@@ -1450,9 +1552,12 @@ pub struct LibraryFields {
     pub scope: LibraryScope,
     /// Suggested to clean up is open in place of the list (N68).
     pub cleanup: bool,
-    /// A suggestion deleted with one tap, and when: its Undo line shows until the delete
-    /// is sent (N68, `UNDO_MS`).
-    pub undo: Option<(RecId, Mono)>,
+    /// Suggestions deleted with one tap, or all of them with Delete all (N75), and when:
+    /// the Undo line shows until the deletes are sent (N68, `UNDO_MS`).
+    pub undo: Option<(Vec<RecId>, Mono)>,
+    /// Pin both in the popover's banner (N75): how many it pinned and the date they were
+    /// going, said while the popover stays open.
+    pub pinned_note: Option<(u64, Wall)>,
 }
 
 /// In memory only, never persisted (law 1). At most 12 fields (a fitness test counts).
@@ -1493,17 +1598,37 @@ pub struct Session {
     pub news: Option<Mono>,
 }
 
-/// The AI banner's Turn on, after it's pressed (N66): turning on — re-wiring the page, or
-/// waiting to try again after a try that didn't go through — then on, said once.
+/// The AI's turn on the setup Mac (N76): turning on by default as the banner shows, and its
+/// Turn off once it's pressed — each re-wiring the page, or waiting to try again quietly
+/// after a try that didn't go through — then off, said once.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AiTurn {
-    Turning,
-    On,
+    TurningOn,
+    TurningOff,
+    Off,
+}
+
+/// Turning the AI on or off, part by part (N80): 1 checking the space, 2 the page put up
+/// again with the AI or without it, 3 its schedule and the page saying so.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AiRun {
+    pub on: bool,
+    pub part: u8,
+    pub since: Mono,
+    pub end: Option<AiEnd>,
+}
+
+/// How a run of the AI's re-wiring ended (N80): the page said so, or it stopped at its part.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiEnd {
+    Done,
+    Stopped,
 }
 
 impl Failure {
-    /// When the AI banner's Turn on that didn't go through is tried again, quietly (N66, law
-    /// 12): ten minutes, doubling, at most an hour — until it goes through, or Not now.
+    /// When the AI's re-wiring that didn't go through is tried again, quietly (N76, law 12):
+    /// ten minutes, doubling, at most an hour — the banner's Turn off until it goes through,
+    /// and the setup Mac's turn-on while its popover shows the banner.
     pub fn ai_retry_at(&self) -> Mono {
         self.at.plus((600_000u64 << self.tries.min(3)).min(3_600_000))
     }

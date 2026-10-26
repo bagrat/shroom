@@ -79,11 +79,12 @@ pub const READS: &[Read] = &[
     r("recording-off", "`config` opens and the probe finds screen recording switched off for shroom."),
     r("update-ready", "The release is downloaded and verified against the published fingerprint. A space exists"),
     r("updating-app", "Update clicked in config's banner or Settings → General, not mid-take."),
-    r("ai-offer", "`config` opens on the Mac that holds the setup key while the space's AI is off and no higher banner shows"),
-    r("ai-confirm", "Turn on… in the AI banner."),
-    r("ai-turning-on", "Turn on in ai-confirm, until the page answers."),
-    r("ai-offer-failed", "ai-turning-on, and the space's page couldn't be put up again with the AI."),
-    r("ai-on", "The page answers that its AI is on after the banner's Turn on"),
+    r("autoclean-warning", "`config` while auto-cleanup has videos going in this Mac's scope, not put away by Not now, and no higher banner shows."),
+    r("ai-turned-on", "`config` opens on the Mac that holds the setup key while the space's AI has never been settled on this Mac and no higher banner shows"),
+    r("ai-turning-off", "Turn off in ai-turned-on, until the page answers."),
+    r("ai-turn-off-failed", "ai-turning-off, and the space's page couldn't be put up again without the AI."),
+    r("ai-off", "The page answers that its AI is off after the banner's Turn off"),
+    r("ai-on-in-space", "`config` opens on a member's Mac whose space's ping says its AI is on"),
     // ── the overlays (r3) ──
     r("countdown", "Start recording in `config`."),
     r("bubble", "A camera is picked in the camera picker (not Camera off) and the source is a display"),
@@ -119,6 +120,7 @@ pub const READS: &[Read] = &[
     // ── Settings (r5) ──
     r("settings", "A space exists, so config is reachable"),
     r("settings-general", "Settings window on the General tab (the default on first open)."),
+    r("settings-videos", "Settings window on the Videos tab"),
     r("settings-space", "Settings window on the Space tab."),
     r("settings-members", "Owner-class Mac only."),
     r("settings-space-inspection", "This Mac holds the Cloudflare token and every probe passes."),
@@ -181,12 +183,13 @@ pub struct Win {
 }
 
 /// The popover faces the oracle reads (any other face `derive` adds is not its business).
-pub const POPOVER_FACES: &[&str] = &["display-lost", "mic-lost", "camera-lost", "mac-away", "mic-permission-lost", "discard-confirm-saved-take", "disk-low", "updated", "update-failed", "ai-on"];
+pub const POPOVER_FACES: &[&str] = &["display-lost", "mic-lost", "camera-lost", "mac-away", "mic-permission-lost", "discard-confirm-saved-take", "disk-low", "updated", "update-failed", "ai-off"];
 /// The onboarding faces the oracle reads.
 pub const ONBOARDING_FACES: &[&str] = &["first-launch", "name-v-clash", "wizard-unexpected", "member-done", "member-all-set", "member-all-set-own-mac"];
 /// The Settings faces the oracle reads: the tab, and the Space tab's mood.
 pub const SETTINGS_FACES: &[&str] = &[
     "settings-general",
+    "settings-videos",
     "settings-space",
     "settings-members",
     "settings-space-inspection",
@@ -331,28 +334,72 @@ fn banner(w: &World) -> Option<&'static str> {
     if recording_off(w) {
         return Some("recording-off");
     }
+    if config_exists(w) && autoclean_banner(w) {
+        return Some("autoclean-warning");
+    }
     if update_ready(w) {
         return Some(if w.update.applying { "updating-app" } else { "update-ready" });
     }
     ai_banner(w)
 }
 
-/// N66: the AI banner — the setup Mac, the space's AI known off; while its Turn on re-wires
-/// the page, or after a try of it failed until the next, else while it's never been answered
-/// on this Mac (a Not now is for good).
+/// N75: auto-cleanup's banner — Pin both's word while the popover stays open; or videos going
+/// that this Mac may see (live, unpinned, not being deleted), unless Not now put this very
+/// list away; or a round that went and hasn't had its OK.
+fn autoclean_banner(w: &World) -> bool {
+    use shroom_core::world::Landed;
+    if w.session.fields.library.pinned_note.is_some() {
+        return true;
+    }
+    let Some(s) = w.suggestions.get() else { return false };
+    if s.autoclean.days == 0 {
+        return false;
+    }
+    let me = w.space.identity.as_ref().map(|i| i.member_id.clone());
+    let member = role(w) == Some(Role::Member);
+    let pinned = |rec: &shroom_core::world::RecId| match (w.library_ops.pinning.get(rec), w.library_ops.landed.get(rec)) {
+        (Some(on), _) => *on,
+        (None, Some((Landed::Pinned(on), _))) => *on,
+        _ => w.library.get().is_some_and(|v| v.iter().any(|r| &r.rec == rec && r.pinned)),
+    };
+    let undoing = |rec: &shroom_core::world::RecId| w.session.fields.library.undo.as_ref().is_some_and(|(u, _)| u.contains(rec));
+    let seen = |rec: &shroom_core::world::RecId| {
+        w.library.get().is_none_or(|v| v.iter().any(|r| &r.rec == rec && r.live && (!member || r.owner == me)))
+            && !w.library_ops.deleting.contains(rec)
+            && !matches!(w.library_ops.landed.get(rec), Some((Landed::Deleted, _)))
+            && !undoing(rec)
+    };
+    let mut going: Vec<String> = s.going.iter().filter(|g| !pinned(&g.rec) && seen(&g.rec)).map(|g| g.rec.0.clone()).collect();
+    going.sort();
+    if !going.is_empty() && going != w.prefs.going_dismissed {
+        return true;
+    }
+    s.autoclean.last.as_ref().is_some_and(|c| !c.recs.is_empty() && w.prefs.cleaned_seen != Some(c.at))
+}
+
+/// N76: the AI banner. A member's Mac: the space's ping says its AI is on, never answered
+/// here. The setup Mac, the AI never settled here: Turn off re-wiring the page, or after a
+/// try of it failed until the next; else the AI on — or being turned on as it showed.
 fn ai_banner(w: &World) -> Option<&'static str> {
-    if !config_exists(w) || role(w) != Some(Role::TokenHolder) || !w.space.token || w.space.ai != Some(false) {
+    if !config_exists(w) || w.once.ai_offer_answered {
         return None;
     }
-    if w.space.ai_turn == Some(shroom_core::world::AiTurn::Turning) {
-        if w.inflight.ops.contains_key(&Op::Ai) {
-            return Some("ai-turning-on");
+    if role(w) == Some(Role::Member) {
+        return (w.space.ai == Some(true)).then_some("ai-on-in-space");
+    }
+    if role(w) != Some(Role::TokenHolder) || !w.space.token {
+        return None;
+    }
+    let rewiring = w.inflight.ops.contains_key(&Op::Ai);
+    if w.space.ai_turn == Some(shroom_core::world::AiTurn::TurningOff) {
+        if rewiring {
+            return Some("ai-turning-off");
         }
         if w.inflight.failures.contains_key(&Op::Ai) {
-            return Some("ai-offer-failed");
+            return Some("ai-turn-off-failed");
         }
     }
-    (!w.once.ai_offer_answered).then_some("ai-offer")
+    (w.space.ai == Some(true) || w.space.ai_turn == Some(shroom_core::world::AiTurn::TurningOn)).then_some("ai-turned-on")
 }
 
 /// The status line's upload truth (N38) speaks — so a one-shot line waits.
@@ -432,7 +479,6 @@ fn popover(w: &World) -> Option<Pop> {
         // N34's stranded take, tossed: N25's question in the popover (B40 h).
         Some(Confirm::DiscardRow(dir)) if w.queue.iter().any(|q| &q.dir == dir) => return Some(pop("discard-confirm", vec!["discard-confirm-saved-take"])),
         Some(Confirm::Quit) => return Some(pop("quit-confirm", vec![])),
-        Some(Confirm::Ai) => return Some(pop("ai-confirm", vec![])),
         _ => {}
     }
     match &w.session.last_stop {
@@ -456,8 +502,8 @@ fn popover(w: &World) -> Option<Pop> {
             faces.push("updated");
         } else if w.update.failed {
             faces.push("update-failed");
-        } else if w.space.ai_turn == Some(shroom_core::world::AiTurn::On) {
-            faces.push("ai-on");
+        } else if w.space.ai_turn == Some(shroom_core::world::AiTurn::Off) {
+            faces.push("ai-off");
         }
     }
     Some(Pop { id: "config", faces, banner: banner(w) })
@@ -641,10 +687,12 @@ fn settings(w: &World) -> Option<Option<Win>> {
     let tab = match w.prefs.settings_tab {
         Some(SettingsTab::Members) if owner_class => SettingsTab::Members,
         Some(SettingsTab::Space) => SettingsTab::Space,
+        Some(SettingsTab::Videos) => SettingsTab::Videos,
         _ => SettingsTab::General,
     };
     let faces = match tab {
         SettingsTab::General => vec!["settings-general"],
+        SettingsTab::Videos => vec!["settings-videos"],
         SettingsTab::Members => vec!["settings-members"],
         SettingsTab::Space => {
             let mood = if role(w) == Some(Role::Member) {
@@ -783,6 +831,7 @@ pub fn disagreements(w: &World, s: &Scene) -> Vec<String> {
         // The pane must be the tab the faces name (the faces are what the oracle reads).
         let pane_ok = s.settings.as_ref().is_none_or(|d| match &d.body.pane {
             SettingsPane::General(_) => d.faces.contains(&"settings-general"),
+            SettingsPane::Videos(_) => d.faces.contains(&"settings-videos"),
             SettingsPane::Space(_) => d.faces.contains(&"settings-space"),
             SettingsPane::Members(_) => d.faces.contains(&"settings-members"),
         });

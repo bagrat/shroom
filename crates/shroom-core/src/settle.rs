@@ -38,7 +38,31 @@ pub fn settle(w: &World) -> Vec<Effect> {
     due_sleep_ack(w, &mut fx);
     due_edit_copy(w, &mut fx);
     due_edit_upkeep(w, &mut fx);
+    due_editing_marks(w, &mut fx);
     fx
+}
+
+/// How often an open editor marks its video for the space's auto-cleanup (N75): the mark
+/// holds a quarter of an hour, so every five minutes keeps it whole.
+pub const EDITING_MARK_MS: u64 = 300_000;
+
+/// Each video an editor window holds is marked as being edited (N75, `POST /editing`) as
+/// the window opens and every five minutes after, so the space's page never deletes it
+/// from under the editor. Online only; `update` notes when each was marked.
+fn due_editing_marks(w: &World, fx: &mut Vec<Effect>) {
+    if !w.provisioned() || w.online() == Some(false) {
+        return;
+    }
+    let mut due: Vec<crate::world::RecId> = Vec::new();
+    for e in w.session.fields.editors.values() {
+        let fresh = w.library_ops.marked.get(&e.rec).is_some_and(|at| w.now.0 < at.plus(EDITING_MARK_MS).0);
+        if !fresh && !due.contains(&e.rec) {
+            due.push(e.rec.clone());
+        }
+    }
+    if !due.is_empty() {
+        fx.push(Effect::Library(LibCmd::Editing(due)));
+    }
 }
 
 /// A saved edit's permanent copy (N63, B195 (f)): owed copies are cut one at a time, never
@@ -261,7 +285,7 @@ fn due_space_wire(w: &World, fx: &mut Vec<Effect>) {
     let Some(id) = &w.space.identity else { return };
     let foreign = w.sweep.worker.is(&crate::world::WorkerFact::Foreign);
     if space_at(w) == Some(SpaceAt::Wiring) && !foreign && w.online() != Some(false) && idle(w, Op::Wire) {
-        fx.push(Effect::Cloud(CloudCmd::Wire { label: id.label.clone() }));
+        fx.push(Effect::Cloud(CloudCmd::Wire { label: id.label.clone(), fresh: false }));
     }
 }
 
@@ -283,8 +307,9 @@ fn due_library(w: &World, fx: &mut Vec<Effect>) {
 }
 
 /// What the space says is worth deleting (N68), read on every entry of the Library (with
-/// Suggest videos to clean up on) and of Settings · General (Your videos reads the space's
-/// switch and its size from it) — when nothing has answered since the window was entered.
+/// Suggest videos to clean up on), of Settings · Videos (its switches read the space's) and
+/// of Settings · Space on an owner-class Mac (Space used, N79) — when nothing has answered
+/// since the window was entered.
 /// Owner-class Macs read the whole space's; a member's Mac its own.
 fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
     // An uninstall or a disconnect being asked asks nothing more of the space.
@@ -293,13 +318,29 @@ fn due_suggestions(w: &World, fx: &mut Vec<Effect>) {
         return;
     }
     let entered = |kind: WindowKind| w.session.windows.get(&kind).filter(|_| w.window_visible(kind)).map(|d| d.entered);
-    let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup);
-    let general = entered(WindowKind::Settings).filter(|_| settings_view::tab(w) == SettingsTab::General);
-    let Some(since) = library.into_iter().chain(general).max() else { return };
+    // With Suggest videos to clean up off, still read while the space's auto-cleanup is on:
+    // its warning reaches every Mac (N75) — the popover's read learns that it is.
+    let autocleaning = w.suggestions.get().is_some_and(|s| s.autoclean.days > 0);
+    let library = entered(WindowKind::Library).filter(|_| w.prefs.suggest_cleanup || autocleaning);
+    let reads = |tab: SettingsTab| tab == SettingsTab::Videos || (tab == SettingsTab::Space && w.space.owner_class());
+    let settings = entered(WindowKind::Settings).filter(|_| reads(settings_view::tab(w)));
+    let Some(since) = library.into_iter().chain(settings).max() else { return };
     if w.suggestions.at().is_none_or(|t| t < since) {
         fx.push(Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }));
     }
 }
+
+/// The popover's banner (N75): what auto-cleanup has going, read as the mushroom's click
+/// opens the popover, at most once an hour — online, with a space, nothing else asked.
+pub fn popover_read(w: &World) -> Option<Effect> {
+    let leaving = matches!(w.session.confirm, Some(crate::world::Confirm::Uninstall { .. } | crate::world::Confirm::Exit));
+    let stale = w.suggestions.at().is_none_or(|t| w.now.0 >= t.plus(SUGGEST_FROM_POPOVER_MS).0);
+    (w.provisioned() && w.online() != Some(false) && !leaving && !w.take_open() && idle(w, Op::Suggest) && stale)
+        .then(|| Effect::Library(LibCmd::Suggest { everyone: w.space.owner_class() }))
+}
+
+/// How stale the popover lets auto-cleanup's list get before it reads it again (N75).
+pub const SUGGEST_FROM_POPOVER_MS: u64 = 3_600_000;
 
 /// The background update check: at launch, then every few hours, and when the popover
 /// opens a while after the last (B154); fail-soft (N37).
@@ -348,15 +389,23 @@ fn due_save(w: &World, fx: &mut Vec<Effect>) {
 /// a claim whose answer was lost. A pass that stopped early (a dead token, a gate up) is a
 /// whole answer: nothing re-fires until the next entry or the gate's poll.
 fn due_sweep(w: &World, fx: &mut Vec<Effect>) {
-    let Some(door) = w.session.windows.get(&WindowKind::Onboarding) else { return };
-    if plan_at(w).is_none() || w.provisioned() || !w.space.token || w.sweep.paste.is_some() {
+    if w.provisioned() || !w.space.token || w.sweep.paste.is_some() {
         return;
     }
     if w.online() == Some(false) || !idle(w, Op::Sweep) {
         return;
     }
-    if w.sweep.pass.is_none_or(|t| t < door.entered) {
-        fx.push(Effect::Cloud(CloudCmd::Sweep(SweepPart::Full)));
+    match w.session.windows.get(&WindowKind::Onboarding) {
+        // The plan re-probes on every entry.
+        Some(door) if plan_at(w).is_some() => {
+            if w.sweep.pass.is_none_or(|t| t < door.entered) {
+                fx.push(Effect::Cloud(CloudCmd::Sweep(SweepPart::Full)));
+            }
+        }
+        // With the window closed, once a process: where the setup stands, so wiring can
+        // finish on its own (N74). A gate still up waits for the window — no poll.
+        None if w.sweep.pass.is_none() && !w.launch.ending => fx.push(Effect::Cloud(CloudCmd::Sweep(SweepPart::Full))),
+        _ => {}
     }
 }
 
@@ -375,14 +424,12 @@ fn due_gate_poll(w: &World, fx: &mut Vec<Effect>) {
 /// under the survey's label — never one it found someone else's (B24).
 fn due_wire(w: &World, fx: &mut Vec<Effect>) {
     let Some(label) = w.sweep.label() else { return };
-    // Since N45 wiring also runs out of sight under the permissions chapter, from the
-    // moment the name row ticks — never on the way out of a relaunch.
-    let under_chapter = matches!(plan_at(w), Some(At::Done | At::PermMic | At::PermCamera | At::PermScreen | At::Priming))
-        && !w.provisioned()
-        && !w.launch.ending
-        && onboarding::rows_done(w)[3];
-    if (under_chapter || matches!(plan_at(w), Some(At::Wiring | At::Found(_)))) && w.online() != Some(false) && idle(w, Op::Wire) {
-        fx.push(Effect::Cloud(CloudCmd::Wire { label: label.to_string() }));
+    // Since N45 wiring runs out of sight under the permissions chapter, from the moment the
+    // name row ticks; since N74 out of the window too — closed, or never opened this launch
+    // — so it finishes on its own. Never on the way out of a relaunch.
+    let out_of_sight = w.space.token && !w.provisioned() && !w.launch.ending && onboarding::rows_done(w)[3];
+    if (out_of_sight || matches!(plan_at(w), Some(At::Wiring | At::Found(_)))) && w.online() != Some(false) && idle(w, Op::Wire) {
+        fx.push(Effect::Cloud(CloudCmd::Wire { label: label.to_string(), fresh: true }));
     }
 }
 

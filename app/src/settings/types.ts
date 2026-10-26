@@ -2,7 +2,7 @@
 // (Window<SettingsBody>, N36). Every string is final copy from the core.
 import type { Action } from "../lib/ipc";
 import type { Sheet, TextField } from "../library/types";
-import type { Button, Choice, PlanView, Rich, Toggle } from "../onboarding/types";
+import type { Button, Choice, Part, PlanView, Rich, Toggle } from "../onboarding/types";
 
 export type GeneralPane = {
   kind: "general";
@@ -22,18 +22,6 @@ export type GeneralPane = {
   help_links: Button[];
   /** “Uninstall shroom…”, quiet text at the tab's foot (B135). */
   uninstall: Button;
-  /** Your videos (N68): the space's play-count switch, this Mac's suggestions switch, the space's size. */
-  videos: {
-    heading: string;
-    count: Toggle;
-    count_hint: string;
-    /** The switch didn't go through (law 12). */
-    count_note: string | null;
-    suggest: Toggle;
-    suggest_hint: string;
-    used_label: string | null;
-    used: string | null;
-  } | null;
   /** “Your coding agent” (spec N62; DECISIONS B219). */
   agent: AgentCard;
 };
@@ -42,6 +30,20 @@ export type GeneralPane = {
  * whether the agent may start and stop recordings (off by default). `lit`: the command's
  * settings link opened Settings here, so the switch's row is lit for a moment (B216). */
 export type AgentCard = { label: string; prompt: string; copy: Button; read_first: Button; line: string; recording: Toggle; lit: boolean };
+
+/** The Videos tab (N79; General's group Your videos until then, N68): the space's
+ * play-count switch, this Mac's suggestions switch, and auto-cleanup's pop-up. */
+export type VideosPane = {
+  kind: "videos";
+  count: Toggle;
+  count_hint: string;
+  /** The switch didn't go through (law 12). */
+  count_note: string | null;
+  suggest: Toggle;
+  suggest_hint: string;
+  /** Delete videos nobody watches (N75): a pop-up, live on the setup Mac only. */
+  autoclean: { label: string; hint: string; choices: Choice[]; note: string | null } | null;
+};
 
 export type SpacePane = {
   kind: "space";
@@ -53,6 +55,13 @@ export type SpacePane = {
   /** Naming's switch and its line (N66) — the Mac that holds the setup key, once its page said. */
   ai: Toggle | null;
   ai_line: string | null;
+  /** The switch's parts while the page is re-wired, done or where it stopped (N80). */
+  ai_parts: Part[];
+  ai_long: string | null;
+  ai_failed: string | null;
+  /** “Space used” and the space's size and cost — owner-class Macs (N79). */
+  used_label: string | null;
+  used: string | null;
   exits: Button[];
 };
 
@@ -97,7 +106,7 @@ export type ReportForm = {
   mail: Button | null;
 };
 
-export type SettingsBody = { tabs: Choice[]; pane: GeneralPane | SpacePane | MembersPane; sheet: Sheet | null; report: ReportForm | null };
+export type SettingsBody = { tabs: Choice[]; pane: GeneralPane | VideosPane | SpacePane | MembersPane; sheet: Sheet | null; report: ReportForm | null };
 
 export type SettingsWindow = {
   id: string;

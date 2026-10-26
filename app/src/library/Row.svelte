@@ -134,13 +134,20 @@
           onblur={away}
         />
       {:else if row.title !== null}
+        {#if row.kept}
+          <!-- N75: pinned to keep — the small pin says so, to VoiceOver and on hover. -->
+          <svg class="kept" viewBox="0 0 16 16" role="img" aria-label={row.kept}><title>{row.kept}</title><path
+              d="M9.8 1.5l4.7 4.7-1.2.5-2.5 2.5.2 3.1-1.3 1.3-2.7-2.7-3.9 3.9H2.5v-.6l3.9-3.9-2.7-2.7 1.3-1.3 3.1.2 2.5-2.5z"
+            /></svg
+          >
+        {/if}
         <span class="title">{row.title}</span>
       {:else if row.state}
         <span class="title state {row.tone ?? ''}">{row.state}</span>
       {/if}
     </div>
     <div class="line2">
-      <span class="meta">{row.meta}</span>{#if row.state && row.title !== null}<span class="state {row.tone ?? ''}">{row.state}</span>{/if}{#if row.member}<span class="member">{row.member}</span>{/if}
+      <span class="meta">{row.meta}</span>{#if row.state && row.title !== null}<span class="state {row.tone ?? ''}">{row.state}</span>{/if}{#if row.going}<span class="state amber">{row.going}</span>{/if}{#if row.member}<span class="member">{row.member}</span>{/if}
     </div>
     {#if row.progress !== null}
       <div class="bar" role="progressbar" aria-valuenow={row.progress} aria-valuemin={0} aria-valuemax={100}>
