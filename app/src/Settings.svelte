@@ -12,6 +12,7 @@
   import ReportSheet from "./settings/ReportSheet.svelte";
   import Members from "./members/Members.svelte";
   import { isSettings, type SettingsWindow } from "./settings/types";
+  import { steady } from "./lib/steady";
 
   let w = $state.raw<SettingsWindow | null>(null);
   // Whether this window may take the keyboard, as a value of its own: read straight off
@@ -62,7 +63,10 @@
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("paste", onPaste);
+    // Update coming into its row never takes the click meant for what was there (N83).
+    const unsteady = steady();
     return () => {
+      unsteady();
       un.then((f) => f());
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("paste", onPaste);

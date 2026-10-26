@@ -1,13 +1,13 @@
 # The AI-on migration (spec N76, DECISIONS B235), the way a person meets it, on a
 # GitHub-hosted Mac and the dedicated Cloudflare test account (TESTING-PLAN D3): the signed
-# release installed by the one-line installer and set up through its own wizard with the AI
-# off, then updated in place to the early build — and the two guards, Not now and a
-# member's Mac (dev/mac/scenarios/ai-migration.sh). It builds nothing of the app: what runs
-# is what users run.
+# release before the AI was on, installed by the one-line installer and set up through its
+# own wizard with the AI off, then updated in place to the early build — and the two
+# guards, Not now and a member's Mac (dev/mac/scenarios/ai-migration.sh). It builds
+# nothing of the app: what runs is what users run.
 #
 # A release sets its space up under the product's own names (`v` over `shroom-space`), which
 # no other lane deploys on the test account; this run deletes that space before and after
-# (`e2e-run product-close`), and one run at a time takes it (the concurrency group). The
+# (`e2e-run product-close`), and one run at a time takes it (the job's concurrency group). The
 # run's token — the product's two powers, two hours — is minted and deleted as e2e-full's is.
 #
 # A session asks through a commit to dev/e2e/migration-request on its own branch (never
@@ -27,10 +27,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: e2e-migration
-  cancel-in-progress: false
-
 env:
   CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
@@ -41,8 +37,43 @@ env:
   SHROOM_REF: ci
 
 jobs:
+  # A push starts this only when the branch's own commits changed dev/e2e/migration-request,
+  # never because a merge of main brought another PR's request in (tools/e2e-asked.py).
+  # Seconds, on Linux, so a merge of main never waits for a Mac to say no. Run workflow
+  # always runs.
+  asked:
+    name: Did the branch ask?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      asked: ${{ steps.asked.outputs.asked }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The branch's own commits, past main
+        id: asked
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            python3 tools/e2e-asked.py dev/e2e/migration-request "$BEFORE" HEAD | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "asked=true" | tee -a "$GITHUB_OUTPUT"
+          fi
+
   migration:
     name: Release → early, the AI turned on
+    needs: asked
+    if: needs.asked.outputs.asked == 'true'
+    # One run at a time takes the product's space. The group is the job's, not the
+    # workflow's: GitHub keeps one pending run per group, so a merge's run that asks nothing
+    # must never stand in line and cancel a real request waiting there.
+    concurrency:
+      group: e2e-migration
+      cancel-in-progress: false
     runs-on: macos-26
     timeout-minutes: 90
     environment: cf-e2e
@@ -100,11 +131,11 @@ jobs:
           target/debug/e2e-run open "$RUNNER_TEMP/e2e/run-token" "$RUNNER_TEMP/e2e/space-id"
           target/debug/e2e-run product-close
 
-      # The latest release, as a person installs it; it opens, and is quit so its grants
-      # are written before anything has captured.
+      # The release the scenario migrates from (its FROM), by the one-line installer; it
+      # opens, and is quit so its grants are written before anything has captured.
       - name: The release, through the one-line installer
         run: |
-          curl -fsSL "https://shroom.am/install?ref=ci" | sh 2>&1 | tr '\r' '\n' | grep -v '^#'
+          bash dev/e2e/install-release.sh "$(sed -n 's/^FROM=//p' dev/mac/scenarios/ai-migration.sh)"
           sleep 5
           pkill -f "$HOME/Applications/shroom.app/Contents/MacOS/" || true
           sleep 2

@@ -135,7 +135,7 @@ jobs:
   #   app/test/*-drive.mjs, *-gallery.mjs, update-drive.sh
   #       drive the dev app's own windows (the `shroom-dev` keychain identity, a session
   #       with a screen). The galleries' Settings height check runs here on its own, cheap,
-  #       as app/test/settings-fit.mjs (the tests-fit lane).
+  #       as app/test/settings-fit.mjs (the tests-fit lane), with app/test/late-click.mjs.
   #   tests/l5/*
   #       a Tart VM cloned from a 30 GB golden image, and the `shroom-dev` identity.
   #   tests/l6/two-macs.mjs
@@ -214,6 +214,9 @@ jobs:
         run: |
           node --test tools/test/release-notes.test.mjs
           node tools/release-notes.mjs check --all
+
+      - name: Only a branch's own request starts an e2e run (tools/e2e-asked.py)
+        run: node --test tools/test/e2e-asked.test.mjs
 
       - name: The landing page, the media readers
         run: |
@@ -297,6 +300,11 @@ jobs:
 
       - name: Settings fits its window
         run: node app/test/settings-fit.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # A click on a control that something late just moved does nothing (N83): the popover
+      # and Settings, each handed a Scene that lands under the pointer. Seconds.
+      - name: A late arrival never takes a click
+        run: node app/test/late-click.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
   # The rest of the Rust workspace — the app, the recorder, the encoder, the uploader, the
   # updater, the CLI — and the media tests' real recordings, on a Mac.
