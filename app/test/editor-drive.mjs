@@ -13,6 +13,9 @@
 //   { "do": "drag", "focus": [x, y], "from": [x, y], "to": [x, y] }   cliclick: a click, a drag
 //   { "do": "click", "at": [x, y] }                                    cliclick: a click
 //   { "do": "move", "at": [x, y] }                                     cliclick: the pointer there
+//   { "do": "sweep", "press": bool, "from": [x, y], "to": [x, y] }      cliclick: the pointer along, in 2 px steps (held down)
+//   { "do": "same", "a": <name>, "b": <name>, "crop": [x, y, w, h], "page": [w, h] }
+//                                    ffmpeg: the two shots' pixels in the page's `crop` (CSS px), none far off? (else <a>-diff.png)
 //
 // Points are from the main display's top-left. The screenshots, the copy the drive read
 // back from the bucket and the report land in $MAC_OUT when the scenario sets it. A drive
@@ -95,6 +98,42 @@ async function answer(ask) {
   if (ask.do === "move") {
     cliclick(`m:${at([ask.at[0] - 3, ask.at[1]])}`, `m:${at(ask.at)}`);
     return;
+  }
+  if (ask.do === "sweep") {
+    // Slow, as a hand goes: every 2 px, each move its own event.
+    const [[x1, y1], [x2, y2]] = [ask.from, ask.to];
+    const n = Math.max(1, Math.round(Math.abs(x2 - x1) / 2));
+    const points = Array.from({ length: n }, (_, i) => [x1 + ((x2 - x1) * (i + 1)) / n, y1 + ((y2 - y1) * (i + 1)) / n]);
+    cliclick(`m:${at(ask.from)}`);
+    if (!ask.press) {
+      cliclick("-w", "8", ...points.map((p) => `m:${at(p)}`));
+      return;
+    }
+    cliclick(`dd:${at(ask.from)}`);
+    if (!dragMoves(points)) cliclick(...points.map((p) => `m:${at(p)}`));
+    cliclick(`du:${at(ask.to)}`);
+    return;
+  }
+  if (ask.do === "same") {
+    if (![ask.a, ask.b].every((n) => /^[a-z0-9-]+$/.test(n))) throw new Error("not shots this runner compares");
+    const [a, b] = [ask.a, ask.b].map((n) => join(dir, `${n}.png`));
+    // The shot is the window: its title bar, then the page, at the screen's scale.
+    const png = readFileSync(a);
+    const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+    const k = w / ask.page[0];
+    const top = h - ask.page[1] * k;
+    const [cx, cy, cw, ch] = ask.crop.map((v) => Math.round(v * k));
+    const crop = `format=rgb24,crop=${Math.min(cw, w - cx)}:${Math.min(ch, h - top - cy)}:${cx}:${Math.round(top) + cy}`;
+    // Off by a step or two is how a gradient's dashes come out painted in parts; a trace is
+    // the label's dark pill or line where the ruler is light: far off.
+    const raw = (f) => execFileSync(ffmpeg, ["-v", "error", "-i", f, "-vf", crop, "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], { maxBuffer: 1 << 28 });
+    const [pa, pb] = [raw(a), raw(b)];
+    let off = pa.length === pb.length ? 0 : Infinity;
+    for (let i = 0; i < pa.length && off !== Infinity; i += 3) if (Math.max(Math.abs(pa[i] - pb[i]), Math.abs(pa[i + 1] - pb[i + 1]), Math.abs(pa[i + 2] - pb[i + 2])) > 24) off++;
+    if (off === 0) return;
+    // Where they differ, made bright, beside them.
+    spawnSync(ffmpeg, ["-v", "error", "-y", "-i", a, "-i", b, "-lavfi", `[0]${crop}[a];[1]${crop}[b];[a][b]blend=all_mode=difference,lutrgb=r=min(255\\,val*32):g=min(255\\,val*32):b=min(255\\,val*32)`, "-frames:v", "1", join(dir, `${ask.a}-diff.png`)]);
+    throw new Error(`${ask.a} and ${ask.b} differ in ${off} pixels (${ask.a}-diff.png)`);
   }
   throw new Error(`unknown ask ${JSON.stringify(ask)}`);
 }

@@ -75,7 +75,7 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
 | `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195, B197): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), the final video on a lane of its own with its progress, the bake, and the upkeep (§3.3) | `editor::tests`; `--drive editor` |
 | `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: each editor window's video, as the editor's lane registered it, by byte ranges, and its peaks — to that window's webview alone (N73) | `media::tests` |
-| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
+| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/steady.ts` (a click on what just moved waits, D:B264), `lib/theme.css` (D:B122) | galleries, `late-click.mjs`; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
 | `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217; the app links it once for a Mac installed before it, D:B239); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
@@ -347,8 +347,8 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   start or not at all; without it, ⌥⌘M still drops its marker, unanswered on screen.
 - Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×720 (B247), Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
-- Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
-  the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
+- Every overlay joins `Runtime.excluded` when made and is left out of capture; every window
+  is recorded like any app's (`WindowKind::recorded`; N85, D:B266), and so is the bubble. Overlays and camera panels don't hide on ⌘H (D:B112).
 
 **Core → webview.** After every loop turn each showing surface gets its whole slice:
 `emit_to(label, "scene", slice)` — no diff, no `rev` (D:B107). On mount, `scene_get`. Slices
@@ -509,7 +509,7 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
 
 - **Bubble = an un-excluded native panel, zero compositing** (`runtime/camera.rs`, D:B47 g):
   180 pt, round, mirrored, a layer shroom draws the exact camera's frames into (the Scene
-  names it; a picture that stops restarts its camera, D:B188); every other shroom window is excluded, the bubble is recorded as-is. Born at
+  names it; a picture that stops restarts its camera, D:B188); the overlays are excluded, the bubble is recorded as-is (as is every window, N85). Born at
   `config`, through the countdown and take; follows the chosen display; dragged position in
   `prefs.bubble_at`; goes quietly if its camera leaves. The popover's camera picker is a camera
   pick or Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
