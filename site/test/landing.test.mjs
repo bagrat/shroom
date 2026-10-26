@@ -197,3 +197,20 @@ describe("a shared link's tag", () => {
     assert.match(html, /k === "ref" \|\| k\.indexOf\("utm_"\) === 0/);
   });
 });
+
+// Bagrat's from-scratch sitting quotes the landing (docs/CHECKPOINT.md). The app's checkpoint
+// test holds the rest of that doc; this half lives here, on Linux, so a change to the landing
+// is held to it without waiting for a Mac (tools/ci-route.py).
+describe("the checkpoint sitting, as the landing says it", () => {
+  const flat = readFileSync(`${ROOT}docs/CHECKPOINT.md`, "utf8").split(/\s+/).join(" ");
+
+  it("carries the install line the landing shows", () => {
+    assert.ok(html.includes("curl -fsSL https://shroom.am/install | sh</code>"));
+    assert.ok(flat.includes("curl -fsSL https://shroom.am/install | sh"), "docs/CHECKPOINT.md carries the install line");
+  });
+
+  it("names Read it first as the landing does", () => {
+    assert.ok(html.includes(">Read it first</a>"));
+    assert.ok(flat.includes('"Read it first"'), "docs/CHECKPOINT.md quotes \"Read it first\"");
+  });
+});

@@ -119,7 +119,8 @@ def self_test():
         "package-lock.json": True,
         "THIRD-PARTY-NOTICES.md": True,  # the app bundles it (include_str!)
         "worker/src/worker.js": True,  # the app deploys it (include_str!)
-        "site/index.html": True,  # the checkpoint test reads the install line
+        "tools/ci-route.py": True,  # the router itself
+        "tools/render-machine-md.py": True,  # writes the spec's readable form: not site-only
         "site/report.js": True,
         "docs/RELEASING.md": True,
         "docs/CHECKPOINT.md": True,
@@ -132,6 +133,8 @@ def self_test():
         "history/README.md": False,
         "README.md": False,
         "site/agent.md": False,
+        "site/index.html": False,  # the checkpoint's landing half runs on Linux (landing.test.mjs)
+        "tools/render-og-card.mjs": False,  # draws site/og.png and nothing else
         "worker/package.json": False,
     }
     bad = [f"{p}: want mac={w}, got {reaches_mac(p, read)!r}" for p, w in cases.items() if bool(reaches_mac(p, read)) != w]
