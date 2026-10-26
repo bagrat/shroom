@@ -344,8 +344,8 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   start or not at all; without it, ⌥⌘M still drops its marker, unanswered on screen.
 - Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×720 (B247), Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
-- Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
-  the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
+- Every overlay joins `Runtime.excluded` when made and is left out of capture; every window
+  is recorded like any app's (`WindowKind::recorded`; N85, D:B266), and so is the bubble. Overlays and camera panels don't hide on ⌘H (D:B112).
 
 **Core → webview.** After every loop turn each showing surface gets its whole slice:
 `emit_to(label, "scene", slice)` — no diff, no `rev` (D:B107). On mount, `scene_get`. Slices
@@ -506,7 +506,7 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
 
 - **Bubble = an un-excluded native panel, zero compositing** (`runtime/camera.rs`, D:B47 g):
   180 pt, round, mirrored, a layer shroom draws the exact camera's frames into (the Scene
-  names it; a picture that stops restarts its camera, D:B188); every other shroom window is excluded, the bubble is recorded as-is. Born at
+  names it; a picture that stops restarts its camera, D:B188); the overlays are excluded, the bubble is recorded as-is (as is every window, N85). Born at
   `config`, through the countdown and take; follows the chosen display; dragged position in
   `prefs.bubble_at`; goes quietly if its camera leaves. The popover's camera picker is a camera
   pick or Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
