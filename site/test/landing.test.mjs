@@ -73,14 +73,14 @@ describe("the landing", () => {
     assert.doesNotMatch(video, /<video\b[^>]*\bsrc=/, "the video's address is set by script, as the block nears the screen");
     assert.match(video, /<img src="hero-poster\.webp" alt="" width="1280" height="832"/, "the still is the site's own file");
     assert.doesNotMatch(html, /\.play svg \{[^}]*margin-left/, "the play triangles sit at their optical centre");
-    const order = ['class="terms"', 'class="how-to"', 'id="install"'].map((k) => html.indexOf(k));
-    assert.ok(order[0] < order[1] && order[1] < order[2], "the video's box comes after the terms (beside them on a laptop), and Install under the video (N59)");
+    const order = ['class="how-to"', 'id="install"', 'class="price"', 'class="tile terms"'].map((k) => html.indexOf(k));
+    assert.ok(order.every((at, i) => at > 0 && (i === 0 || order[i - 1] < at)), "the video over Install, then the price over the terms (N86)");
   });
 
   it("opens the setup walkthrough from a button under the hero, in a lightbox, only when asked (N70)", () => {
-    const box = html.slice(html.indexOf('<div class="box">'), html.indexOf('<section class="install"'));
+    const box = html.slice(html.indexOf('<div class="tile watch">'), html.indexOf('<section class="tile install"'));
     const at = (/** @type {string} */ k) => box.indexOf(k);
-    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"') && at('class="cut"') > at('class="walk"'), "the hero, then Setup walkthrough, then a cut, then Install");
+    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"'), "the hero, then Setup walkthrough, in one tile over Install's (N86)");
     assert.match(box, /<span>Setup walkthrough<\/span>/);
     assert.match(html, /<dialog class="lightbox" id="walk" aria-label="How to set up and use shroom, 4 minutes">/);
     assert.match(html, /<video controls playsinline preload="none"[^>]*data-src="\/how-to\.mp4"><\/video>/);
@@ -118,7 +118,7 @@ describe("the landing", () => {
     const tabs = [...html.matchAll(/<button type="button" role="tab" id="([^"]+)" aria-controls="([^"]+)" aria-selected="(true|false)"[^>]*>([^<]+)<\/button>/g)];
     assert.deepEqual(tabs.map((t) => t[4]), ["Terminal", "Homebrew", "Coding agent"]);
     assert.deepEqual(tabs.map((t) => t[3]), ["true", "false", "false"], "Terminal is chosen when the page opens");
-    const panel = (id) => html.match(new RegExp(`<div class="panel( on)?" id="${id}" role="tabpanel"[^>]*>([\\s\\S]*?)\\n        </div>`)) ?? [];
+    const panel = (id) => html.match(new RegExp(`<div class="panel( on)?" id="${id}" role="tabpanel"[^>]*>([\\s\\S]*?)\\n\\s*</div>`)) ?? [];
     const [term, brew, agent] = tabs.map((t) => panel(t[2]));
     assert.equal(term[1], " on", "its panel is the one showing");
     assert.ok(!brew[1] && !agent[1], "the others wait");
@@ -133,29 +133,87 @@ describe("the landing", () => {
     assert.match(html, /<script>document\.documentElement\.className = "js";<\/script>/);
   });
 
-  it("puts the terms before the video on a phone, and install last (Bagrat, 2026-10-17)", () => {
-    assert.match(html, /grid-template-areas: "brand box" "pitch box" "terms box";/, "a laptop: the box beside the pitch and the terms");
-    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?grid-template-areas: "brand" "pitch" "terms" "box";/, "a phone: the terms, then the video and install");
+  it("lays the page on one 12-column grid with one gutter, the masthead on its edges, the stacks ending on one line (N86)", () => {
+    assert.match(html, /\.mast, \.tiles \{[^}]*max-width: 1312px;[^}]*grid-template-columns: repeat\(12, minmax\(0, 1fr\)\); column-gap: 24px; \}/, "the masthead and the tiles share one grid");
+    assert.match(html, /\.mast \.brand \{ grid-column: 1 \/ 7;/, "the wordmark from the grid's left edge");
+    assert.match(html, /\.pitch \{ grid-column: 7 \/ 13; justify-self: end; text-align: right;/, "the headline to its right edge");
+    // The headline's middle on the wordmark's (Bagrat, 2026-10-25): the middles of their
+    // x-heights meet, in the wordmark's own em and ex, so it holds in whatever font the visitor has.
+    assert.match(html, /\.mast \{[^}]*align-items: start;/);
+    assert.match(html, /--h1: min\(38px, 2\.64vw\);\s*padding-top: calc\(var\(--mark\) \* 45 \/ 84 \+ 0\.36em - 0\.5ex\); \}/, "a bit smaller, and its middle on the wordmark's");
+    assert.match(html, /\.pitch h1 \{ text-box: trim-both ex alphabetic; margin-top: -0\.5ex; \}/);
+    assert.doesNotMatch(html, /class="punch"/, "no line under the headline (Bagrat, 2026-10-25)");
+    assert.match(html, /\.stack\.l \{ grid-column: 1 \/ 8; \}/, "the video and Install: seven columns");
+    assert.match(html, /\.stack\.r \{ grid-column: 8 \/ 13; \}/, "the price and the terms: five");
+    assert.match(html, /\.stack\.l > \.install, \.stack\.r > \.terms \{ flex: 1 1 auto; \}/, "the shorter stack grows to meet the other, at install or the terms");
+    assert.match(html, /\.stage \{ position: relative; aspect-ratio: 1280 \/ 832;/, "the video's frame keeps the still's shape, so the still shows whole (Bagrat, 2026-10-25)");
+    assert.doesNotMatch(html, /\.stage[^{]*\{[^}]*flex: 1/, "and never grows");
+    const tiles = html.match(/<main class="tiles">([\s\S]*?)<\/main>/)?.[1] ?? "";
+    const l = tiles.indexOf('<div class="stack l">'), r = tiles.indexOf('<div class="stack r">');
+    assert.ok(l >= 0 && l < tiles.indexOf('id="hero"') && tiles.indexOf('id="install"') < r && r < tiles.indexOf('class="price"'), "the left stack holds the video and Install, the right the price and the terms");
   });
 
-  it("says the terms in Bagrat's order, under the price bar (N59)", () => {
-    const terms = (html.match(/<ul class="terms">([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
+  it("puts the video, then the price, install and the terms on a phone (N86)", () => {
+    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.stack \{ display: contents; \}[\s\S]*?\.watch \{ order: 1; \} \.price \{ order: 2; \} \.install \{ order: 3; \} \.terms \{ order: 4; \}/);
+  });
+
+  it("gives each term its own icon, in the page's blue, in place of a tick (N86; Bagrat, 2026-10-25)", () => {
+    const list = html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "";
+    const icons = [...list.matchAll(/<li><span class="ic" data-icon="([a-z-]+)" aria-hidden="true"><svg viewBox="0 0 24 24">/g)].map((m) => m[1]);
+    assert.deepEqual(icons, ["cloud-lock", "receipt", "users", "armchair-off", "broom-sparkles", "list-checks", "code-xml"]);
+    assert.doesNotMatch(list, /M5 12\.5l4\.5 4\.5L19 7\.5/, "no ticks left");
+    assert.match(html, /\.terms svg \{[^}]*stroke: var\(--frost\); stroke-width: 2;/, "blue, at the icons' own stroke (green was dropped)");
+  });
+
+  it("titles the terms' tile in the price box's label style (N86; Bagrat chose \u201cWhy shroom?\u201d, 2026-10-25)", () => {
+    assert.match(html, /<section class="tile terms" aria-labelledby="terms-h">\s*<h2 id="terms-h">([^<]+)<\/h2>\s*<ul>/);
+    const title = html.match(/<h2 id="terms-h">([^<]+)<\/h2>/)?.[1];
+    assert.equal(title, landing.said.find((l) => l.id === "landing.why-shroom").text);
+    assert.match(html, /\.terms h2 \{ margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0\.06em; text-transform: uppercase; color: var\(--quiet\); \}/, "like \u201cWhat would it cost?\u201d");
+  });
+
+  it("says the terms in Bagrat's order, in their own tile under the price (N59, N86)", () => {
+    const terms = (html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
     const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
       "landing.delete-old-videos-and", "landing.you-set-cloudflare-up", "landing.open-source-every-line"];
     assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
   });
 
-  it("draws the price as one bar, its two ends labelled, inside the headline's own width (N59)", () => {
+  it("puts the price in its own box: the price first, one slider, when old videos go, no AI switch (N86)", () => {
     const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
     assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
-    const ends = [...pitch.matchAll(/<span class="(long|short)">(.*?)<\/span>/g)].map((m) => [m[1], visible(m[2])]);
-    const text = (id) => landing.said.find((l) => l.id === id).text;
-    assert.deepEqual(ends, [["long", text("landing.0-month-about-six")], ["long", text("landing.1-50-month-about")],
-      ["short", text("landing.0-3h-video")], ["short", text("landing.1-50-30h")]], "the long labels on a laptop, the short on a phone");
-    assert.match(html, /\.gauge \.ends \.short \{ display: none; \}/);
-    assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.gauge \.ends \.long \{ display: none; \}/);
-    assert.match(pitch, /<div class="gauge" role="img" aria-label="[^"]+">/, "the bar has a name a screen reader says");
-    assert.match(html, /\.pitch \{[^}]*width: max-content;/, "the headline, its line and the bar share the headline's width");
+    assert.doesNotMatch(html, /class="gauge"/, "the bar is gone (a tester read it as loading)");
+    const right = html.match(/<div class="stack r">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
+    const box = right.match(/<section class="price"[\s\S]*?<\/section>/)?.[0] ?? "";
+    assert.ok(box, "the price box heads the right-hand stack");
+    const at = (k) => box.indexOf(k);
+    assert.ok(at('id="price-h"') < at('id="cost"') && at('id="cost"') < at('id="hours"') && at('id="hours"') < at('class="keep'),
+      "the heading, then the price, then the slider, then Auto-cleanup after (Bagrat, 2026-10-24)");
+    assert.equal([...box.matchAll(/type="range"/g)].length, 1, "one slider");
+    assert.match(box, /<input class="live" type="range" id="hours" min="0" max="9" step="1" value="1"/, "hours of video a month, opening at 1 hour");
+    assert.match(box, /<button type="button" aria-pressed="true" data-months="1">30 days<\/button><button type="button" aria-pressed="false" data-months="2">60 days<\/button><button type="button" aria-pressed="false" data-months="12">a year<\/button>/,
+      "kept 30 days, 60 days or a year, 30 days when the page opens");
+    assert.doesNotMatch(html, /role="switch"/, "no AI switch: AI never changes the price (Bagrat, 2026-10-25)");
+    assert.match(box, /<div class="keep live"><span id="keep-l">Auto-cleanup after<\/span><div class="seg" role="group" aria-labelledby="keep-l">/, "its label over the choices (Bagrat's words, 2026-10-24)");
+    assert.match(box, new RegExp(`<p class="why">${landing.said.find((l) => l.id === "landing.a-team-of-20").text.replace(/[.$]/g, "\\$&")}</p>\\s*</section>`),
+      "the team's month closes the box, nothing under it (Bagrat, 2026-10-24)");
+  });
+
+  it("works the price out the page's way, in dollars, and opens at $0.00 (N86)", () => {
+    // About 10 GB per three hours at Normal (the FAQ), $0.015 a GB-month past Cloudflare's free
+    // 10 GB (B212), 30 days as a month.
+    const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
+    assert.match(script, /var HOURS = \[0\.5, 1, 2, 3, 5, 10, 20, 30, 50, 100\], GB_PER_HOUR = 10 \/ 3, FREE_GB = 10, USD_PER_GB = 0\.015;/);
+    assert.match(script, /cost\.textContent = "\$" \+ usd\.toFixed\(2\);/, "dollars, never cents (Bagrat, 2026-10-24)");
+    const month = (hours, months) => Math.max(0, hours * months * 10 / 3 - 10) * 0.015;
+    assert.match(html, /<b id="cost" class="free">\$0\.00<\/b>/, "an hour, kept 30 days: $0.00");
+    assert.equal(month(1, 1), 0);
+    assert.equal(month(1, 12).toFixed(2), "0.45");
+    // The team's line: 20 hours a month.
+    assert.equal(month(20, 1).toFixed(2), "0.85");
+    assert.equal(month(20, 12).toFixed(2), "11.85");
+    assert.doesNotMatch(html, /¢/, "no cents anywhere on the page");
+    assert.match(html, /\.price \.live \{ display: none; \}/, "without script the controls stay hidden and the opening reading shows");
   });
 
   it("points Read it first at the installer's own address", () => {
