@@ -13,7 +13,8 @@
 // removed); and a video the space has named (N66, N67): the owner's page named and waiting
 // for the free day, a viewer's with chapters in the seek bar on a laptop and a phone, and its
 // captions showing; and the owner's page left open, playing, while the name lands: the
-// chapters and captions come in place, with no reload. Prints one JSON summary; exits non-zero when a face is missing a line,
+// chapters and captions come in place, with no reload; and while its name is on its way, the
+// title shimmering whole with no border, on a laptop and a phone, and the box a click brings up. Prints one JSON summary; exits non-zero when a face is missing a line,
 // shows another face's, or throws.
 
 import { execFileSync } from "node:child_process";
@@ -67,6 +68,13 @@ function aiWords() {
   return words;
 }
 const AI_TRANSCRIPT = { v: 1, model: "@cf/openai/whisper-large-v3-turbo", language: "en", duration: AI_SECS, heard_through: AI_SECS, done: true, windows: 4, clock: null, words: aiWords(), tail: [] };
+/** A take that went live seconds ago in a space that listens, its name still on its way (N82). */
+const naming = (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 26", titled: false, createdAt: iso(Date.now() - 60_000), publishedAt: iso(Date.now() - 10_000) });
+/** The title shimmering with no border, its line the one given (N84). */
+const shimmering = (want) => async (page) => {
+  const s = await page.evaluate(() => { const t = document.getElementById("t"), cs = getComputedStyle(t); return { naming: t.hasAttribute("data-naming"), line: t.placeholder, border: cs.borderTopColor, sliding: cs.animationName }; });
+  return s.naming && s.line === want && /rgba\(0, 0, 0, 0\)|transparent/.test(s.border) && s.sliding === "shroom-shim" ? [] : [`the borderless shimmer saying “${want}” (got ${JSON.stringify(s)})`];
+};
 const named = (id, over = {}) => meta(id, {
   durationSec: AI_SECS, title: AI_TITLE, titled: false, media: { ...media(id), mp4: null },
   named: { by: "ai", model: "@cf/openai/gpt-oss-120b", at: iso(Date.now()), rev: "0:0", clock: null, words: AI_TRANSCRIPT.words.length, title: AI_TITLE, chapters: AI_SAID.map(([s, t]) => [s, t]), language: "en" },
@@ -294,6 +302,17 @@ const FACES = [
   // …or, the account's free day used up, that the name comes later; never an error.
   { face: "owner-naming-later", id: "OwnrDailyOwnrDly", owner: true, ai: true, record: (id) => meta(id, { durationSec: AI_SECS, title: "Untitled — Oct 18", titled: false, naming: { later: "daily" } }),
     lines: () => [line("owner-page", "owner-page.its-name-and-chapters-come")], absent: [NAMED_LINE] },
+  // While the name is on its way (N82, N84): the whole title shimmers with no border, its line
+  // in it (the short one on a phone); a click brings up the bordered box, the date its
+  // placeholder. A laptop's window (1280) fits the long line; a narrower one takes the short
+// one, as a phone does. The landed name is owner-named's.
+  { face: "owner-naming-shimmer", id: "OwnrShimOwnrShim", owner: true, ai: true, listens: true, viewport: { width: 1280, height: 760 }, record: (id) => naming(id), lines: () => [], act: shimmering(line("hearing", "hearing.ai-is-naming")) },
+  { face: "owner-naming-shimmer-phone", id: "OwnrShPhOwnrShPh", owner: true, ai: true, listens: true, phone: true, record: (id) => naming(id), lines: () => [], act: shimmering(line("hearing", "hearing.naming")) },
+  { face: "owner-naming-clicked", id: "OwnrShClOwnrShCl", owner: true, ai: true, listens: true, record: (id) => naming(id), lines: () => [], act: async (page) => {
+    await page.click("#t");
+    const s = await page.evaluate(() => { const t = document.getElementById("t"), cs = getComputedStyle(t); return { naming: t.hasAttribute("data-naming"), line: t.placeholder, border: cs.borderTopColor, focused: document.activeElement === t }; });
+    return s.naming || s.line !== "Untitled — Oct 26" || !s.focused || /rgba\(0, 0, 0, 0\)|transparent/.test(s.border) ? [`the bordered box with the date after a click (got ${JSON.stringify(s)})`] : [];
+  } },
   // A viewer's page: the chapters cut into the seek bar, the one under the pointer named in a
   // tip; the one playing beside the time and in the bar's spoken value; Captions in the row.
   { face: "live-chapters", id: "LiveChapLiveChap", ai: true, record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE, `· ${AI_SAID[0][1]}`], absent: [NAMED_LINE], act: chaptered(false) },
@@ -481,7 +500,7 @@ async function main() {
           for (const k of [...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${f.id}/thumb-`))) env.BUCKET.store.delete(k);
         }
         const engine = f.engine === "chromium" ? (chrome ??= await chromium.launch()) : browser;
-        const context = await engine.newContext({ colorScheme: scheme, ...(f.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true } : { viewport: { width: 900, height: 640 } }) });
+        const context = await engine.newContext({ colorScheme: scheme, ...(f.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true } : { viewport: f.viewport ?? { width: 900, height: 640 } }) });
         if (f.owner) await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
         const page = await context.newPage();
         if (f.hold) await page.route(f.hold, () => {});

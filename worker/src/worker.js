@@ -103,6 +103,9 @@ export const COPY = {
   // Names, chapters and captions (N66, N67): the owner page's line while the name waits for
   // the free day, and the player's Captions button, in DECISIONS' copy table too.
   namingLater: "Its name and chapters come a little later, once your free hours are back.",
+  // The title while the name is on its way (N84): Bagrat's line, and on a narrow window the short one.
+  aiNaming: "AI is naming your video, click to name manually",
+  aiNamingShort: "Naming…",
   captions: "Captions",
   // Voice cuts on the owner page (N65, owner-page-cuts; provisional words).
   cutsHeading: "Cut where you said “shroom cut”",
@@ -2091,10 +2094,12 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const nameTag = namingField(meta, now, listens).named ?? null;
   const hearing = drainedNow && (cutsTag === "coming" || nameTag === "coming");
   const line = drainedNow ? (hearing ? COPY.finishing : "") : stalled ? waiting : COPY.finishing;
-  // While the name is on its way the empty field shimmers beside its placeholder (N82), and the
-  // page doesn't open in it: a click drops the shimmer and takes typing.
+  // While the name is on its way the empty title shimmers whole, borderless, its placeholder the
+  // line that says a click names it (N82, N84), and the page doesn't open in it: a click brings
+  // up the bordered box, the date its placeholder again.
   const shim = ai.waiting && !value && !meta.naming?.later && (!live || nameTag === "coming");
-  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${value || shim ? "" : " autofocus"}>${shim ? `<span class="nameshim" id="ns" aria-hidden="true" hidden></span>` : ""}`;
+  const naming = shim ? ` data-naming="${escapeHtml(COPY.aiNamingShort)}" data-date="${escapeHtml(placeholder)}"` : "";
+  const field = `<input class="title" id="t" maxlength="${TITLE_MAX}" aria-label="Title" value="${escapeHtml(value)}" placeholder="${escapeHtml(shim ? COPY.aiNaming : placeholder)}"${naming}${value || shim ? "" : " autofocus"}>`;
   const frame = meta.media?.poster ? `<img src="/m/${id}/poster.jpg" alt="">` : "";
   const stage = live ? aiPlayer(playerHtml(id, meta), ai) : `<div class="wait" id="w">${frame}</div>`;
   // Download hands over the video as it plays (N63): it waits for an edit's permanent copy.
@@ -5224,11 +5229,12 @@ const AI_STYLE = `.player.ch .seek::-webkit-slider-runnable-track{background:tra
 @media (max-width:479px){.chn{display:none}}
 @media (prefers-reduced-motion:reduce){.chs i{transition:none}}`;
 
-/** The owner's empty title while the name is on its way (N82): a soft gradient sliding beside
- * the placeholder, placed by the page's script; still where motion is reduced. */
-const NAME_SHIM_STYLE = `.head{position:relative}.nameshim{position:absolute;height:12px;margin-top:-6px;border-radius:6px;pointer-events:none;background:linear-gradient(90deg,var(--field) 0%,var(--edge) 50%,var(--field) 100%);background-size:200% 100%;animation:shroom-shim 1.6s linear infinite}.nameshim[hidden]{display:none}
-@keyframes shroom-shim{from{background-position:100% 0}to{background-position:-100% 0}}
-@media (prefers-reduced-motion:reduce){.nameshim{animation:none}}`;
+/** The owner's empty title while the name is on its way (N84): no border and no fill, a soft
+ * gradient sliding across the whole title and its line, until it's clicked; still where motion
+ * is reduced. The line steps down to fit a narrower field (`--naming-size`, 18 px at least). */
+const NAME_SHIM_STYLE = `.title[data-naming]::placeholder{font-size:var(--naming-size,1em)}.title[data-naming]:not(:focus){border-color:transparent;background-color:transparent;background-image:linear-gradient(100deg,transparent 30%,var(--edge) 50%,transparent 70%);background-size:200% 100%;background-repeat:no-repeat;animation:shroom-shim 1.6s linear infinite}
+@keyframes shroom-shim{from{background-position:150% 0}to{background-position:-50% 0}}
+@media (prefers-reduced-motion:reduce){.title[data-naming]:not(:focus){animation:none}}`;
 
 const ICON_CC = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M7.2 6.6a1.8 1.8 0 1 0 0 2.8M11.7 6.6a1.8 1.8 0 1 0 0 2.8"/></svg>`;
 
@@ -5311,18 +5317,19 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * until the take's voice cuts are in too; and whenever what plays changes later (a cut landing,
  * a press on the strip), a page with chapters asks once more and redraws the bar to match.
  * Answers are taken in the order they were asked. A title typed before the page opened asks
- * too, for the chapters and captions (N82). The empty field's shimmer is placed beside its
- * placeholder and goes at a click, a key, a name, or the page's line ending; when the status
+ * too, for the chapters and captions (N82). The empty title's shimmer and its line (N84): the
+ * long line steps down in size to fit the field, and takes the short one below 18 px, and go at a click, a key, a name, or
+ * the page's line ending, the date its placeholder again; when the status
  * says the name is in, the page's line waits for this script's answer to fade (N82).
  * @param {string} id @param {AiFace} ai */
 function aiOwnerScript(id, ai) {
   if (!ai.waiting && !ai.coming && !ai.chapters.length) return "";
   return `<script>(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, coming: ai.coming, drawn: ai.chapters, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
-var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn),ns=document.getElementById("ns");
-function unshim(){if(ns){ns.remove();ns=null}}
-function place(){if(!ns)return;if(t.value||document.activeElement===t)return unshim();try{var cs=getComputedStyle(t),g=document.createElement("canvas").getContext("2d");g.font=cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;
-var x=t.offsetLeft+parseFloat(cs.paddingLeft)+g.measureText(t.placeholder).width+12,w=t.offsetLeft+t.offsetWidth-12-x;if(w<24){ns.hidden=true;return}
-ns.style.left=x+"px";ns.style.width=w+"px";ns.style.top=t.offsetTop+t.offsetHeight/2+"px";ns.hidden=false}catch(e){}}
+var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn),sh=t.hasAttribute("data-naming"),wide=t.placeholder;
+function unshim(){if(!sh)return;sh=false;t.placeholder=t.getAttribute("data-date")||"";t.removeAttribute("data-naming")}
+function place(){if(!sh)return;if(t.value||document.activeElement===t)return unshim();try{var cs=getComputedStyle(t),g=document.createElement("canvas").getContext("2d");g.font=cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;
+var room=t.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight),size=parseFloat(cs.fontSize),fit=Math.floor(size*room/g.measureText(wide).width);
+if(fit>=size){t.placeholder=wide;t.style.removeProperty("--naming-size")}else if(fit>=18){t.placeholder=wide;t.style.setProperty("--naming-size",fit+"px")}else{t.placeholder=t.getAttribute("data-naming");t.style.removeProperty("--naming-size")}}catch(e){}}
 function say(x){if(l){l.textContent=x;l.hidden=!x}}
 function take(x){unshim();if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
 t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
@@ -5335,7 +5342,7 @@ if(!j||late){if(then)then(j,false);return}if(c.waiting){if(j.named&&!j.titled)ta
 function poll(){if(++n>60)return;ask(function(j,ok){if(j===null)return;if(ok&&j&&j.done)return;setTimeout(poll,j&&n<12?5000:30000)})}
 document.addEventListener("shroom:keep",function(){ask()});document.addEventListener("shroom:finished",unshim);
 document.addEventListener("shroom:named-in",function(e){e.detail.taken=true;ask(function(){e.detail.go()})});
-if(ns){t.addEventListener("focus",unshim);t.addEventListener("pointerdown",unshim);t.addEventListener("input",unshim);place();try{window.addEventListener("resize",place)}catch(e){}}
+if(sh){t.addEventListener("focus",unshim);t.addEventListener("pointerdown",unshim);t.addEventListener("input",unshim);place();try{window.addEventListener("resize",place)}catch(e){}}
 if(c.waiting){t.addEventListener("pointerdown",function(){touched=true});t.addEventListener("input",function(){touched=true});
 t.addEventListener("change",function(){mine=true;say("")})}if(c.waiting||c.coming)setTimeout(poll,5000)})()</script>`;
 }
