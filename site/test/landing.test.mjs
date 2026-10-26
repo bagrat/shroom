@@ -74,13 +74,13 @@ describe("the landing", () => {
     assert.match(video, /<img src="hero-poster\.webp" alt="" width="1280" height="832"/, "the still is the site's own file");
     assert.doesNotMatch(html, /\.play svg \{[^}]*margin-left/, "the play triangles sit at their optical centre");
     const order = ['class="how-to"', 'id="install"', 'class="price"', 'class="tile terms"'].map((k) => html.indexOf(k));
-    assert.ok(order.every((at, i) => at > 0 && (i === 0 || order[i - 1] < at)), "the video over Install, then the price over the terms (N85)");
+    assert.ok(order.every((at, i) => at > 0 && (i === 0 || order[i - 1] < at)), "the video over Install, then the price over the terms (N86)");
   });
 
   it("opens the setup walkthrough from a button under the hero, in a lightbox, only when asked (N70)", () => {
     const box = html.slice(html.indexOf('<div class="tile watch">'), html.indexOf('<section class="tile install"'));
     const at = (/** @type {string} */ k) => box.indexOf(k);
-    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"'), "the hero, then Setup walkthrough, in one tile over Install's (N85)");
+    assert.ok(at('id="hero"') > 0 && at('class="walk"') > at('id="hero"'), "the hero, then Setup walkthrough, in one tile over Install's (N86)");
     assert.match(box, /<span>Setup walkthrough<\/span>/);
     assert.match(html, /<dialog class="lightbox" id="walk" aria-label="How to set up and use shroom, 4 minutes">/);
     assert.match(html, /<video controls playsinline preload="none"[^>]*data-src="\/how-to\.mp4"><\/video>/);
@@ -133,7 +133,7 @@ describe("the landing", () => {
     assert.match(html, /<script>document\.documentElement\.className = "js";<\/script>/);
   });
 
-  it("lays the page on one 12-column grid with one gutter, the masthead on its edges, the stacks ending on one line (N85)", () => {
+  it("lays the page on one 12-column grid with one gutter, the masthead on its edges, the stacks ending on one line (N86)", () => {
     assert.match(html, /\.mast, \.tiles \{[^}]*max-width: 1312px;[^}]*grid-template-columns: repeat\(12, minmax\(0, 1fr\)\); column-gap: 24px; \}/, "the masthead and the tiles share one grid");
     assert.match(html, /\.mast \.brand \{ grid-column: 1 \/ 7;/, "the wordmark from the grid's left edge");
     assert.match(html, /\.pitch \{ grid-column: 7 \/ 13; justify-self: end; text-align: right;/, "the headline to its right edge");
@@ -153,11 +153,11 @@ describe("the landing", () => {
     assert.ok(l >= 0 && l < tiles.indexOf('id="hero"') && tiles.indexOf('id="install"') < r && r < tiles.indexOf('class="price"'), "the left stack holds the video and Install, the right the price and the terms");
   });
 
-  it("puts the video, then the price, install and the terms on a phone (N85)", () => {
+  it("puts the video, then the price, install and the terms on a phone (N86)", () => {
     assert.match(html, /@media \(max-width: 900px\) \{[\s\S]*?\.stack \{ display: contents; \}[\s\S]*?\.watch \{ order: 1; \} \.price \{ order: 2; \} \.install \{ order: 3; \} \.terms \{ order: 4; \}/);
   });
 
-  it("gives each term its own icon, in the page's blue, in place of a tick (N85; Bagrat, 2026-10-25)", () => {
+  it("gives each term its own icon, in the page's blue, in place of a tick (N86; Bagrat, 2026-10-25)", () => {
     const list = html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "";
     const icons = [...list.matchAll(/<li><span class="ic" data-icon="([a-z-]+)" aria-hidden="true"><svg viewBox="0 0 24 24">/g)].map((m) => m[1]);
     assert.deepEqual(icons, ["cloud-lock", "receipt", "users", "armchair-off", "broom-sparkles", "list-checks", "code-xml"]);
@@ -165,21 +165,21 @@ describe("the landing", () => {
     assert.match(html, /\.terms svg \{[^}]*stroke: var\(--frost\); stroke-width: 2;/, "blue, at the icons' own stroke (green was dropped)");
   });
 
-  it("titles the terms' tile in the price box's label style (N85; Bagrat chose \u201cWhy shroom?\u201d, 2026-10-25)", () => {
+  it("titles the terms' tile in the price box's label style (N86; Bagrat chose \u201cWhy shroom?\u201d, 2026-10-25)", () => {
     assert.match(html, /<section class="tile terms" aria-labelledby="terms-h">\s*<h2 id="terms-h">([^<]+)<\/h2>\s*<ul>/);
     const title = html.match(/<h2 id="terms-h">([^<]+)<\/h2>/)?.[1];
     assert.equal(title, landing.said.find((l) => l.id === "landing.why-shroom").text);
     assert.match(html, /\.terms h2 \{ margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0\.06em; text-transform: uppercase; color: var\(--quiet\); \}/, "like \u201cWhat would it cost?\u201d");
   });
 
-  it("says the terms in Bagrat's order, in their own tile under the price (N59, N85)", () => {
+  it("says the terms in Bagrat's order, in their own tile under the price (N59, N86)", () => {
     const terms = (html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
     const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
       "landing.delete-old-videos-and", "landing.you-set-cloudflare-up", "landing.open-source-every-line"];
     assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
   });
 
-  it("puts the price in its own box: the price first, one slider, when old videos go, no AI switch (N85)", () => {
+  it("puts the price in its own box: the price first, one slider, when old videos go, no AI switch (N86)", () => {
     const pitch = html.match(/<div class="pitch">([\s\S]*?)\n  <\/div>/)?.[1] ?? "";
     assert.match(pitch, /<h1>Record\. Share\. Pay-as-you-go\.<\/h1>/);
     assert.doesNotMatch(html, /class="gauge"/, "the bar is gone (a tester read it as loading)");
@@ -199,7 +199,7 @@ describe("the landing", () => {
       "the team's month closes the box, nothing under it (Bagrat, 2026-10-24)");
   });
 
-  it("works the price out the page's way, in dollars, and opens at $0.00 (N85)", () => {
+  it("works the price out the page's way, in dollars, and opens at $0.00 (N86)", () => {
     // About 10 GB per three hours at Normal (the FAQ), $0.015 a GB-month past Cloudflare's free
     // 10 GB (B212), 30 days as a month.
     const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
