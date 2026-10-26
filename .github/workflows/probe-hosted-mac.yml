@@ -1,0 +1,109 @@
+# PROBE (never merged): the hosted Mac's two first-attempt failures, reproduced under load
+# on purpose and tried against their fixes.
+name: Probe, hosted Mac under load
+
+on:
+  push:
+    branches: ['claude/hosted-mac-probe']
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+  CARGO_INCREMENTAL: 0
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+jobs:
+  webkit:
+    name: WebKit frames, ${{ matrix.hogs }} hogs
+    runs-on: macos-26
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        hogs: [0, 12]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - run: |
+          npm ci
+          npx playwright install webkit
+          brew install ffmpeg
+      - run: node dev/probe/webkit-frames.mjs 15 ${{ matrix.hogs }} | tee probe.jsonl
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: webkit-${{ matrix.hogs }}
+          path: probe.jsonl
+
+  camera:
+    name: Camera, ${{ matrix.variant }} ${{ matrix.copy }}
+    runs-on: macos-26
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [old, new]
+        copy: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo mdutil -a -i off || true
+      - name: Rust toolchain
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: mac-macos-26-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: false
+      - name: A throwaway identity
+        run: |
+          .github/scripts/signing-keychain.sh scratch "$RUNNER_TEMP/scratch.keychain-db"
+          tools/make-release-identity.sh "shroom-dev" --keychain "$RUNNER_TEMP/scratch.keychain-db" --out "$RUNNER_TEMP/dev-identity" --days 365 >/dev/null
+          .github/scripts/signing-keychain.sh drop "$RUNNER_TEMP/scratch.keychain-db"
+          SIGNING_P12_BASE64=$(cat "$RUNNER_TEMP/dev-identity/shroom-dev.p12.base64")
+          SIGNING_P12_PASSWORD=$(cat "$RUNNER_TEMP/dev-identity/shroom-dev.password")
+          export SIGNING_P12_BASE64 SIGNING_P12_PASSWORD
+          .github/scripts/signing-keychain.sh import
+      - run: npm run build:dev --workspace app
+      - run: brew install ffmpeg cliclick
+      - run: dev/mac/mac.sh prepare target/debug/bundle/macos/shroom-dev.app
+      - name: The camera, under 12 hogs
+        run: |
+          for i in $(seq 12); do nohup sh -c 'while :; do :; done' >/dev/null 2>&1 & done
+          sleep 20; uptime
+          script=dev/mac/camera.sh; [ "${{ matrix.variant }}" = old ] && script=dev/mac/camera-old.sh
+          start=$(date +%s)
+          MAC_APP="$PWD/target/debug/bundle/macos/shroom-dev.app" bash "$script" up; echo "exit $?, $(( $(date +%s) - start )) s"
+          uptime
+          pkill -f 'while :; do :; done' || true
+          echo "--- obs.log"; cat "$RUNNER_TEMP/mac-camera/obs.log" || true
+          echo "--- enable.log"; grep -v -i password "$RUNNER_TEMP/mac-camera/enable.log" || true
+          if grep -q '^fail' "$RUNNER_TEMP/mac/results.tsv"; then echo "VERDICT ${{ matrix.variant }}: FAIL"; else echo "VERDICT ${{ matrix.variant }}: PASS"; fi
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: camera-${{ matrix.variant }}-${{ matrix.copy }}
+          path: |
+            ${{ runner.temp }}/mac/camera
+            ${{ runner.temp }}/mac/results.tsv
