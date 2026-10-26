@@ -14,7 +14,9 @@
 // for the free day, a viewer's with chapters in the seek bar on a laptop and a phone, and its
 // captions showing; and the owner's page left open, playing, while the name lands: the
 // chapters and captions come in place, with no reload; and while its name is on its way, the
-// title shimmering whole with no border, on a laptop and a phone, and the box a click brings up. Prints one JSON summary; exits non-zero when a face is missing a line,
+// title shimmering whole with no border, on a laptop and a phone, and the box a click brings up. And the owner editing the chapters (N87):
+// Edit chapters shut and open, a rename, an add at the playhead and a remove, a time too near,
+// the switch off, a video with none, a phone, and the icon greyed before the video plays. Prints one JSON summary; exits non-zero when a face is missing a line,
 // shows another face's, or throws.
 
 import { execFileSync } from "node:child_process";
@@ -205,6 +207,22 @@ const iconsOf = (page) => page.evaluate(() => ["#c", "#th", "#dl a", "#ed"].map(
   const b = el.getBoundingClientRect();
   return { q, x: Math.round(b.left * 2) / 2, y: Math.round(b.top * 2) / 2, w: b.width, greyed: el.getAttribute("aria-disabled") === "true", href: el.getAttribute("href") };
 }));
+/** The owner's chapters panel (owner-page-chapters): its lines by id, and the two with a time or a name. */
+const chLine = (id) => line("owner-page-chapters", `owner-page-chapters.${id}`);
+const addAt = (t) => chLine("add-a-chapter-at").replace("1:20", t);
+const removed = (name) => chLine("removed").replace("Trial results and metrics", name);
+/** Opens the panel and waits for its rows. */
+async function openChapters(page) {
+  await page.click("#chb");
+  await page.waitForFunction(() => document.querySelector("#chp .ch-add button")?.textContent, null, { timeout: 8000 }).catch(() => {});
+}
+/** Lets a save land. */
+const settle = (page) => page.waitForTimeout(400);
+/** Moves the playhead as a drag on the bar does. */
+async function seekTo(page, at) {
+  await page.evaluate((at) => { const sk = document.querySelector(".seek"); sk.value = String(at); sk.dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("video").currentTime = at; }, at);
+  await page.waitForTimeout(300);
+}
 
 // Each face: its id in spec/machine.json, the record behind it, how it's opened, and which of the
 // spec's lines it must show (the lines that vary are pinned by the record: 2 of 5 is 40 %).
@@ -411,6 +429,83 @@ const FACES = [
   { face: "seek-head-owner", id: "SeekOwnrSeekOwnr", owner: true, record: (id) => meta(id, { media: media(id, false), progress: { done: 9, total: 9, updatedAt: iso(Date.now()) } }), lines: () => [], act: headInside() },
   { face: "seek-head-embed", id: "SeekEmbdSeekEmbd", embed: true, record: (id) => meta(id, { media: media(id, false) }), lines: () => [], absent: [TITLE], act: headInside() },
   { face: "seek-head-chapters", id: "SeekChapSeekChap", ai: true, engine: "chromium", record: (id) => named(id, { titled: true }), lines: () => [AI_TITLE], act: headInside(AI_SAID.slice(1).map(([t]) => t)) },
+  // The owner edits the chapters (N87, owner-page-chapters): Edit chapters among the title's
+  // icons opens the panel under the player; nothing for chapters shows until it's clicked.
+  { face: "owner-chapters-closed", id: "ChapShutChapShut", owner: true, ai: true, engine: "chromium", record: (id) => named(id), lines: () => [], absent: [chLine("show-in-the-seek-bar"), chLine("done")],
+    act: async (page) => {
+      const missing = [];
+      const head = await page.$$eval(".head > *", (xs) => xs.map((x) => x.id || x.className));
+      if (head.indexOf("chb") < 0 || (head.includes("ed") && head.indexOf("chb") > head.indexOf("ed"))) missing.push(`Edit chapters before the scissors (got ${head.join(", ")})`);
+      if (!(await page.$eval("#chp", (x) => x.hidden))) missing.push("the panel shut");
+      await page.hover("#chb");
+      await page.waitForTimeout(600);
+      const tip = await page.$eval("#chb", (b) => getComputedStyle(b, "::after").content.replace(/^"|"$/g, ""));
+      if (tip !== chLine("edit-chapters")) missing.push(`the tooltip “${chLine("edit-chapters")}” (got “${tip}”)`);
+      return missing;
+    } },
+  { face: "owner-chapters-open", id: "ChapOpenChapOpen", owner: true, ai: true, engine: "chromium", full: true, record: (id) => named(id), before: openChapters,
+    lines: () => [chLine("chapters"), chLine("show-in-the-seek-bar"), chLine("done"), addAt("0:00")], act: async (page) => {
+      const missing = [];
+      const rows = await page.$$eval("#chp .ch-row", (xs) => xs.map((x) => ({ at: x.querySelector(".ch-at")?.textContent, name: x.querySelector(".ch-name")?.value, move: !!x.querySelector(".ch-mv"), remove: x.querySelector(".ch-rm")?.getAttribute("aria-label") })));
+      const want = AI_SAID.map(([s, t]) => [`${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`, t]);
+      if (JSON.stringify(rows.map((r) => [r.at, r.name])) !== JSON.stringify(want)) missing.push(`the four chapters as rows (got ${JSON.stringify(rows)})`);
+      if (rows[0]?.move || !rows[1]?.move) missing.push("the arrow on every row but the first");
+      if (rows.some((r) => r.remove !== chLine("remove-this-chapter"))) missing.push("✕ named Remove this chapter");
+      if ((await page.$eval("#chb", (b) => b.getAttribute("aria-expanded"))) !== "true") missing.push("the icon lit while open");
+      return missing;
+    } },
+  { face: "owner-chapters-edited", saves: true, id: "ChapEditChapEdit", owner: true, ai: true, engine: "chromium", full: true, record: (id) => named(id),
+    before: async (page) => {
+      await openChapters(page);
+      // Rename the second; add one at 1:30; remove the third.
+      await page.fill("#chp .ch-row:nth-child(2) .ch-name", "The invoice bug");
+      await page.press("#chp .ch-row:nth-child(2) .ch-name", "Enter");
+      await settle(page);
+      await seekTo(page, 90);
+      await page.click("#chp .ch-add button");
+      await page.keyboard.type("Questions");
+      await page.keyboard.press("Enter");
+      await settle(page);
+      await page.click("#chp .ch-row:nth-child(4) .ch-rm");
+      await settle(page);
+    },
+    lines: () => [removed(AI_SAID[2][1]), chLine("undo")], act: async (page) => {
+      const missing = [];
+      const names = await page.$$eval("#chp .ch-row", (xs) => xs.map((x) => x.querySelector(".ch-name")?.value ?? x.textContent));
+      const want = [AI_SAID[0][1], "The invoice bug", "Questions", removed(AI_SAID[2][1]) + "Undo", AI_SAID[3][1]];
+      if (JSON.stringify(names) !== JSON.stringify(want)) missing.push(`the rows after the edits (got ${JSON.stringify(names)})`);
+      const bar = await page.$$eval(".chs i", (xs) => xs.length);
+      if (bar !== 4) missing.push(`the bar cut again into 4 (got ${bar})`);
+      const tip = await tipAt(page, 95, false);
+      if (tip?.chapter !== "Questions") missing.push(`the tip naming the new chapter at 1:35 (got ${JSON.stringify(tip)})`);
+      return missing;
+    } },
+  { face: "owner-chapters-short", saves: true, id: "ChapNearChapNear", owner: true, ai: true, engine: "chromium", full: true, record: (id) => named(id),
+    before: async (page) => {
+      await openChapters(page);
+      await page.click("#chp .ch-row:nth-child(3) button.ch-at");
+      await page.fill("#chp .ch-time", "1:10");
+      await page.press("#chp .ch-time", "Enter");
+      await page.waitForTimeout(300);
+    }, lines: () => [chLine("needs-5-seconds")] },
+  { face: "owner-chapters-off", saves: true, id: "ChapOffxChapOffx", owner: true, ai: true, engine: "chromium", full: true, record: (id) => named(id),
+    before: async (page) => { await openChapters(page); await page.click("#chp .ch-sw"); await settle(page); },
+    lines: () => [chLine("off-viewers-see")], act: async (page) => ((await page.$$eval(".player.ch", (xs) => xs.length)) ? ["the bar whole"] : []) },
+  { face: "owner-chapters-none", saves: true, id: "ChapNoneChapNone", owner: true, engine: "chromium", full: true, record: (id) => meta(id), before: openChapters,
+    lines: () => [chLine("no-chapters-yet"), chLine("add-the-first-chapter")], act: async (page) => {
+      await page.click("#chp .ch-add button");
+      const ph = await page.$eval("#chp .ch-name", (n) => (document.activeElement === n ? n.placeholder : "")).catch(() => "");
+      return ph === chLine("name-this-chapter") ? [] : [`a row at 0:00, its name open (got “${ph}”)`];
+    } },
+  { face: "owner-chapters-phone", id: "ChapPhonChapPhon", owner: true, ai: true, engine: "chromium", phone: true, full: true, record: (id) => named(id), before: openChapters,
+    lines: () => [chLine("chapters"), "In the seek bar"], absent: [chLine("show-in-the-seek-bar")] },
+  { face: "owner-chapters-greyed", id: "ChapGreyChapGrey", owner: true, engine: "chromium", record: (id) => uploading(id, 2, 5), lines: () => [], act: async (page) => {
+    const missing = [];
+    if ((await page.$eval("#chb", (b) => b.getAttribute("aria-disabled"))) !== "true") missing.push("Edit chapters greyed before the video plays");
+    await page.click("#chb", { force: true });
+    if (!(await page.$eval("#chp", (x) => x.hidden))) missing.push("nothing opens while it's greyed");
+    return missing;
+  } },
 ];
 
 /** A real 8 s fMP4 HLS stream and its poster, as the app uploads them. */
@@ -499,6 +594,8 @@ async function main() {
           await env.BUCKET.put(metaKey(f.id), f.record(f.id));
           for (const k of [...env.BUCKET.store.keys()].filter((k) => k.startsWith(`rec/${f.id}/thumb-`))) env.BUCKET.store.delete(k);
         }
+        // A face that saves starts each scheme from its record as written.
+        if (f.saves) await env.BUCKET.put(metaKey(f.id), f.record(f.id));
         const engine = f.engine === "chromium" ? (chrome ??= await chromium.launch()) : browser;
         const context = await engine.newContext({ colorScheme: scheme, ...(f.phone ? { viewport: { width: 390, height: 844 }, hasTouch: true } : { viewport: f.viewport ?? { width: 900, height: 640 } }) });
         if (f.owner) await context.addCookies([{ name: cname, value: cvalue, url: origin }]);
@@ -553,7 +650,7 @@ async function main() {
         const shown = (f.absent ?? []).filter((l) => text.includes(l));
         backgrounds.push(await page.evaluate(() => getComputedStyle(document.body).backgroundColor));
         const name = `${f.face.replace(/[^a-z0-9-]+/g, "-")}-${scheme}.png`;
-        await page.screenshot({ path: path.join(out, name) });
+        await page.screenshot({ path: path.join(out, name), fullPage: !!f.full });
         entry.shots.push(name);
         entry[scheme] = { missing, shown, errors, owner: await page.evaluate(() => !!document.getElementById("t")) };
         await context.close();

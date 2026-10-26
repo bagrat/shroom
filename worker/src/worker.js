@@ -118,7 +118,31 @@ export const COPY = {
   // The hint, on a take with no voice cuts in a space that listens (owner-page-cue-hint).
   cueHint: "Slipped? Say “shroom cut”, then say the line again.",
   cueHintGotIt: "Got it",
+  // The owner's chapters (N87, owner-page-chapters; provisional words). The lines with a time
+  // or a name in them are addChapterAt, startChapterAt and removedChapter.
+  editChapters: "Edit chapters",
+  chaptersHeading: "Chapters",
+  chaptersShow: "Show in the seek bar",
+  chaptersShowShort: "In the seek bar",
+  chaptersDone: "Done",
+  chaptersNone: "No chapters yet.",
+  chaptersAddFirst: "Add the first chapter",
+  chapterName: "Name this chapter",
+  chapterRemove: "Remove this chapter",
+  chapterUndo: "Undo",
+  chapterShort: "A chapter needs at least 5 seconds.",
+  chapterOutside: "That time isn't in the video.",
+  chaptersOff: "Off: viewers see the seek bar without chapters.",
+  chapterCutOut: "Cut from the video. It comes back if you put the cut back.",
 };
+
+/** The panel's lines with a time or a name in them (owner-page-chapters). */
+/** @param {number} t */
+export const addChapterAt = (t) => `Add a chapter at ${shroomClockText(t)}`;
+/** @param {number} t */
+export const startChapterAt = (t) => `Start this chapter at ${shroomClockText(t)}`;
+/** @param {string} name */
+export const removedChapter = (name) => `Removed “${name}”.`;
 
 /** A member's own stalled video while the space can't take uploads (N40, r4). */
 /** @param {string} name */
@@ -157,7 +181,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.33";
+export const VERSION = "0.1.34";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -216,7 +240,7 @@ export async function handle(request, env, now, ctx) {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path.startsWith(API)) return api(request, env, url, now);
-  if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/") || path.startsWith("/_shroom/edits/"))) return post(request, env, url, now);
+  if (request.method === "POST" && (path === "/_shroom/mark" || path.startsWith("/_shroom/title/") || path.startsWith("/_shroom/edits/") || path.startsWith("/_shroom/chapters/"))) return post(request, env, url, now);
   if (request.method === "POST" && path.startsWith("/_shroom/thumb/")) return thumbPost(request, env, url);
   const vb = request.method === "POST" && path.match(/^\/_shroom\/view\/([A-Za-z0-9_-]{16})$/);
   if (vb) return viewBeacon(request, env, url, vb[1], now);
@@ -236,6 +260,8 @@ export async function handle(request, env, now, ctx) {
   // Names, chapters and captions (N66, N67): the captions file, and the owner page's ask for a name on its way.
   const cc = path.match(/^\/_shroom\/cc\/([A-Za-z0-9_-]{16})$/);
   if (cc) return aiCaptionsRoute(request, env, cc[1], url).catch(() => plain(503, ""));
+  const chr = request.method === "GET" && path.match(/^\/_shroom\/chapters\/([A-Za-z0-9_-]{16})$/);
+  if (chr) return chaptersRoute(request, env, chr[1]).catch(() => plain(503, ""));
   const named = path.match(/^\/_shroom\/named\/([A-Za-z0-9_-]{16})$/);
   if (named) return aiNamedRoute(request, env, named[1], now).catch(() => plain(503, ""));
 
@@ -595,6 +621,8 @@ async function post(request, env, url, now) {
     if (!title) return plain(400, "");
     return writeTitle(env, t[1], title, owner);
   }
+  const ch = url.pathname.match(/^\/_shroom\/chapters\/([A-Za-z0-9_-]{16})$/);
+  if (ch) return writeChapters(env, ch[1], body, owner, now);
   const e = url.pathname.match(/^\/_shroom\/edits\/([A-Za-z0-9_-]{16})$/);
   if (e) {
     if (typeof body?.cut !== "string" || !CUT_ID.test(body.cut) || typeof body?.applied !== "boolean") return plain(400, "");
@@ -1517,6 +1545,12 @@ const I_SAVE = maskIcon("M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10");
 const I_CUT = maskIcon("M6.5 4.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.5 11.5a2 2 0 1 1-4 0a2 2 0 1 1 4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
 // Edit in shroom's scissors (N69): the editor's own mark, the one its cuts carry.
 const I_EDIT = maskIcon("M2.5 4.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M2.5 11.5a2 2 0 1 0 4 0a2 2 0 1 0-4 0M6.2 5.6L13 11.8M6.2 10.4L13 4.2");
+// Edit chapters (N87): a list's lines; the panel's own marks — the bar's sections, the arrow to the playhead, ✕, +.
+const I_CHAPTERS = maskIcon("M2.5 4h1.2M6 4h7.5M2.5 8h1.2M6 8h7.5M2.5 12h1.2M6 12h7.5");
+const I_CH_MARK = maskIcon("M2 8h2M7 8h2M12 8h2", 2.2);
+const I_CH_MOVE = maskIcon("M12 2.8v10.4M2.5 8h6.2M6.2 5.5L8.7 8l-2.5 2.5");
+const I_CH_REMOVE = maskIcon("M4.6 4.6l6.8 6.8M11.4 4.6l-6.8 6.8");
+const I_CH_ADD = maskIcon("M8 3.5v9M3.5 8h9");
 // Copy thumbnail's icon (Bagrat's pick, “7a”): a frame with the play mark, Copy link's chain at its corner.
 const I_THUMB = maskIcon("M8.2 12.8H3.3a1.5 1.5 0 0 1-1.5-1.5V4.7a1.5 1.5 0 0 1 1.5-1.5h9.4a1.5 1.5 0 0 1 1.5 1.5v3.5M7 6.2v3.6l3-1.8zM11.89 12.95a1.232 1.232 0 0 0 1.76 0l.968-.968a1.232 1.232 0 0 0-1.76-1.76l-.352.352M12.95 11.89a1.232 1.232 0 0 0-1.76 0L10.22 12.86a1.232 1.232 0 0 0 1.76 1.76l.352-.352");
 
@@ -1532,7 +1566,7 @@ h1{flex:1 1 0;min-width:0;margin:0;font-size:1.75rem;font-weight:600;line-height
 .title:not(:focus):not(:placeholder-shown){padding:0;background:transparent;border-color:transparent}
 .copy,#dl a,.dl a{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:0;width:44px;height:44px;padding:0;border:0;border-radius:9px;background:transparent;color:var(--soft);font-family:inherit;font-size:0;text-decoration:none;cursor:pointer;--i:${I_LINK}}
 #dl a,.dl a{--i:${I_SAVE}}
-.copy.thumb{--i:${I_THUMB}}.copy.edit{--i:${I_EDIT}}.copy[hidden]{display:none}
+.copy.thumb{--i:${I_THUMB}}.copy.edit{--i:${I_EDIT}}.copy.chap{--i:${I_CHAPTERS}}.copy.chap.on{background:var(--hover);color:var(--accent)}.copy[hidden]{display:none}
 .copy::before,#dl a::before,.dl a::before{content:"";flex:none;width:18px;height:18px;background:currentColor;-webkit-mask:var(--i) center/18px 18px no-repeat;mask:var(--i) center/18px 18px no-repeat}
 .copy:hover,#dl a:hover,.dl a:hover{background:var(--hover);color:var(--text)}
 .copy[aria-disabled=true]{cursor:default}.copy[aria-disabled=true]::before{opacity:.4}.copy[aria-disabled=true]:hover{background:transparent;color:var(--soft)}
@@ -2119,7 +2153,10 @@ function ownerPage(id, meta, now, face, waiting, blocked = false, pending = fals
   const editHref = escapeHtml(`shroom://edit/${face.host}/${id}`);
   const edit = face.host ? `<a class="copy edit" id="ed" ${drainedNow ? `href="${editHref}"` : `data-href="${editHref}"`} data-tip="${COPY.editInShroom}" aria-label="${COPY.editInShroom}"${drainedNow ? "" : ' aria-disabled="true"'}>${COPY.editInShroom}</a>` : "";
   // Copy link and Download are quiet icons beside the title; their words name them.
-  const head = `<div class="head">${field}${copyButtons(true, !live || !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${edit}</div>`;
+  // Edit chapters (N87): before the scissors, there from the first paint and greyed until the
+  // video plays; it opens the panel under the player.
+  const chap = `<button class="copy chap" id="chb" type="button" data-tip="${COPY.editChapters}" aria-label="${COPY.editChapters}" aria-expanded="false"${live ? "" : ' aria-disabled="true"'}>${COPY.editChapters}</button>`;
+  const head = `<div class="head">${field}${copyButtons(true, !live || !ready)}<span id="dl" data-tip="${COPY.download}">${download}</span>${chap}${edit}</div>`;
   const gone = drainedNow && !hearing;
   const spin = gone ? "" : `<span class="spin${stalled && !drainedNow ? " rest" : ""}" id="b" aria-hidden="true"></span>`;
   const upload = `<div class="upl" id="ul"${gone ? " hidden" : " data-room"}>${spin}<span class="up" id="u">${escapeText(line)}</span></div>`;
@@ -2183,7 +2220,7 @@ function say(x){var w=document.getElementById("w");if(!w||(!x&&!c.said))return;c
 function poll(){fetch("/_shroom/status/"+c.id,{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
 if(s.state==="removed"){c.gone=true;c.polling=false;var m=document.querySelector("main"),p=document.createElement("p");m.textContent="";p.className="line";p.textContent=c.notFound;m.appendChild(p);document.title="shroom";return}
 if(c.pend&&s.state!=="waiting")send(c.pend);
-if(s.state==="live"){if(s.named==="coming")c.named="coming";if(s.drawFrom!==undefined)th.source(s.drawFrom);if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
+if(s.state==="live"){if(s.named==="coming")c.named="coming";if(s.drawFrom!==undefined)th.source(s.drawFrom);if(s.dur)th.length(shroomClock(s.dur,true));if(s.teaser)th.teaser();if(!c.live){c.live=true;th.live();var cb=document.getElementById("chb");if(cb)cb.removeAttribute("aria-disabled");var w=document.getElementById("w"),h=document.createElement("div");h.innerHTML=c.player;var pl=h.firstChild;
 var cp=s.copy,ps=cp&&cp.poster||(s.poster?"/m/"+c.id+"/poster.jpg":"");if(s.dur)pl.setAttribute("data-dur",s.dur);if(ps)pl.querySelector("video").poster=ps;w.replaceWith(pl);
 shroomPlayer(pl,cp?cp.src:src,c.labels,{keep:cp?null:s.keep||null,st:"/_shroom/status/"+c.id,copy:!!cp})}
 if(s.drained)th.drained();var ed=document.getElementById("ed");if(ed&&s.drained)wake(ed,ed.getAttribute("data-href"));
@@ -2196,9 +2233,11 @@ if(s.state==="unavailable"){if(!c.live){say(c.unavailable);up.textContent="";spi
 if(s.state==="uploading"){say("");ul.hidden=false;up.textContent=s.stalled?c.waiting:c.finishing;spin(true,!s.stalled)}
 next(2000)}).catch(function(){next(5000)})}
 if(!c.live||!c.mp4||!c.drained)next(2000);else if(c.cutsTag==="coming"||c.named==="coming")next(2000)})();</script>`;
-  // A page waiting for its name has the player's chapters and captions ready for when they come.
-  const wire = aiWire(".player", ai) || (ai.waiting || ai.coming ? AI_PLAYER_JS : "");
-  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${cuts}${hint}${upload}`, face, `${aiHead(ai)}${shim ? `<style>${NAME_SHIM_STYLE}</style>` : ""}`, `${script}${wire ? `<script>${wire}</script>` : ""}${aiOwnerScript(id, ai)}`);
+  // The owner's page always has the player's chapter code: the panel cuts the bar from it (N87).
+  const wire = aiWire(".player", ai) || AI_PLAYER_JS;
+  const panel = `<script>${CHAPTERS_JS}
+shroomChapterPanel(${jsonForScript(JSON.stringify({ id, w: chaptersWords() }))})</script>`;
+  return shell(meta.title || "shroom", `${head}${aiNote(ai)}${stage}${chaptersSection()}${cuts}${hint}${upload}`, face, `${aiHead(ai)}${shim ? `<style>${NAME_SHIM_STYLE}</style>` : ""}`, `<style>${aiHead(ai) ? "" : AI_STYLE}${CHAPTERS_STYLE}</style>${script}<script>${wire}</script>${panel}${aiOwnerScript(id, ai)}`);
 }
 
 /** A JSON island safe inside <script>: <, >, & and the two line separators escaped. */
@@ -4523,10 +4562,22 @@ function aiChaptersThrough(chapters, keep, total) {
   return out;
 }
 
-/** The chapters as the page's bar shows them (B208 b, B209 a): on the edited clock, the
+/** The chapters as the page's bar shows them: the owner's once they're theirs (N87), else the
+ * space's. @param {any} meta @returns {[number, string][]} */
+export function aiChapters(meta) {
+  const own = ownChapters(meta);
+  if (!own) return aiNamedChapters(meta);
+  if (meta.chapters.off) return [];
+  const keep = aiKeep(meta);
+  const at = ownPlaced(own, keep, aiLength(keep, meta));
+  const shown = own.flatMap(([, t], i) => (at[i] === null ? [] : [/** @type {[number, string]} */ ([Math.round(/** @type {number} */ (at[i]) * 10) / 10, t])]));
+  return shown.length >= 2 ? shown : [];
+}
+
+/** The space's chapters as the bar shows them (B208 b, B209 a): on the edited clock, the
  * first at 0, one left under 20 s folding into the one before (the first into the second),
  * none on a video under 90 s or with fewer than two. @param {any} meta @returns {[number, string][]} */
-export function aiChapters(meta) {
+function aiNamedChapters(meta) {
   const keep = aiKeep(meta);
   const total = aiLength(keep, meta);
   if (total < AI_RULES.minVideo) return [];
@@ -4542,6 +4593,153 @@ export function aiChapters(meta) {
     i = 0;
   }
   return shown.length >= 2 ? shown.map(([s, t]) => /** @type {[number, string]} */ ([Math.round(s * 10) / 10, t])) : [];
+}
+
+// ───────── the owner's chapters (N87, owner-page-chapters; B267) ─────────
+
+/** The shortest chapter the owner may make, and that the bar shows of theirs after a cut. */
+export const CHAPTER_MIN = 5;
+/** The most chapters a list may hold, and a name's longest. */
+const CHAPTERS_MAX = 50;
+const CHAPTER_NAME_MAX = 80;
+
+/** The owner's chapters on the record's clock now, carried over any bake since they were
+ * saved (a bake drops one it cut whole, as it does the space's); null while the chapters are
+ * still the space's. @param {any} meta @returns {[number, string][] | null} */
+function ownChapters(meta) {
+  const c = meta?.chapters;
+  if (!c || typeof c !== "object" || c.by !== "owner" || !Array.isArray(c.list)) return null;
+  /** @type {[number, string][]} */
+  let out = c.list
+    .filter((/** @type {any} */ x) => Array.isArray(x) && Number.isFinite(Number(x[0])) && typeof x[1] === "string")
+    .map((/** @type {any} */ x) => /** @type {[number, string]} */ ([Number(x[0]), String(x[1])]))
+    .sort((/** @type {[number, string]} */ a, /** @type {[number, string]} */ b) => a[0] - b[0]);
+  if (!aiPlaced(meta, c.clock)) return [];
+  for (const b of aiBakes(meta, c.clock)) out = aiChaptersThrough(out, b.keep, Infinity);
+  return out;
+}
+
+/** Where each of the owner's chapters starts on the bar, or null for one set aside: cut out
+ * whole, or left under CHAPTER_MIN by the edit (it folds into the one before; the first into
+ * the second). A start inside a cut moves to where the cut ends; the first shown is at 0.
+ * `fold` false: where each would start, none folded (a save's check).
+ * @param {[number, string][]} list on the recording's clock @param {[number, number][] | null} keep @param {number} total
+ * @returns {(number | null)[]} */
+function ownPlaced(list, keep, total, fold = true) {
+  const end = total > 0 ? total : Infinity;
+  /** @type {(number | null)[]} */
+  const at = list.map(([s], i) => {
+    const next = i + 1 < list.length ? list[i + 1][0] : Infinity;
+    if (!keep) return s < end ? s : null;
+    for (const [a, b] of keep) { const from = Math.max(a, s); if (from < Math.min(b, next)) return aiToEdited(keep, from); }
+    return null;
+  });
+  let last = -Infinity;
+  for (let i = 0; i < at.length; i++) { const t = at[i]; if (t === null) continue; if (t <= last) at[i] = null; else last = t; }
+  if (!fold) return at;
+  for (;;) {
+    const on = at.flatMap((t, i) => (t === null ? [] : [i]));
+    if (!on.length) return at;
+    at[on[0]] = 0;
+    const short = on.findIndex((i, k) => (k + 1 < on.length ? /** @type {number} */ (at[on[k + 1]]) : end) - /** @type {number} */ (at[i]) < CHAPTER_MIN);
+    if (short < 0 || on.length < 2) return at;
+    at[on[short]] = null;
+  }
+}
+
+/** What the owner's panel lists (owner-page-chapters): a row a chapter, its start on the
+ * recording's clock now (`s`, what a kept row is saved by) and on the bar's (`t`, null when
+ * set aside); the space's chapters as the bar shows them until the owner changes any.
+ * `clock`: the bake the times are on, which a save must match. @param {any} meta */
+export function chaptersPanel(meta) {
+  const keep = aiKeep(meta);
+  const total = Math.round(aiLength(keep, meta) * 10) / 10;
+  const clock = aiClock(meta);
+  const r = (/** @type {number} */ x) => Math.round(x * 100) / 100;
+  const own = ownChapters(meta);
+  if (!own) {
+    const rows = aiNamedChapters(meta).map(([t, title]) => ({ s: r(aiToSource(keep, t)), t, title }));
+    return { mine: false, off: false, clock, total, rows };
+  }
+  const at = ownPlaced(own, keep, aiLength(keep, meta));
+  const rows = own.map(([s, title], i) => ({ s: r(s), t: at[i] === null ? null : Math.round(/** @type {number} */ (at[i]) * 10) / 10, title }));
+  return { mine: true, off: !!meta.chapters.off, clock, total, rows };
+}
+
+/** A chapters save's body, held to the rules (N87): each row a name and either `s` (a kept
+ * row's start on the recording's clock) or `t` (a moved or new one's, on the bar's), within the
+ * video, no two starts on the bar closer than CHAPTER_MIN nor one that close to the end.
+ * @param {any} body @param {any} meta
+ * @returns {{ list: [number, string][], off: boolean } | { why: "bad" | "short" | "outside" }} */
+function chaptersOf(body, meta) {
+  if (!body || typeof body !== "object" || typeof body.off !== "boolean" || !Array.isArray(body.list) || body.list.length > CHAPTERS_MAX) return { why: "bad" };
+  const keep = aiKeep(meta);
+  const total = aiLength(keep, meta);
+  /** @type {{ s: number, title: string, t: number | null }[]} */
+  const rows = [];
+  for (const x of body.list) {
+    const title = typeof x?.title === "string" ? x.title.replace(/\s+/g, " ").trim() : "";
+    if (!title || title.length > CHAPTER_NAME_MAX) return { why: "bad" };
+    if (x.t !== undefined) {
+      if (typeof x.t !== "number" || !Number.isFinite(x.t) || x.t < 0) return { why: "bad" };
+      if (total > 0 && x.t >= total) return { why: "outside" };
+      rows.push({ s: aiToSource(keep, x.t), title, t: x.t });
+    } else if (typeof x?.s === "number" && Number.isFinite(x.s) && x.s >= 0) rows.push({ s: x.s, title, t: null });
+    else return { why: "bad" };
+  }
+  rows.sort((a, b) => a.s - b.s);
+  // A moved or new start is held to its neighbours on the bar, and to the end.
+  const bar = ownPlaced(rows.map((x) => [x.s, x.title]), keep, total, false);
+  const on = rows.map((x, i) => ({ ...x, at: bar[i] })).filter((x) => x.at !== null || x.t !== null);
+  for (let k = 0; k < on.length; k++) {
+    if (on[k].t === null) continue;
+    const here = /** @type {number} */ (on[k].t);
+    const before = k > 0 ? (on[k - 1].t ?? on[k - 1].at) : null;
+    const after = k + 1 < on.length ? (on[k + 1].t ?? on[k + 1].at) : total > 0 ? total : null;
+    if ((before !== null && here - /** @type {number} */ (before) < CHAPTER_MIN && k > 0) || (after !== null && /** @type {number} */ (after) - here < CHAPTER_MIN)) return { why: "short" };
+  }
+  return { list: rows.map((x) => /** @type {[number, string]} */ ([Math.round(x.s * 100) / 100, x.title])), off: body.off };
+}
+
+/** GET /_shroom/chapters/<id> (N87): the panel's rows and the bar's chapters, for the
+ * video's own owner's page. @param {Request} request @param {Env} env @param {string} id */
+async function chaptersRoute(request, env, id) {
+  const owner = await ownerOf(request, env);
+  if (!owner) return plain(403, "");
+  const meta = await readMeta(env, id);
+  if (!meta || meta.state === "deleted") return plain(404, "");
+  if (!(await mayEdit(env, owner, id, true))) return plain(403, "");
+  return noStore(json({ chapters: meta.state === "live" ? aiChapters(meta) : [], panel: chaptersPanel(meta) }));
+}
+
+/** POST /_shroom/chapters/<id> (N87): the owner's whole list, saved under If-Match (B21) on
+ * the clock the page saw; from then on the chapters are the owner's. Answers the bar's
+ * chapters and the panel's rows. @param {Env} env @param {string} id @param {any} body @param {Owner} owner @param {number} now */
+async function writeChapters(env, id, body, owner, now) {
+  const key = `meta/${id}.json`;
+  /** @type {boolean | null} */
+  let allowed = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [object, gone] = await Promise.all([env.BUCKET.get(key), env.BUCKET.head(`${GONE}${id}`)]);
+    if (gone) {
+      try { await object?.body?.cancel(); } catch { /* nothing to release */ }
+      return plain(409, "");
+    }
+    if (!object) return plain(404, "");
+    /** @type {any} */
+    let meta;
+    try { meta = JSON.parse(await object.text()); } catch { return plain(409, ""); }
+    if (meta.state === "deleted") return plain(409, "");
+    if (allowed === null) allowed = await mayEdit(env, owner, id, true);
+    if (!allowed) return plain(403, "");
+    if ((body?.clock ?? null) !== aiClock(meta)) return plain(409, "");
+    const got = chaptersOf(body, meta);
+    if ("why" in got) return got.why === "bad" ? plain(400, "") : noStore(json({ why: got.why }, 400));
+    meta.chapters = { by: "owner", at: iso(now), clock: aiClock(meta), list: got.list, off: got.off };
+    const written = await env.BUCKET.put(key, JSON.stringify(meta), { onlyIf: { etagMatches: object.etag }, httpMetadata: { contentType: "application/json" } });
+    if (written) return noStore(json({ chapters: aiChapters(meta), panel: chaptersPanel(meta) }));
+  }
+  return plain(503, "");
 }
 
 /** @param {number} t */
@@ -5161,7 +5359,8 @@ async function aiAfterView(env, id, meta, now) {
   const playing = aiPlaying(words, aiKeep(meta)).length;
   const saw = Number(meta.named.words) || 0;
   const had = Array.isArray(meta.named.chapters) ? meta.named.chapters.length : 0;
-  if ((saw > 0 && playing <= saw * (1 - AI_RULES.renameShare)) || (had >= 2 && aiChapters(meta).length < had)) {
+  // Weighed by the space's own chapters: the owner's (N87) are never the naming's to redo.
+  if ((saw > 0 && playing <= saw * (1 - AI_RULES.renameShare)) || (had >= 2 && aiNamedChapters(meta).length < had)) {
     await aiMark(env, id, (l) => (l?.rename ? undefined : { ...aiFresh(now), ...(l ?? {}), done: true, rename: true }));
     return;
   }
@@ -5294,6 +5493,102 @@ function aiWire(sel, ai) {
 ${AI_PLAYER_JS}
 (function(){var p=document.querySelector(${jsonForScript(JSON.stringify(sel))});if(!p)return;${ai.chapters.length ? `shroomChapters(p,${jsonForScript(JSON.stringify(ai.chapters))});` : ""}${ai.captions ? "shroomCaptions(p)" : ""}})()`;
 }
+
+/** The owner's chapters panel (owner-page-chapters, N87; the boards OwnerPageChaptersOpen and
+ * OwnerPageChapterRows): a card in the voice cuts' style, under the player. */
+const CHAPTERS_STYLE = `.chapters{background:var(--card);border:1px solid var(--card-edge);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}.chapters[hidden]{display:none}
+.ch-head{display:flex;align-items:center;gap:10px}.chapters h2{flex:1 1 auto;margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.chapters h2::before{content:"";width:16px;height:16px;flex:none;background:var(--accent);-webkit-mask:${I_CH_MARK} center/contain no-repeat;mask:${I_CH_MARK} center/contain no-repeat}
+.ch-sw{color:var(--quiet);font-size:13px;min-height:32px}.ch-short{display:none}@media (max-width:479px){.ch-long{display:none}.ch-short{display:inline}}
+.ch-btn{flex:none;font:inherit;font-size:13px;min-height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:8px;background:transparent;color:var(--text);cursor:pointer}.ch-btn:hover{background:var(--hover)}
+.chapters ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ch-row{display:flex;align-items:center;gap:12px;padding-top:8px;border-top:1px solid var(--hair);min-height:40px}
+.ch-at{flex:none;width:52px;height:32px;padding:0 6px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--soft);font:inherit;font-variant-numeric:tabular-nums;text-align:left;display:flex;align-items:center}
+button.ch-at{cursor:pointer}button.ch-at:hover{border-color:var(--edge)}span.ch-at{color:var(--quiet)}
+.ch-time{flex:none;width:64px;height:32px;padding:0 6px;border:1px solid var(--accent);border-radius:7px;background:var(--field);color:var(--text);font:inherit;font-variant-numeric:tabular-nums;outline:none}
+.ch-name{flex:1 1 0;min-width:0;height:32px;margin:0;padding:0 9px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--text);font:inherit;text-overflow:ellipsis;outline:none}
+.ch-name:hover{border-color:var(--edge)}.ch-name:focus{border-color:var(--accent);background:var(--field)}.ch-name::placeholder{color:var(--quiet);opacity:1}
+.ch-ic{flex:none;position:relative;width:32px;height:32px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--soft);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0}
+.ch-ic::before{content:"";width:16px;height:16px;background:currentColor;-webkit-mask:var(--i) center/16px 16px no-repeat;mask:var(--i) center/16px 16px no-repeat}
+.ch-ic:hover{background:var(--hover);color:var(--text)}.ch-mv{--i:${I_CH_MOVE}}.ch-rm{--i:${I_CH_REMOVE}}.ch-sp{flex:none;width:32px}.ch-sp2{flex:none;width:68px}
+@media (pointer:coarse){.ch-ic::after{content:"";position:absolute;inset:-6px}}
+.ch-name-t{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:1px;color:var(--quiet);padding-left:10px;overflow-wrap:anywhere}.ch-name-t small{font-size:12px}
+.ch-gone-t{flex:1 1 auto;min-width:0;color:var(--quiet);padding-left:6px;overflow-wrap:anywhere}
+.chapters.off .ch-name,.chapters.off .ch-at{color:var(--quiet)}
+.ch-off,.ch-none,.ch-warn{margin:0;font-size:13px;color:var(--quiet)}.ch-warn{color:var(--warn)}.ch-off[hidden],.ch-none[hidden],.ch-warn[hidden]{display:none}
+.ch-add{border-top:1px solid var(--hair);padding-top:6px;display:flex}
+.ch-add button{font:inherit;font-size:13px;min-height:32px;padding:0 10px;border:0;border-radius:8px;background:transparent;color:var(--accent);cursor:pointer;display:flex;align-items:center;gap:6px}.ch-add button:hover{background:var(--hover)}
+.ch-add button::before{content:"";width:14px;height:14px;flex:none;background:currentColor;-webkit-mask:${I_CH_ADD} center/14px 14px no-repeat;mask:${I_CH_ADD} center/14px 14px no-repeat}`;
+
+/** The panel, shut, under the player: its rows come when it opens (GET /_shroom/chapters/<id>). */
+const chaptersSection = () => `<section class="chapters" id="chp" hidden aria-label="${escapeHtml(COPY.chaptersHeading)}"><div class="ch-head"><h2>${escapeText(COPY.chaptersHeading)}</h2>`
+  + `<label class="switch ch-sw"><span class="ch-long">${escapeText(COPY.chaptersShow)}</span><span class="ch-short">${escapeText(COPY.chaptersShowShort)}</span><input type="checkbox" role="switch" checked></label>`
+  + `<button type="button" class="ch-btn ch-done">${escapeText(COPY.chaptersDone)}</button></div>`
+  + `<p class="ch-off" hidden>${escapeText(COPY.chaptersOff)}</p><p class="ch-none" hidden>${escapeText(COPY.chaptersNone)}</p><ol></ol>`
+  + `<p class="ch-warn" role="status" hidden></p><div class="ch-add"><button type="button"></button></div></section>`;
+
+/** The words the panel's script writes, the templated ones split around their time or name. */
+const chaptersWords = () => {
+  /** @param {string} line @param {string} at */
+  const around = (line, at) => [line.slice(0, line.indexOf(at)), line.slice(line.indexOf(at) + at.length)];
+  return {
+    short: COPY.chapterShort, outside: COPY.chapterOutside, unsaved: COPY.cutsCouldntSave, undo: COPY.chapterUndo, cutOut: COPY.chapterCutOut,
+    name: COPY.chapterName, remove: COPY.chapterRemove, addFirst: COPY.chaptersAddFirst,
+    gone: around(removedChapter("\u0000"), "\u0000"), addAt: around(addChapterAt(0), "0:00"), startAt: around(startChapterAt(0), "0:00"),
+  };
+};
+
+/** The panel's script, after the player's (owner-page-chapters). It opens with Edit chapters,
+ * reads the rows fresh each time, and saves the whole list on every change; the bar above is
+ * cut again from the answer (shroomChapters). A typed time: m:ss, h:mm:ss or seconds. */
+export const CHAPTERS_JS = `function shroomTime(x){x=String(x).trim();if(!/^\\d+(:\\d{1,2}){0,2}(\\.\\d+)?$/.test(x))return null;var p=x.split(":"),t=0;for(var i=0;i<p.length;i++){var n=+p[i];if(i>0&&n>=60)return null;t=t*60+n}return t}
+function shroomChapterPanel(c){var b=document.getElementById("chb"),sec=document.getElementById("chp"),w=c.w,st=null,rows=[],gone=[],busy=false,again=false,pend=null;if(!b||!sec)return;
+var ol=sec.querySelector("ol"),add=sec.querySelector(".ch-add button"),none=sec.querySelector(".ch-none"),offl=sec.querySelector(".ch-off"),sw=sec.querySelector(".ch-sw input"),wn=sec.querySelector(".ch-warn");
+function pl(){return document.querySelector(".player")}
+function head(){var p=pl(),sk=p&&p.querySelector(".seek");return sk?+sk.value||0:0}
+function clk(t){return shroomClock(t,false)}
+function el(t,cls,txt){var e=document.createElement(t);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function btn(cls,txt){var e=el("button",cls,txt);e.type="button";return e}
+function warn(x){wn.textContent=x;wn.hidden=!x}
+function show(x){sec.hidden=!x;b.setAttribute("aria-expanded",x?"true":"false");b.classList.toggle("on",x);if(x)load();else warn("")}
+b.onclick=function(){if(b.getAttribute("aria-disabled"))return;show(sec.hidden)};
+sec.querySelector(".ch-done").onclick=function(){show(false);b.focus()};
+sw.onchange=function(){if(!st)return;save(!sw.checked)};
+function load(){fetch("/_shroom/chapters/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j){gone=[];take(j)}},function(){})}
+function copy(rs){return rs.map(function(r){return{s:r.s,t:r.t,title:r.title}})}
+function take(j){st=j.panel;rows=copy(st.rows);var p=pl();if(p&&j.chapters)shroomChapters(p,j.chapters);draw()}
+function live(){return rows.filter(function(r){return!r.fresh||r.title})}
+function list(){return live().map(function(r){return r.nt!=null?{t:r.nt,title:r.title}:{s:r.s,title:r.title}})}
+function save(off){if(!st)return;if(busy){again=true;if(off!=null)pend=off;return}busy=true;warn("");var was={st:st,rows:copy(st.rows)};
+fetch("/_shroom/chapters/"+c.id,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clock:st.clock,off:off==null?st.off:off,list:list()})})
+.then(function(r){return r.status===400?r.json().then(function(j){return{why:j&&j.why}},function(){return{}}):r.ok?r.json():null},function(){return null})
+.then(function(j){busy=false;if(j&&j.panel){if(!again){take(j);return}again=false;var mine=rows;st=j.panel;var p=pl();if(p&&j.chapters)shroomChapters(p,j.chapters);rows=mine;var o=pend;pend=null;save(o);return}again=false;pend=null;st=was.st;rows=was.rows;draw();warn(j&&j.why==="short"?w.short:j&&j.why==="outside"?w.outside:w.unsaved)})}
+function at(r){return r.nt!=null?r.nt:r.t}
+function fits(t,self){if(t<0||(st.total>0&&t>=st.total)){warn(w.outside);return false}var near=st.total>0&&st.total-t<5;
+rows.forEach(function(r){var x=at(r);if(r!==self&&x!=null&&Math.abs(x-t)<5)near=true});if(near){warn(w.short);return false}return true}
+function by(a,b){return a.s-b.s}
+function draw(){if(!st)return;ol.textContent="";sw.checked=!st.off;offl.hidden=!st.off;sec.classList.toggle("off",st.off);
+var all=rows.slice();gone.forEach(function(g){var k=0;while(k<all.length&&(all[k].s==null||all[k].s<g.s))k++;all.splice(k,0,g)});
+var first=null;for(var i=0;i<all.length;i++)if(!all[i].gone&&at(all[i])!=null){first=all[i];break}
+all.forEach(function(r){ol.appendChild(row(r,r===first))});none.hidden=all.length>0;labels()}
+function row(r,first){var li=el("li","ch-row");
+if(r.gone){li.className="ch-row ch-gone";li.appendChild(el("span","ch-gone-t",w.gone[0]+r.title+w.gone[1]));var u=btn("ch-btn",w.undo);
+u.onclick=function(){gone=gone.filter(function(g){return g!==r});rows.push({s:r.s,t:null,title:r.title});rows.sort(by);save()};li.appendChild(u);return li}
+var t=at(r);if(t==null){li.className="ch-row ch-out";li.appendChild(el("span","ch-at",clk(r.s)));var nm=el("span","ch-name-t",r.title);nm.appendChild(el("small",null,w.cutOut));li.appendChild(nm);li.appendChild(el("span","ch-sp2"));return li}
+var tm;if(first){tm=el("span","ch-at",clk(0))}else{tm=btn("ch-at",clk(t));tm.onclick=function(){time(li,tm,r)}}li.appendChild(tm);
+var n=el("input","ch-name");n.type="text";n.maxLength=80;n.value=r.title;n.setAttribute("aria-label",w.name);if(r.fresh)n.placeholder=w.name;
+n.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();n.blur()}else if(e.key==="Escape"){n.value=r.title;if(r.fresh)n.value="";n.blur()}};
+n.onblur=function(){var v=n.value.replace(/\\s+/g," ").trim();if(!v){if(r.fresh){rows.splice(rows.indexOf(r),1);draw()}else n.value=r.title;return}if(v===r.title)return;r.title=v;save()};li.appendChild(n);
+if(first)li.appendChild(el("span","ch-sp"));else{var mv=btn("ch-ic ch-mv","");mv.onclick=function(){var h=head();if(!fits(h,r))return;r.nt=h;if(!r.fresh||r.title)save();else draw()};li.appendChild(mv)}
+var rm=btn("ch-ic ch-rm",w.remove);rm.setAttribute("aria-label",w.remove);rm.title=w.remove;rm.onclick=function(){rows.splice(rows.indexOf(r),1);if(r.fresh&&!r.title){draw();return}gone.push({s:r.s,title:r.title,gone:true});save()};li.appendChild(rm);return li}
+function time(li,tm,r){var f=el("input","ch-time");f.type="text";f.value=tm.textContent;f.setAttribute("aria-label",tm.textContent);li.replaceChild(f,tm);f.focus();f.select();var done=false;
+function go(){if(done)return;var v=shroomTime(f.value);if(v===at(r)||f.value===tm.textContent){done=true;draw();return}if(v==null){warn(w.outside);return}if(!fits(v,r))return;done=true;r.nt=v;save()}
+f.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();go()}else if(e.key==="Escape"){done=true;warn("");draw()}};f.onblur=function(){if(!done&&!wn.textContent)go()}}
+function labels(){if(!st)return;var h=head(),n=live().length;add.textContent=n||rows.length?w.addAt[0]+clk(h)+w.addAt[1]:w.addFirst;
+var mv=sec.querySelectorAll(".ch-mv");for(var i=0;i<mv.length;i++){var x=w.startAt[0]+clk(h)+w.startAt[1];mv[i].setAttribute("aria-label",x);mv[i].title=x}
+var p=pl();if(p&&!p._chpw){p._chpw=1;p.querySelector("video").addEventListener("timeupdate",labels);var sk=p.querySelector(".seek");if(sk)sk.addEventListener("input",labels)}}
+add.onclick=function(){if(!st)return;var empty=!rows.length,t=empty?0:head();if(!empty&&!fits(t,null))return;warn("");var r={nt:t,title:"",fresh:true},k=0;while(k<rows.length&&(at(rows[k])==null?rows[k].s<=t:at(rows[k])<t))k++;rows.splice(k,0,r);draw();
+var ns=ol.querySelectorAll(".ch-name");for(var i=0;i<ns.length;i++)if(!ns[i].value&&ns[i].placeholder){ns[i].focus();break}}}`;
 
 /** The AI's style, on a page that shows any of it. @param {AiFace} ai */
 const aiCss = (ai) => (ai.chapters.length || ai.captions || ai.line || ai.waiting || ai.coming ? AI_STYLE : "");
