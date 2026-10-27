@@ -170,8 +170,13 @@
      into the cloud's foot (its mask). */
   .terms li { display: flex; align-items: center; gap: 12px; }
   .terms .ic { flex: none; width: 34px; height: 34px; border-radius: 8px; background: color-mix(in srgb, var(--frost) 15%, transparent); display: flex; align-items: center; justify-content: center; }
-  .terms svg { width: 20px; height: 20px; fill: none; stroke: var(--frost); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .terms .ic svg { width: 20px; height: 20px; fill: none; stroke: var(--frost); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .terms b { color: var(--text); font-weight: 600; }
+  /* Sponsoring, beside the reason for it (Bagrat, 2026-10-25: board “sponsoring, three places”,
+     B; live once his GitHub Sponsors page was, 2026-10-27). */
+  .terms .sponsor a { color: var(--frost); text-decoration: none; white-space: nowrap; }
+  .terms .sponsor a:hover { text-decoration: underline; }
+  .terms .sponsor svg { display: inline-block; width: 15px; height: 15px; margin-right: 5px; vertical-align: -2px; fill: none; stroke: #bf616a; stroke-width: 2.2; stroke-linejoin: round; }
 
   /* The hero: the still sits over the video, and fades once the video is playing. */
   .how-to { position: relative; }
@@ -337,7 +342,7 @@
         <li><span class="ic" data-icon="armchair-off" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M19 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v3"/> <path d="M3 16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5a2 2 0 0 0-4 0v1.5a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5V11a2 2 0 0 0-4 0z"/> <path d="M5 18v2"/> <path d="M19 18v2"/><path d="m2 2 20 20"/></svg></span><span><b>No price per person</b> — the bill counts video, not people</span></li>
         <li><span class="ic" data-icon="broom-sparkles" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M11 2v2"/> <path d="M12 3h-2"/> <path d="M13.5 10.5 22 2"/> <path d="M14.734 13.841a2 2 0 00-.314-2.42L12.58 9.58a2 2 0 00-2.421-.314l-7.657 4.461A1 1 0 002.3 15.3l6.403 6.403a1 1 0 001.571-.204z"/> <path d="M20 15v4"/> <path d="M22 17h-4"/> <path d="M4 4v4"/> <path d="m5 18 2-2"/> <path d="M6 6H2"/> <path d="m7.699 10.7 5.602 5.601"/></svg></span><span><b>Old videos clean themselves up.</b> Pin the ones you keep.</span></li>
         <li><span class="ic" data-icon="list-checks" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 5h8"/> <path d="M13 12h8"/> <path d="M13 19h8"/> <path d="m3 17 2 2 4-4"/> <path d="m3 7 2 2 4-4"/></svg></span><span>About <b>ten minutes</b> of guided setup, once</span></li>
-        <li><span class="ic" data-icon="code-xml" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m18 16 4-4-4-4"/> <path d="m6 8-4 4 4 4"/> <path d="m14.5 4-5 16"/></svg></span><span><b>Open source</b> — every line on GitHub</span></li>
+        <li><span class="ic" data-icon="code-xml" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m18 16 4-4-4-4"/> <path d="m6 8-4 4 4 4"/> <path d="m14.5 4-5 16"/></svg></span><span><b>Open source</b> — every line on GitHub<span class="sponsor">&nbsp;· <a href="https://github.com/sponsors/bagrat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Sponsor it</a></span></span></li>
       </ul>
     </section>
   </div>
