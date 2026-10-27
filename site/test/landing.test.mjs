@@ -162,7 +162,7 @@ describe("the landing", () => {
     const icons = [...list.matchAll(/<li><span class="ic" data-icon="([a-z-]+)" aria-hidden="true"><svg viewBox="0 0 24 24">/g)].map((m) => m[1]);
     assert.deepEqual(icons, ["cloud-lock", "receipt", "users", "armchair-off", "broom-sparkles", "list-checks", "code-xml"]);
     assert.doesNotMatch(list, /M5 12\.5l4\.5 4\.5L19 7\.5/, "no ticks left");
-    assert.match(html, /\.terms svg \{[^}]*stroke: var\(--frost\); stroke-width: 2;/, "blue, at the icons' own stroke (green was dropped)");
+    assert.match(html, /\.terms \.ic svg \{[^}]*stroke: var\(--frost\); stroke-width: 2;/, "blue, at the icons' own stroke (green was dropped)");
   });
 
   it("titles the terms' tile in the price box's label style (N86; Bagrat chose \u201cWhy shroom?\u201d, 2026-10-25)", () => {
@@ -176,7 +176,15 @@ describe("the landing", () => {
     const terms = (html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "").match(/<li>[\s\S]*?<\/li>/g)?.map((li) => visible(li).trim()) ?? [];
     const ids = ["landing.your-videos-live-in", "landing.you-only-ever-pay", "landing.your-team-just-accepts", "landing.no-price-per-person",
       "landing.delete-old-videos-and", "landing.you-set-cloudflare-up", "landing.open-source-every-line"];
-    assert.deepEqual(terms, ids.map((id) => landing.said.find((l) => l.id === id).text));
+    assert.deepEqual(terms.map((t) => t.replace(/(\s|&nbsp;)· Sponsor it$/, "")), ids.map((id) => landing.said.find((l) => l.id === id).text));
+  });
+
+  it("ends the open-source term with a link to sponsor shroom (N86; Bagrat, 2026-10-25, option B)", () => {
+    const list = html.match(/<section class="tile terms"[^>]*>[\s\S]*?<ul>([\s\S]*?)<\/ul>/)?.[1] ?? "";
+    const last = list.match(/<li>[\s\S]*?<\/li>/g)?.at(-1) ?? "";
+    assert.match(last, /<span><b>Open source<\/b> — every line on GitHub<span class="sponsor">&nbsp;· <a href="https:\/\/github\.com\/sponsors\/bagrat"><svg viewBox="0 0 24 24" aria-hidden="true">[\s\S]*?<\/svg>Sponsor it<\/a><\/span><\/span><\/li>/);
+    assert.equal(landing.said.find((l) => l.id === "landing.sponsor-it").text, "Sponsor it");
+    assert.equal([...html.matchAll(/github\.com\/sponsors\//g)].length, 1, "one sponsor link on the page");
   });
 
   it("puts the price in its own box: the price first, one slider, when old videos go, no AI switch (N86)", () => {
