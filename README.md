@@ -18,6 +18,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/sponsors/bagrat"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sponsor-dark.svg"><img src="docs/readme/sponsor-light.svg" width="114" height="32" alt="Sponsor"></picture></a>
+</p>
+
+<p align="center">
   <a href="https://shroom.am/hero-2.mp4"><img src="docs/readme/hero.jpg" width="720" alt="Play shroom, recorded with shroom, 2 minutes"></a>
   <br>
   <sub>shroom, recorded with shroom · 2 min</sub>
@@ -64,7 +68,7 @@ A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a yea
 - <img src="docs/readme/armchair-off.svg" width="20" height="20" alt="" align="top"> **No price per person** — the bill counts video, not people
 - <img src="docs/readme/broom-sparkles.svg" width="20" height="20" alt="" align="top"> **Old videos clean themselves up.** Pin the ones you keep.
 - <img src="docs/readme/list-checks.svg" width="20" height="20" alt="" align="top"> About **ten minutes** of guided setup, once
-- <img src="docs/readme/code-xml.svg" width="20" height="20" alt="" align="top"> **Open source** — every line on GitHub
+- <img src="docs/readme/code-xml.svg" width="20" height="20" alt="" align="top"> **Open source** — every line on GitHub · [♡ Sponsor it](https://github.com/sponsors/bagrat)
 
 What it needs, and what it doesn't do yet: [Questions and limits](https://shroom.am/faq).
 Trouble, questions: [open an issue](https://github.com/bagrat/shroom/issues/new/choose), or
