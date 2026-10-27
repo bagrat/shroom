@@ -16,7 +16,7 @@ const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).sta
 // button, no install tabs or "Read it first" link, no video, no links at its foot (N55, N59), none
 // of its words to the person about their agent, and not the price box's controls (N86).
 // The system-requirements sentence is checked against the landing's own (filled-in) sentence instead.
-const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|What would it cost\?|Why shroom\?|Video a month|Auto-cleanup after|30 days|60 days|a year|a month)$/;
+const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|What would it cost\?|Why shroom\?|Sponsor it|Video a month|Auto-cleanup after|30 days|60 days|a year|a month)$/;
 
 /** Every “…” on the page: a line the agent says to the person, or a word it quotes. */
 const said = [...flat.matchAll(/“([^”]+)”/g)].map((m) => m[1]);
