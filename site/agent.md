@@ -67,6 +67,14 @@ When its last line says Installed, your part is done: shroom's window takes it f
 there. If it says Updated, shroom is back as the mushroom in the menu bar.
 Anything else means it didn't finish.
 
+If they also want you to set it up, install with `sh -s -- --agent` at the end instead.
+Then run `shroom setup --json` and follow each answer: say its `say` line to them, wait
+while they do its `do`, then run its `next`. Stop when `at` is `all-set`. They click every
+button in Cloudflare and macOS; you never do. The token goes from Cloudflare's Copy button
+straight to `shroom setup token`: never run `pbpaste` yourself, and never ask for the
+token in this chat. If they'd rather use shroom's window, they click the mushroom in the
+menu bar.
+
 If shroom asks for a Cloudflare token, it goes into shroom's window — never into this
 chat. You never need to see it. If one lands here anyway, don't use or repeat it; tell
 them to delete it in Cloudflare and make a fresh one.
