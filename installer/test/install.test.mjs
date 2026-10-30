@@ -254,6 +254,17 @@ describe("installing", () => {
     assert.match(invite.arrived, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   });
 
+  it("with --agent, opens shroom as the mushroom only, for the agent's shroom setup (N88)", async () => {
+    const r = await run({ args: ["--agent"] });
+    assert.equal(r.code, 0);
+    assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."], "the same lines: Installed is the agent's cue");
+    assert.match(r.log, /^open .*\/Applications\/shroom\.app --args --relaunched=agent\n$/);
+    const both = await run({ args: ["--early", "--agent"], with: { early: true, earlyManifest: `version=1.3.0-early.1\nmacos=14\narm64=${v120.file} ${sha(v120.bytes)}\n` } });
+    assert.match(both.log, /--relaunched=agent\n$/, "either order with --early");
+    const invited = await run({ args: ["--agent", "--join", "https://v.myshroom.workers.dev/join/abc"] });
+    assert.match(invited.log, /--relaunched=install --invite\n$/, "an invite's window is the member lane's");
+  });
+
   it("opens shroom plainly for something that isn't a link's shape", async () => {
     const r = await run({ args: ["--join", 'x","evil":"1'] });
     assert.match(r.log, /^open .*shroom\.app --args --relaunched=install\n$/);

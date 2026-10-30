@@ -31,6 +31,10 @@
 # --early (DECISIONS B220) takes the early channel: shroom's pre-releases, signed like every
 # release, and the official release once it's newer. It leaves ~/.shroom/channel saying
 # so, and the app's own updater keeps to that channel; remove the file to leave it.
+#
+# --agent (spec N88) is for a coding agent that sets shroom up for you: shroom opens as the
+# mushroom in the menu bar, with no window, and the agent walks you through the setup with
+# the `shroom setup` command. Click the mushroom to see shroom's own window instead.
 
 set -u
 
@@ -266,7 +270,14 @@ main() {
   join=""
   was_running=""
   early=""
-  if [ "${1:-}" = "--early" ]; then early=1; shift; fi
+  agent=""
+  while :; do
+    case "${1:-}" in
+      --early) early=1; shift ;;
+      --agent) agent=1; shift ;;
+      *) break ;;
+    esac
+  done
   if [ "${1:-}" = "--join" ]; then join="${2:-}"; fi
 
   # This Mac, before anything is fetched. A machine that isn't a Mac (a server, a Linux
@@ -411,6 +422,9 @@ launch() {
       printf '{"v":1,"link":"%s","arrived":"%s"}\n' "$join" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/invite.tmp" &&
       mv -f "$dir/invite.tmp" "$dir/invite" ) 2>/dev/null && invite=--invite
   fi
+  # --agent (N88): a fresh install opens as the mushroom only — the agent's `shroom setup`
+  # drives it. An invite's window is the member lane's, and an update reopens as it does.
+  if [ -n "$agent" ] && [ -z "$invite" ] && [ "$how" = install ]; then how=agent; fi
   link_cli
   # If macOS won't open it, the copy stays placed and the line says where it is — never
   # the system's own error text.
