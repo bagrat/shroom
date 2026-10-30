@@ -25,7 +25,7 @@ use crate::say;
 
 /// Every step the app can answer with: each has its agent line in the spec (N88; the spec
 /// test reads it).
-#[cfg(test)]
+#[cfg_attr(not(test), allow(dead_code))]
 pub const STEPS: [&str; 23] = [
     "welcome",
     "account",
@@ -52,70 +52,10 @@ pub const STEPS: [&str; 23] = [
     "wizard-unexpected",
 ];
 
-/// The facts a step's line carries.
-#[derive(Debug, Default)]
-pub struct Facts {
-    pub host: Option<String>,
-    pub videos: Option<u32>,
-}
-
-/// The step's agent line, for the person (the spec's, N88).
-pub fn says(at: &str, f: &Facts) -> String {
-    let host = f.host.as_deref().unwrap_or("your link name");
-    match at {
-        "welcome" | "account" => "Your videos will live in your own Cloudflare account. Do you have one already?".into(),
-        "account-signing-up" => "Cloudflare's sign-up is open in your browser. Finish there and confirm your email from their message, then tell me.".into(),
-        "token" => "Next, one access token for shroom. The page is pre-filled — two narrow permissions. Create it, press Copy, and tell me — not the token itself.".into(),
-        "token-garbled" => "That copy lost some characters — press Copy once more and tell me.".into(),
-        "token-wrong-powers" => "This token can't manage your video space — create a fresh one on the same page, press Copy, and tell me.".into(),
-        "token-pick-account" => "This token works for more than one Cloudflare account — which one should hold your videos?".into(),
-        "card" => "One moment — shroom is checking your token and your Cloudflare account.".into(),
-        "gate-email" => "Cloudflare wants your email verified before it opens storage. Check your inbox for their message, then tell me.".into(),
-        "gate-card" => "One step on Cloudflare's side: adding a card switches storage on. The free tier stays free — the card is their rule, not a charge.".into(),
-        "name" => "What name should your links carry? It's part of every link: v.yourname.workers.dev.".into(),
-        "name-taken" => "That name's taken — try another.".into(),
-        "wiring" => "Almost there — switching your name on takes a few minutes the first time, and only once.".into(),
-        "space-found" => {
-            let n = f.videos.unwrap_or(0);
-            format!("Found your space — {host}, {n} video{}. This Mac is joined.", if n == 1 { "" } else { "s" })
-        }
-        "done" => "Now macOS needs to let shroom record: your microphone and your camera, one click each, then screen recording in System Settings.".into(),
-        "perm-mic" => "macOS is asking for your microphone — click Allow.".into(),
-        "perm-camera" => "macOS is asking for your camera — click Allow.".into(),
-        "perm-screen" => "System Settings is open at Screen Recording: flip the switch next to shroom, then choose Quit & Reopen.".into(),
-        "relaunching" => "shroom is reopening — one moment.".into(),
-        "perm-priming" => "If macOS double-checks about recording, approve it — that's the last one for a good while.".into(),
-        "all-set" => format!("You're set: {host}. Click the mushroom in the menu bar to record."),
-        "wizard-offline" => "Everything so far is saved — I'll pick up right here when you're back online.".into(),
-        "wizard-unexpected" => "Something unexpected got in the way — everything so far is saved. I'll keep trying.".into(),
-        // A step this command doesn't know (a newer app): the window has it.
-        _ => say::setup_in_window(),
-    }
-}
-
-/// What the person does at this step; `None` while it's shroom's turn.
-fn person_does(at: &str) -> Option<&'static str> {
-    Some(match at {
-        "welcome" | "account" => "say whether they have a Cloudflare account",
-        "account-signing-up" => "sign up in the browser and confirm their email",
-        "token" => "create the token on the page, press Copy, and tell you (never the token itself)",
-        "token-garbled" => "press Copy in Cloudflare once more",
-        "token-wrong-powers" => "create a fresh token on the page and press Copy",
-        "token-pick-account" => "choose the account that holds their videos",
-        "gate-email" => "confirm their email from Cloudflare's message",
-        "gate-card" => "add a card on Cloudflare's billing page",
-        "name" | "name-taken" => "choose their link name",
-        "perm-mic" | "perm-camera" => "click Allow in macOS's prompt",
-        "perm-screen" => "flip the switch next to shroom, then choose Quit & Reopen",
-        "perm-priming" => "approve macOS's check if it asks",
-        _ => return None,
-    })
-}
-
 /// The command to run after this step; `None` once it's all set. `ran` is the verb that
 /// answered: a page just opened waits on the person, so the next run reads what they did.
 fn next(at: &str, ran: &str) -> Option<String> {
-    let cmd = |v: &str| Some(format!("shroom setup {v} --json"));
+    let cmd = |v: &str| Some(say::setup_next(v));
     match at {
         "all-set" => None,
         "welcome" | "account" => cmd("account have"),
@@ -123,9 +63,9 @@ fn next(at: &str, ran: &str) -> Option<String> {
         "token" if ran == "token open" => cmd("token"),
         "token" => cmd("token open"),
         "token-garbled" | "token-wrong-powers" => cmd("token"),
-        "token-pick-account" => cmd("account pick <account id>"),
+        "token-pick-account" => Some(say::setup_next_pick()),
         "gate-card" if ran != "card open" => cmd("card open"),
-        "name" | "name-taken" => cmd("name '<their name>'"),
+        "name" | "name-taken" => Some(say::setup_next_name()),
         "done" | "perm-mic" | "perm-camera" | "perm-screen" => cmd("permissions"),
         _ => cmd("wait"),
     }
@@ -169,12 +109,11 @@ fn how<const N: usize>(pairs: [(&str, Value); N]) -> Map<String, Value> {
 fn done(answer: &Value, ran: &str) -> Done {
     let s = &answer["setup"];
     let at = s["at"].as_str().unwrap_or("");
-    let facts = Facts { host: s["host"].as_str().map(String::from), videos: s["videos"].as_u64().map(|n| n as u32) };
-    let line = says(at, &facts);
-    let mut j = json!({"at": at, "say": line, "do": person_does(at), "next": next(at, ran), "took": s["took"] == true});
+    let line = say::setup_says(at, s["host"].as_str(), s["videos"].as_u64().map(|n| n as u32));
+    let mut j = json!({"at": at, "say": line, "do": say::setup_does(at), "next": next(at, ran), "took": s["took"] == true});
     if at == "welcome" || at == "account" {
         // The other answer to the account question.
-        j["or"] = json!("shroom setup account new --json");
+        j["or"] = json!(say::setup_next("account new"));
     }
     if let Some(h) = s["host"].as_str() {
         j["host"] = json!(h);
@@ -185,10 +124,12 @@ fn done(answer: &Value, ran: &str) -> Done {
     }
     let mut text = line;
     for a in &accounts {
-        text.push_str(&format!("\n  {}  (shroom setup account pick {})", a["name"].as_str().unwrap_or(""), a["id"].as_str().unwrap_or("")));
+        text.push('\n');
+        text.push_str(&say::setup_account_row(a["name"].as_str().unwrap_or(""), a["id"].as_str().unwrap_or("")));
     }
     if let Some(n) = next(at, ran) {
-        text.push_str(&format!("\nNext: {}", n.trim_end_matches(" --json")));
+        text.push('\n');
+        text.push_str(&say::setup_next_line(&n));
     }
     Done::new(j, text)
 }
@@ -304,8 +245,8 @@ mod tests {
         assert_eq!(next("gate-card", "card open").as_deref(), Some("shroom setup wait --json"));
         assert_eq!(next("perm-screen", "permissions").as_deref(), Some("shroom setup permissions --json"));
         assert_eq!(next("all-set", "status"), None);
-        assert_eq!(person_does("card"), None, "shroom's turn");
-        assert!(person_does("token").unwrap().contains("never the token itself"));
+        assert_eq!(say::setup_does("card"), None, "shroom's turn");
+        assert!(say::setup_does("token").unwrap().contains("never the token itself"));
         for s in STEPS {
             assert!(next(s, "status").is_some() || s == "all-set", "{s}: no next");
         }
