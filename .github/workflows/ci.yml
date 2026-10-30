@@ -220,7 +220,7 @@ jobs:
 
       - name: The landing page, the media readers
         run: |
-          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs
+          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs site/test/teams.test.mjs
           node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
 
   # The crates with no platform in them (rust-tests.sh's LINUX_CRATES): the state machine's

@@ -43,6 +43,9 @@ describe("the landing", () => {
       // The copy table's lines (the title, the search description, the footer, the agent
       // door) are the build's, each held by its own test.
       if (isSysReq(l) || (l.cites ?? []).includes("copy table")) continue;
+      // The company sign-in box's placeholder is an attribute, and its states are said by its
+      // script (N88): each is held by the band's own tests below.
+      if ((l.cites ?? []).includes("N88") && (l.role === "placeholder" || l.role === "status")) continue;
       assert.ok(text.includes(l.text), `missing: ${l.text}`);
     }
   });
@@ -227,6 +230,65 @@ describe("the landing", () => {
   it("points Read it first at the installer's own address", () => {
     assert.match(html, /<a href="\/install">Read it first<\/a>/);
     assert.ok(text.includes("curl -fsSL https://shroom.am/install | sh"));
+  });
+});
+
+describe("company sign-in, coming soon (N88)", () => {
+  const band = html.match(/<section class="teams"[\s\S]*?<\/section>/)?.[0] ?? "";
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n");
+  const said = (/** @type {string} */ id) => landing.said.find((l) => l.id === `landing.${id}`)?.text ?? `(no ${id})`;
+
+  it("sits under both stacks, across the grid, inside the tiles and above the foot", () => {
+    assert.ok(band, "the band is on the page");
+    const at = (/** @type {string} */ k) => html.indexOf(k);
+    assert.ok(at('class="tile terms"') < at('<section class="teams"') && at('<section class="teams"') < at("</main>"), "after the terms, inside the tiles");
+    assert.match(html, /\.teams \{ grid-column: 1 \/ -1; margin-top: 32px;/, "across the whole grid");
+    assert.match(html, /\.teams \.say \{ grid-column: 1 \/ 8;/, "the words in seven columns");
+    assert.match(html, /\.teams \.box \{ grid-column: 8 \/ 13;/, "the box in five");
+    assert.match(html, /\.teams \{ order: 5; margin-top: 0;[^}]*flex-direction: column;/, "last on a phone, the box under the words");
+  });
+
+  it("says the approved words, in order, each point with its own icon", () => {
+    const words = visible(band);
+    const ids = ["for-companies-coming-soon", "company-sign-in", "teams-already-work-for", "no-invites", "leavers-are-out-on",
+      "videos-only-your-company", "still-your-own-cloudflare", "59-a-month-per", "early-price-nothing-to", "want-it-for-your",
+      "one-email-when-its"];
+    let from = 0;
+    for (const id of ids) {
+      const at = words.indexOf(said(id), from);
+      assert.ok(at >= 0, `in order: ${said(id)}`);
+      from = at;
+    }
+    assert.match(band, /<h2 id="teams-h">Company sign-in<\/h2>/);
+    const icons = [...band.matchAll(/<li><span class="ic" data-icon="([a-z-]+)" aria-hidden="true">/g)].map((m) => m[1]);
+    assert.deepEqual(icons, ["log-in", "user-x", "lock", "cloud"]);
+    assert.ok(band.includes(`placeholder="${said("you-company-com")}"`));
+    assert.match(band, /<button type="submit">Tell me when it’s ready<\/button>/);
+  });
+
+  it("says each of the box's states from its script, word for word", () => {
+    for (const id of ["sending", "that-doesnt-look-like"]) assert.ok(scripts.includes(`"${said(id)}"`), said(id));
+    const [before, after] = said("thanks-well-write-to").split("<address>");
+    assert.ok(scripts.includes(`"${before}"`) && scripts.includes(`"${after}"`), "the sent line, the address between");
+    const failed = said("that-didnt-go-through");
+    assert.ok(failed.endsWith("hi@shroom.am."));
+    assert.ok(scripts.includes(`"${failed.slice(0, -"hi@shroom.am.".length)}", true, "hi@shroom.am"`), "the failed line, its address a mail link");
+  });
+
+  it("checks the address as the endpoint does, posts it to /teams, and carries the hidden field", async () => {
+    const { EMAIL } = await import("../teams.js");
+    assert.ok(scripts.includes(`var EMAIL = ${EMAIL.toString()};`), "the page's pattern is site/teams.js's");
+    assert.match(scripts, /fetch\("\/teams", \{ method: "POST"/);
+    assert.match(band, /<input id="teams-website" name="website" type="text" tabindex="-1" autocomplete="off">/);
+    assert.match(band, /<div class="trap" aria-hidden="true">/);
+  });
+
+  it("without script, hides the form and says where to write", () => {
+    assert.match(html, /\.teams form \{ display: none;/);
+    assert.match(html, /\.js \.teams form \{ display: flex; \}/);
+    assert.match(html, /\.js \.teams \.nojs \{ display: none; \}/);
+    assert.ok(visible(band).includes(said("want-it-for-your-write")));
+    assert.match(band, /<a href="mailto:hi@shroom\.am">hi@shroom\.am<\/a>/);
   });
 });
 
