@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { Miniflare } from "miniflare";
 
 const SITE = new URL("..", import.meta.url).pathname;
-const modules = ["worker.js", "report.js", "clean.js"].map((f) => ({ type: "esm", path: `${SITE}${f}`, contents: readFileSync(`${SITE}${f}`, "utf8") }));
+const modules = ["worker.js", "report.js", "teams.js", "clean.js"].map((f) => ({ type: "esm", path: `${SITE}${f}`, contents: readFileSync(`${SITE}${f}`, "utf8") }));
 
 /** The rate limiters site/wrangler.jsonc binds. */
 const RATELIMITS = JSON.parse(readFileSync(`${SITE}wrangler.jsonc`, "utf8").replace(/^\s*\/\/.*$/gm, "")).ratelimits;
