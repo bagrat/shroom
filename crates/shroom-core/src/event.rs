@@ -596,6 +596,37 @@ pub enum CliOp {
     /// `shroom edit` saved revision `rev` of the video's edit: its final video is owed, as
     /// after the editor's Done (N63, B197).
     Copy { rec: crate::world::RecId, rev: u64 },
+    /// `shroom setup …` (N89): a coding agent drives the setup with no window. Each ask is
+    /// the setup window's own click or paste, held to what the window would offer now, and
+    /// answered with where the setup stands.
+    Setup(SetupAsk),
+}
+
+/// What `shroom setup` may ask (N89): each one a click or a paste of the setup window's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SetupAsk {
+    /// `shroom setup`: where it stands. Starts the setup unseen on a Mac that has none (the
+    /// welcome's Set up my space, without the login item), and re-probes, as an entry does.
+    Status,
+    /// Where it stands, re-probing nothing: `shroom setup wait`'s polls.
+    Peek,
+    /// `account new` — Not yet, take me there (or Take me there again) — and `account have`:
+    /// I have one (or I signed up).
+    Account { new: bool },
+    /// `token open`: Create token in Cloudflare.
+    TokenPage,
+    /// `token`: the token the command read, in the stash as a paste is — only its handle and
+    /// its shape here (law 13).
+    Token { id: crate::world::SecretId, shape: Shape },
+    /// `account pick <id>`: the account, of the token's several, that holds the videos.
+    Pick(String),
+    /// `card open`: Add credit card.
+    CardPage,
+    /// `name '<name>'`: typed into the link name's field, then Claim this name.
+    Name(String),
+    /// `permissions`: Allow recording, or the screen step's next click; nothing while macOS's
+    /// own prompt is up.
+    Permissions,
 }
 
 impl CliOp {

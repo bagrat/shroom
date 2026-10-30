@@ -1483,7 +1483,7 @@ fn row_six_is_live_in_settings_and_turn_it_back_on_runs_the_chapter_there() {
     r.set(Action::ReopenShroom);
     assert!(r.has(|e| matches!(e, Effect::Persist(PersistOp::Restore(Some(x))) if x.why == RelaunchWhy::Permission && x.window == WindowKind::Settings)));
     assert!(faces(&r.scene).contains(&"relaunching"));
-    let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Settings, written: Wall(1_790_000_000_000 + r.t as i64) };
+    let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Settings, written: Wall(1_790_000_000_000 + r.t as i64), headless: false };
     let mut n = reboot(&r, LaunchKind::PermissionRelaunch, "", Some(restore));
     n.send(Event::Os(OsNews::Grants { screen: false, mic: Access::Granted, camera: Access::Granted }));
     assert!(faces(&n.scene).contains(&"perm-screen"), "back right where it was, in Settings");
@@ -1596,7 +1596,7 @@ fn an_update_is_offered_waits_out_the_take_applies_on_the_click_and_says_so_once
     // the window that was open comes back — neither takes the keyboard (law 5). Bagrat,
     // 2026-10-15, the 0.1.12 checkpoint: “after update it is too silent, probably should
     // open the popover after relaunch” (amends N41).
-    let restore = Restore { why: RelaunchWhy::Update, window: WindowKind::Settings, written: Wall(1_790_000_000_000 + r.t as i64) };
+    let restore = Restore { why: RelaunchWhy::Update, window: WindowKind::Settings, written: Wall(1_790_000_000_000 + r.t as i64), headless: false };
     let mut n = reboot(&r, LaunchKind::UpdateRelaunch, "1.3.0", Some(restore));
     let p = n.scene.popover.as_ref().expect("the popover opens by itself");
     assert!(!p.activates, "without taking the keyboard");

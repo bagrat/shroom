@@ -90,6 +90,10 @@ def render(m):
                         note = (note + " · " if note else "") + cites(l["cites"])
                     w(f"| “{cell(l['text'])}” | {l['role']} | {l['copy']} | {cell(note)} |")
                 w("")
+            if s.get("agent"):
+                a = s["agent"]
+                w(f"**The agent says** (`shroom setup`, N89) · {a['copy']}: “{a['text']}”" + (f" — {a['note']}" if a.get("note") else ""))
+                w("")
             if s["actions"]:
                 w("| Action | Kind | Return | Goes to | Note |")
                 w("|---|---|---|---|---|")

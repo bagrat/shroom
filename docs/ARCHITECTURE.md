@@ -390,7 +390,10 @@ policy (`tauri.conf.json`) lets `media-src` and `connect-src` reach the scheme, 
 the flavor's home, opened once the core has handled `Booted` (an earlier ask would meet an
 empty World): the socket 600 in the 700 folder, each connection's peer uid checked
 (`getpeereid`), one JSON line each way, at most 1 KB in: `{"v":1,"op":"record.start"}`
-(`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`. The runtime holds the
+(`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`; `shroom setup`'s
+`setup.*` asks (N89, D:B278: `status`, `peek`, `account`, `token-page`, `token`, `pick`,
+`card-page`, `name`, `permissions`) answer with `"setup": {"at", "took", "busy", …}` (§11.1),
+and `setup.token` is the one ask that carries a secret, straight into the stash (DV #59). The runtime holds the
 connection and posts `Event::Cli {id, op}` (a start posts fresh `Os(Grants)` first, as the
 popover's does); the core answers each once with `Effect::Cli` — a code, never words:
 `not_set_up` for all four on a Mac with no space, then `recording_off` while General's
@@ -977,6 +980,19 @@ One file (§11.2), two readers: the installer's mid-take refusal (N9) and the dr
 BYO-agent skill that narrated setup from it (D:B81) is retired (D:B132, DV #50): a coding
 agent installs shroom from shroom.am/agent, and shroom's window does the rest. The file
 stays public, for a future doctor (D:B132).
+
+**The agent-driven setup** (spec N89, D:B278). A coding agent can drive the setup itself,
+with no window: installed with `--agent` (`--relaunched=agent`, `LaunchKind::Agent`), shroom
+opens as the mushroom only, and `shroom setup …` asks the running app over `control.sock`
+(§3.5) for one of the setup window's clicks or its paste at a time. The core runs the
+wizard's own states with its window open and never shown (`Door::headless`: the plan,
+the gate watches, wiring and the chapter as the window's; no slice in the Scene, so no
+Dock icon); an ask is made only where `onboarding::slice` offers it, and answered with
+`SetupReport` (the state's id and the facts its agent line carries). The words are the
+command's (`setup.rs`), each the state's `agent` line in the spec. A tray click shows the
+window at the current step (`headless` cleared); macOS's Quit & Reopen comes back unseen
+(`Restore.headless`). The token: the command reads stdin when piped, else the clipboard
+(`pbpaste`), and sends it once (`setup.token`, DV #59) into the stash.
 
 ### 11.2 The status seam, as built (v2)
 

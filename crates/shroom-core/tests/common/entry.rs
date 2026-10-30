@@ -236,10 +236,11 @@ fn open_since(w: &World) -> Option<u64> {
     }
 }
 
-/// A window shows unless it opened after the take began (law 4). Law 6 reads the setup
-/// window's from here (`laws::law_6`): the Dock icon's side of the World.
+/// A window shows unless it opened after the take began (law 4), or it is the setup window
+/// an agent's `shroom setup` keeps shut (N89). Law 6 reads the setup window's from here
+/// (`laws::law_6`): the Dock icon's side of the World.
 pub fn shows(w: &World, kind: WindowKind) -> bool {
-    w.session.windows.get(&kind).is_some_and(|d| open_since(w).is_none_or(|t| d.opened.0 < t))
+    w.session.windows.get(&kind).is_some_and(|d| !d.headless && open_since(w).is_none_or(|t| d.opened.0 < t))
 }
 
 fn has_space(w: &World) -> bool {
@@ -417,7 +418,8 @@ fn tray(w: &World) -> Option<&'static str> {
     if recording(w) {
         return Some("recording");
     }
-    if w.take.is_some() || w.session.windows.contains_key(&WindowKind::Onboarding) {
+    // The setup window an agent keeps shut (N89) is no window: the tray rests as it would.
+    if w.take.is_some() || w.session.windows.get(&WindowKind::Onboarding).is_some_and(|d| !d.headless) {
         return None;
     }
     Some(if has_space(w) { "idle-ready" } else { "idle-unprovisioned" })

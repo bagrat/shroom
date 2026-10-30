@@ -3543,11 +3543,13 @@ dependencies = [
 name = "shroom-cli"
 version = "0.1.0"
 dependencies = [
+ "libc",
  "serde",
  "serde_json",
  "shroom-cloud",
  "shroom-core",
  "shroom-edit",
+ "shroom-spec",
  "shroom-storage",
  "shroom-upload",
  "tempfile",
