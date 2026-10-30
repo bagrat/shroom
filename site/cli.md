@@ -30,7 +30,6 @@ wording of `message`; pass `message` on to the person when it helps.
 | They ask | Run |
 |---|---|
 | What's shroom doing? | `shroom status --json` |
-| Set shroom up, or pick up where the setup stopped | `shroom setup --json` — see *Setting it up* below |
 | Show my videos | `shroom list --json` (add `--limit 10`, `--search <words>`, `--mine`) |
 | The link to the demo | `shroom link '<title words>' --json` |
 | Open it | `shroom open <id> --json` |
@@ -61,18 +60,6 @@ A pinned video is never a candidate. When their space's auto-cleanup is on, what
 delete comes first, each with `deletes_at`: tell them, and that `shroom pin <id>` keeps one.
 `shroom autoclean --json` says whether it's on (`days`), what goes next (`going`, `next_at`)
 and what went last; it's changed only in shroom's Settings, on the Mac that set up the space.
-
-## Setting it up
-
-`shroom setup` drives shroom's setup with no window, step by step. Every answer has `at`
-(the step), `say` (the line to say to them), `do` (what they do, or `null` while it's
-shroom's turn) and `next` (the command to run once they have). Say `say`, wait while they
-do `do`, run `next`, until `at` is `all-set`. They click every button in Cloudflare and
-macOS; you never do. The token goes from Cloudflare's Copy button straight to
-`shroom setup token`, which reads it from their clipboard: never run `pbpaste` yourself,
-and never ask for the token in this chat. A link name is theirs to choose: ask, then
-`shroom setup name '<their name>'`. If they'd rather use shroom's window, they click the
-mushroom in the menu bar.
 
 ## Many at once
 
@@ -181,7 +168,7 @@ The link stays the same, and the recording itself is kept for a while, so it can
 
 | `error` | What to do |
 |---|---|
-| `not_set_up` | Tell them to open shroom and finish setting it up — or, if they want you to, run `shroom setup --json` (see *Setting it up*). Then try again. |
+| `not_set_up` | Tell them to open shroom and finish setting it up. Then try again. |
 | `not_found` | Run `shroom list --json` and check the id with them. |
 | `ambiguous` | Show the matches, ask which one. |
 | `needs_confirmation` | Ask them (see *Rules*). Never add `--yes` on your own. |

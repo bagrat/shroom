@@ -116,18 +116,6 @@ describe("the agent page", () => {
     assert.match(installer, /^ +say "Updated shroom to \$version — opening it now\."$/m);
   });
 
-  // Bagrat, 2026-10-30 (N89): the agent may drive the setup too, with no window — the
-  // words are the command's, the clicks are the person's, and the token never passes
-  // through the agent.
-  it("sets it up too, when they want that, by following shroom setup", () => {
-    assert.match(flat, /If they also want you to set it up, install with `sh -s -- --agent` at the end instead\./);
-    assert.match(flat, /Then run `shroom setup --json` and follow each answer: say its `say` line to them, wait while they do its `do`, then run its `next`\. Stop when `at` is `all-set`\./);
-    assert.match(flat, /They click every button in Cloudflare and macOS; you never do\./);
-    assert.match(flat, /The token goes from Cloudflare's Copy button straight to `shroom setup token`: never run `pbpaste` yourself, and never ask for the token in this chat\./);
-    assert.match(flat, /If they'd rather use shroom's window, they click the mushroom in the menu bar\./);
-    assert.match(installer, /--agent\) agent=1; shift ;;/);
-  });
-
   // 125 characters: a fetch tool that summarises the page can't pass a longer quote on whole.
   it("gives the agent short lines to say, in shroom's words", () => {
     assert.ok(said.includes("Install shroom from shroom.am on this Mac?"), "the ask is a line to say");
