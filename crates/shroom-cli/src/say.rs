@@ -33,6 +33,8 @@ shroom — your shroom videos from the command line.
   shroom edit <video> cut 1:02 1:10   leave a part out; also trim <in> <out>,
                                       put-back <cut>, apply <cut>, revert, finish
   shroom status                       is shroom running, recording, set up?
+  shroom setup                        set shroom up, step by step, with no window
+                                      (for a coding agent: follow each answer's next)
   shroom guide                        how a coding agent should use this tool
 
 Many at once (each item its own result; safe to run again; --dry-run first)
@@ -631,6 +633,26 @@ pub fn partly(failed: usize, of: usize, lines: &str) -> String {
 
 pub fn record_usage() -> String {
     "shroom record start|pause|resume|stop".into()
+}
+
+/// `shroom setup` (N88): how it's asked.
+pub fn setup_usage() -> String {
+    "shroom setup takes: (nothing), wait, account new, account have, account pick <id>, token open, token, card open, name <name>, permissions.".into()
+}
+
+/// `shroom setup token` found no token: nothing on the clipboard, nothing piped in.
+pub fn setup_no_token() -> String {
+    "There's no token on the clipboard yet. Press Copy next to the token in Cloudflare, then run this again.".into()
+}
+
+/// A step this command doesn't know: shroom's window has it.
+pub fn setup_in_window() -> String {
+    "Click the mushroom in the menu bar: shroom's window shows this step.".into()
+}
+
+/// An invite this Mac holds: its window is finishing the join.
+pub fn setup_joining() -> String {
+    "This Mac is joining a space from an invite. Click the mushroom in the menu bar to finish there.".into()
 }
 
 pub fn app_not_running() -> String {

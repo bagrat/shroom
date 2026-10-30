@@ -36,7 +36,7 @@ pub fn ask(socket: &Path, op: &str, how: &serde_json::Map<String, Value>, launch
         Err(_) => match launch {
             Some(app_id) => {
                 let opening = Instant::now();
-                open_app(app_id)?;
+                open_app(app_id, op.starts_with("setup."))?;
                 let s = wait_for(socket, Duration::from_secs(15))?;
                 crate::log::note(format!("app-opened {}ms", opening.elapsed().as_millis()));
                 s
@@ -81,15 +81,24 @@ fn refusal(code: &str, op: &str) -> Fail {
         "not_ready" => Fail::Refused(say::not_now(op)),
         // `shroom edit` (N72): the video is open in an editor window on this Mac.
         "editor_open" => Fail::CantEdit { reason: "editor_open", message: say::cant_edit("editor_open") },
+        // `shroom setup` (N88): an invite this Mac holds is its window's to finish.
+        "joining" => Fail::Refused(say::setup_joining()),
         _ => Fail::Refused(say::app_said_no()),
     }
 }
 
-fn open_app(app_id: &str) -> Result<(), Fail> {
+/// Opens the app in the background. For `shroom setup` (N88) it opens as the mushroom only,
+/// with no window (`--relaunched=agent`): the agent drives the setup.
+fn open_app(app_id: &str, for_setup: bool) -> Result<(), Fail> {
     if !cfg!(target_os = "macos") {
         return Err(Fail::AppUnreachable(say::app_only_on_a_mac()));
     }
-    let ok = std::process::Command::new("open").args(["-g", "-b", app_id]).status().is_ok_and(|s| s.success());
+    let mut open = std::process::Command::new("open");
+    open.args(["-g", "-b", app_id]);
+    if for_setup {
+        open.args(["--args", "--relaunched=agent"]);
+    }
+    let ok = open.status().is_ok_and(|s| s.success());
     if ok {
         return Ok(());
     }

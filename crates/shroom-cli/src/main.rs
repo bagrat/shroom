@@ -15,6 +15,7 @@ mod home;
 mod log;
 mod out;
 mod say;
+mod setup;
 mod space;
 
 use serde_json::{Value, json};
@@ -197,6 +198,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
         },
         "record" => record(a, rest),
         "edit" => edit::edit(a, rest),
+        "setup" => setup::setup(&home(a)?, rest, a.no_launch),
         other => Err(Fail::Usage(say::not_a_command(other))),
     }
 }
