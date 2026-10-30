@@ -1,6 +1,6 @@
 # Agent-driven setup: `shroom setup …` (a proposal)
 
-**Status: proposed 2026-10-30, awaiting Bagrat's go.** The interview's four rulings are
+**Status: approved by Bagrat 2026-10-30, with the Law 13 deviation (§4); the board ("Agent setup", images in `agent-setup/`) awaits his look.** The interview's four rulings are
 in; the copy below is a draft for the canvas (Design first) and the spec.
 
 **The ask (Bagrat, 2026-10-30, paraphrased).** Besides the wizard, which stays for people
