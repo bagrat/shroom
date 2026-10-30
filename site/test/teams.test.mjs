@@ -227,6 +227,6 @@ describe("the route", () => {
   it("says on the privacy page what a signup sends, and that nothing keeps it", async () => {
     const res = await worker.fetch(new Request("https://shroom.am/privacy", { headers: { accept: "text/html" } }), { ASSETS });
     const html = await res.text();
-    assert.match(html, /<li><b>Company sign-in\.<\/b> When you leave your email address on our home page to hear when company sign-in is ready, it goes once by email to the person who makes shroom, only so we can tell you when it’s ready\. shroom\.am keeps none of it\.<\/li>/);
+    assert.match(html, /<li><b>Company sign-in\.<\/b> If you leave your email on our home page to hear about company sign-in, it’s emailed once to the person who makes shroom, only to tell you when it’s ready\. shroom\.am keeps none of it\.<\/li>/);
   });
 });
