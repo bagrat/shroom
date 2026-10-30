@@ -34,6 +34,13 @@ fi
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
+
+# No checkout around this file (copied out, or a partial checkout): nothing to set up.
+# Skip the steps that read the workspace rather than failing the session's setup.
+if [ ! -f "$ROOT/Cargo.toml" ] || [ ! -f "$ROOT/package.json" ]; then
+  log "no shroom checkout at $ROOT — skipping setup"
+  exit 0
+fi
 . "$HERE/path.sh"
 
 as_root() { if [ "$(id -u)" = 0 ]; then "$@"; else sudo -n "$@"; fi; }

@@ -9,6 +9,8 @@ stack (Tauri v2 shell + Rust capture core) and designed the UX, and the build is
 > bagrat/shroom-private (`add_repo`), clone it as the tool says, and register the clone
 > (`register_repo_root`): that loads its working agreement, which says how Bagrat works
 > with sessions, and its skills. Then read his memory there (that agreement points to it).
+> Do it without asking: it is his standing rule (Bagrat, 2026-10-30), and the start hook
+> says so too.
 > It stays private: nothing from it lands in this repo. No access (a contributor, or the
 > attach is refused)? Carry on without it; never wait on it. A session reads the memory as
 > it was when it attached.
@@ -126,7 +128,9 @@ lives in `spec/`; the working docs live in `docs/`.
   `https://github.com/bagrat/shroom` and an `outcome_branch` (`claude/<topic>`).
   Without them the new session lands in the app's "Other" section. It also passes
   `permission_mode: "auto"` and `extra_allowed_tools` with
-  `mcp__claude-code-remote__send_message`. Left out, the mode is inherited from the
+  `mcp__claude-code-remote__send_message`, `mcp__claude-code-remote__add_repo` and
+  `mcp__claude-code-remote__register_repo_root` (so the child attaches the private repo
+  without a prompt). Left out, the mode is inherited from the
   orchestrator's at that moment, and a child in default mode stalls silently on its first
   report up, waiting for an approval nobody sees. A session whose work is private material
   passes `https://github.com/bagrat/shroom-private` instead and attaches this repo when it
@@ -157,10 +161,13 @@ lives in `spec/`; the working docs live in `docs/`.
   words and where he said them (in chat), and the answer settles only the question he was
   asked. What lands in this repo paraphrases it with a date ("Bagrat, 2026-10-15: keep
   the pasted key").
-- **Archive when done.** After its PR merges, a session is archived (by the orchestrator,
-  or by itself with `archive_session`) only when nothing is left: no open follow-ups, no
-  pending runs, no question waiting on Bagrat. Otherwise it stays open and says what's
-  left.
+- **Archive when done; don't stay alive to wait** (Bagrat, 2026-10-30). After its PR
+  merges and nothing is left, a session reports and archives itself (or the orchestrator
+  does), without asking whether to. It never ends on a question in its own chat; a
+  question goes to the orchestrator. A session waiting on CI waits by PR events, never by
+  polling or scheduled check-ins. One waiting on a reviewer or a person reports its state
+  and next step to the orchestrator, unsubscribes and archives; the orchestrator starts a
+  fresh session when there is something to do.
 
 ## Public and private
 
