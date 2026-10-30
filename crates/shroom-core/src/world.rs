@@ -73,7 +73,7 @@ pub enum LaunchKind {
     InstallUpdate,
     /// Opened for a coding agent's setup (`--relaunched=agent`: the install line's `--agent`,
     /// or the `shroom` command opening shroom for `shroom setup`): silent, tray-only — the
-    /// agent drives the setup with no window (N88).
+    /// agent drives the setup with no window (N89).
     Agent,
     /// The swap helper couldn't put the new version in place and reopened the old one
     /// (`--update-failed`): the running version is unchanged.
@@ -110,7 +110,7 @@ pub struct Restore {
     /// The window to reopen — after an update, the one that was in front (DEVIATIONS #14).
     pub window: WindowKind,
     pub written: Wall,
-    /// The setup a coding agent drove had no window (N88): the chapter comes back unseen.
+    /// The setup a coding agent drove had no window (N89): the chapter comes back unseen.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub headless: bool,
 }
@@ -1271,7 +1271,7 @@ pub struct Door {
     pub entered: Mono,
     pub asked: bool,
     /// The setup window, open but never shown: a coding agent drives the setup with
-    /// `shroom setup` (N88). Its plan runs as the window's; the Scene shows no window.
+    /// `shroom setup` (N89). Its plan runs as the window's; the Scene shows no window.
     pub headless: bool,
 }
 
@@ -1282,7 +1282,7 @@ impl Door {
     pub fn unasked(at: Mono) -> Door {
         Door { opened: at, entered: at, asked: false, headless: false }
     }
-    /// The setup window an agent's `shroom setup` opens: never shown (N88).
+    /// The setup window an agent's `shroom setup` opens: never shown (N89).
     pub fn headless(at: Mono) -> Door {
         Door { opened: at, entered: at, asked: false, headless: true }
     }
@@ -1719,7 +1719,7 @@ impl World {
         self.mac.primed.is_some()
     }
 
-    /// The setup runs with its window shut: a coding agent drives it (N88).
+    /// The setup runs with its window shut: a coding agent drives it (N89).
     pub fn setup_headless(&self) -> bool {
         self.session.windows.get(&WindowKind::Onboarding).is_some_and(|d| d.headless)
     }

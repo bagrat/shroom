@@ -391,7 +391,7 @@ the flavor's home, opened once the core has handled `Booted` (an earlier ask wou
 empty World): the socket 600 in the 700 folder, each connection's peer uid checked
 (`getpeereid`), one JSON line each way, at most 1 KB in: `{"v":1,"op":"record.start"}`
 (`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`; `shroom setup`'s
-`setup.*` asks (N88, D:B277: `status`, `peek`, `account`, `token-page`, `token`, `pick`,
+`setup.*` asks (N89, D:B278: `status`, `peek`, `account`, `token-page`, `token`, `pick`,
 `card-page`, `name`, `permissions`) answer with `"setup": {"at", "took", "busy", …}` (§11.1),
 and `setup.token` is the one ask that carries a secret, straight into the stash (DV #59). The runtime holds the
 connection and posts `Event::Cli {id, op}` (a start posts fresh `Os(Grants)` first, as the
@@ -981,7 +981,7 @@ BYO-agent skill that narrated setup from it (D:B81) is retired (D:B132, DV #50):
 agent installs shroom from shroom.am/agent, and shroom's window does the rest. The file
 stays public, for a future doctor (D:B132).
 
-**The agent-driven setup** (spec N88, D:B277). A coding agent can drive the setup itself,
+**The agent-driven setup** (spec N89, D:B278). A coding agent can drive the setup itself,
 with no window: installed with `--agent` (`--relaunched=agent`, `LaunchKind::Agent`), shroom
 opens as the mushroom only, and `shroom setup …` asks the running app over `control.sock`
 (§3.5) for one of the setup window's clicks or its paste at a time. The core runs the

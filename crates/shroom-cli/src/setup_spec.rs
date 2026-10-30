@@ -1,4 +1,4 @@
-//! `shroom setup`'s words are the spec's (N88): each step's `say` is its state's agent line,
+//! `shroom setup`'s words are the spec's (N89): each step's `say` is its state's agent line,
 //! verbatim, with the spec's example link name and count; every step the app can answer
 //! with has one.
 

@@ -448,7 +448,7 @@ pub fn launch_kind(args: &[String], at_login: bool) -> LaunchKind {
         // The `updating` lane stays silent (N9, N41).
         LaunchKind::InstallUpdate
     } else if args.iter().any(|a| a == "--relaunched=agent") {
-        // Opened for a coding agent's setup (N88): the install line's `--agent`, or the
+        // Opened for a coding agent's setup (N89): the install line's `--agent`, or the
         // `shroom` command opening shroom for `shroom setup` — the mushroom only.
         LaunchKind::Agent
     } else if at_login {

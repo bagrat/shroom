@@ -66,7 +66,7 @@ pub fn command(words: &[String]) -> String {
             "finish" => "edit finish",
             _ => "edit ?",
         },
-        // `setup <step>` (N88): the step, never a name or an account.
+        // `setup <step>` (N89): the step, never a name or an account.
         "setup" => match (w(1), w(2)) {
             ("", _) => "setup",
             ("wait", _) => "setup wait",

@@ -81,13 +81,13 @@ fn refusal(code: &str, op: &str) -> Fail {
         "not_ready" => Fail::Refused(say::not_now(op)),
         // `shroom edit` (N72): the video is open in an editor window on this Mac.
         "editor_open" => Fail::CantEdit { reason: "editor_open", message: say::cant_edit("editor_open") },
-        // `shroom setup` (N88): an invite this Mac holds is its window's to finish.
+        // `shroom setup` (N89): an invite this Mac holds is its window's to finish.
         "joining" => Fail::Refused(say::setup_joining()),
         _ => Fail::Refused(say::app_said_no()),
     }
 }
 
-/// Opens the app in the background. For `shroom setup` (N88) it opens as the mushroom only,
+/// Opens the app in the background. For `shroom setup` (N89) it opens as the mushroom only,
 /// with no window (`--relaunched=agent`): the agent drives the setup.
 fn open_app(app_id: &str, for_setup: bool) -> Result<(), Fail> {
     if !cfg!(target_os = "macos") {

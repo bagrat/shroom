@@ -635,7 +635,7 @@ pub fn record_usage() -> String {
     "shroom record start|pause|resume|stop".into()
 }
 
-/// `shroom setup` (N88): the step's agent line, for the person — the spec's, verbatim
+/// `shroom setup` (N89): the step's agent line, for the person — the spec's, verbatim
 /// (`setup_spec.rs`), with the link name and the count it carries.
 pub fn setup_says(at: &str, host: Option<&str>, videos: Option<u32>) -> String {
     let host = host.unwrap_or("your link name");
@@ -714,7 +714,7 @@ pub fn setup_next_line(cmd: &str) -> String {
     format!("Next: {}", cmd.trim_end_matches(" --json"))
 }
 
-/// `shroom setup` (N88): how it's asked.
+/// `shroom setup` (N89): how it's asked.
 pub fn setup_usage() -> String {
     "shroom setup takes: (nothing), wait, account new, account have, account pick <id>, token open, token, card open, name <name>, permissions.".into()
 }

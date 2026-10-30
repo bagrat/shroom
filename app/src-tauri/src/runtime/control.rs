@@ -11,7 +11,7 @@
 //! for, refusing all of them while General's “Let it start and stop recordings” is off.
 //! The answer is a code, never words: the command says them. Nothing secret crosses here.
 //!
-//! `shroom setup` (spec N88) asks the same way: `setup.status`, `setup.peek`, `setup.account`
+//! `shroom setup` (spec N89) asks the same way: `setup.status`, `setup.peek`, `setup.account`
 //! (`"new"`), `setup.token-page`, `setup.pick` (`"account"`), `setup.card-page`, `setup.name`
 //! (`"name"`), `setup.permissions` — each the setup window's own click, with the window
 //! shut — answered with where the setup stands (`"setup": {"at", …}`). And once, `setup.token`
@@ -63,7 +63,7 @@ pub fn op_of(line: &str) -> Option<CliOp> {
         // `shroom edit` (N72): before it changes a video's edit, and once it saved one.
         "edit.check" => Some(CliOp::Editing { rec: rec_of(&v)? }),
         "edit.copy" => Some(CliOp::Copy { rec: rec_of(&v)?, rev: v["rev"].as_u64()? }),
-        // `shroom setup` (N88): the setup window's clicks, with the window shut. Its token
+        // `shroom setup` (N89): the setup window's clicks, with the window shut. Its token
         // is `token_of`'s, never an op's.
         "setup.status" => Some(CliOp::Setup(SetupAsk::Status)),
         "setup.peek" => Some(CliOp::Setup(SetupAsk::Peek)),
@@ -77,7 +77,7 @@ pub fn op_of(line: &str) -> Option<CliOp> {
     }
 }
 
-/// `setup.token`'s token (N88, DEVIATIONS #59): the text the command read, for the stash —
+/// `setup.token`'s token (N89, DEVIATIONS #59): the text the command read, for the stash —
 /// never an op, never logged.
 pub fn token_of(line: &str) -> Option<String> {
     let v: serde_json::Value = serde_json::from_str(line.trim()).ok()?;
@@ -130,7 +130,7 @@ pub fn asked(id: u64, op: &CliOp) -> String {
 /// An answer, as the run log has it: its ask's number, ok or no, the take or the refusal's
 /// code, and how long it took — never the link.
 pub fn answered(a: &CliAnswer, took: Duration) -> String {
-    // A setup ask's answer is where the setup stands (N88).
+    // A setup ask's answer is where the setup stands (N89).
     let face = a.setup.as_ref().map_or(a.take, |s| s.at);
     format!("control: answer {} {} {} ({} ms)", a.id, if a.ok { "ok" } else { "no" }, a.error.unwrap_or(face), took.as_millis())
 }
@@ -218,7 +218,7 @@ pub fn spawn(rt: Runtime, pending: Pending) {
             let mut line = String::new();
             let read = conn.try_clone().map(|c| BufReader::new(c.take(MAX_ASK)).read_line(&mut line));
             let read = read.ok().and_then(|r| r.ok()).is_some();
-            // The command's token (N88): into the stash, where a paste lands; the line that
+            // The command's token (N89): into the stash, where a paste lands; the line that
             // carried it goes with this turn.
             let token = read.then(|| token_of(&line)).flatten().map(|text| {
                 let (id, shape) = rt.stash.lock().unwrap().put(SecretField::Token, text, true);
@@ -231,7 +231,7 @@ pub fn spawn(rt: Runtime, pending: Pending) {
             };
             // Start is the popover's Start: the grants as macOS has them now go first, so
             // the core arms on the truth (commands::arms) — and so does a setup's look at
-            // where it stands, and its permissions step (N88).
+            // where it stands, and its permissions step (N89).
             if matches!(op, CliOp::Start(_) | CliOp::Setup(SetupAsk::Status | SetupAsk::Permissions)) {
                 rt.post(Event::Os(super::os::grants()));
             }

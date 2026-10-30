@@ -128,7 +128,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             // A permission relaunch resumes the chapter (bend 9: macOS's own quit-and-reopen
             // is recognized by a fresh restore.json, since it looks like a user launch).
             let permission = disk.restore.as_ref().filter(|r| fresh(r, RelaunchWhy::Permission)).map(|r| r.window);
-            // An agent's setup had no window (N88): its chapter comes back unseen.
+            // An agent's setup had no window (N89): its chapter comes back unseen.
             let headless = disk.restore.as_ref().is_some_and(|r| r.headless);
             let updated = disk.restore.as_ref().filter(|r| fresh(r, RelaunchWhy::Update)).map(|r| r.window);
             let mut arm = Arm::named("booted");
@@ -175,7 +175,7 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                         arm = Arm { name: a.name, edge: None };
                     }
                 }
-                // Opened for an agent's setup (N88): silent, the mushroom only — the agent
+                // Opened for an agent's setup (N89): silent, the mushroom only — the agent
                 // drives the setup with `shroom setup`, and a click opens the window.
                 LaunchKind::Agent if !w.provisioned() => arm = Arm { name: "agent-launch", edge: Some(("first-launch", "idle-unprovisioned")) },
                 LaunchKind::Agent | LaunchKind::LoginItem | LaunchKind::InstallUpdate | LaunchKind::Install { join: true } => {}
@@ -472,7 +472,7 @@ fn click(w: &mut World, at: Option<u32>) -> Out {
             let now = w.now;
             // An open window comes forward (entered moves, so the plan re-probes); it keeps
             // the instant it opened (law 4's visibility).
-            // An agent's setup shows its window now, at the step it stands on (N88).
+            // An agent's setup shows its window now, at the step it stands on (N89).
             w.session
                 .windows
                 .entry(WindowKind::Onboarding)
@@ -583,7 +583,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
         Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: face(w), error, link, setup: None })
     };
     let refuse = |w: &World, code: &'static str| (vec![answer(w, Some(code), None)], Arm::named("cli-refused"));
-    // `shroom setup` (N88) drives the setup itself: no space needed, no switch to ask.
+    // `shroom setup` (N89) drives the setup itself: no space needed, no switch to ask.
     if let CliOp::Setup(ask) = op {
         return setup(w, id, ask);
     }
@@ -695,7 +695,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     (fx, arm)
 }
 
-/// `shroom setup …` (spec N88): a coding agent drives the setup with no window. The plan runs
+/// `shroom setup …` (spec N89): a coding agent drives the setup with no window. The plan runs
 /// as the window's, its window open but never shown (`Door::headless`); each ask is the
 /// window's own click or paste, made only where the window would offer it now — asked at the
 /// wrong moment it takes nothing — and every ask is answered with where the setup stands.
@@ -790,7 +790,7 @@ fn setup(w: &mut World, id: u64, ask: crate::event::SetupAsk) -> Out {
     (fx, arm)
 }
 
-/// Where the setup stands, as `shroom setup` reports it (N88): the window's own state id —
+/// Where the setup stands, as `shroom setup` reports it (N89): the window's own state id —
 /// its offline and unexpected faces too — and the facts the agent's line carries.
 fn setup_report(w: &World, took: bool) -> crate::effect::SetupReport {
     let at = onboarding::at(w);
@@ -2483,7 +2483,7 @@ fn close_onboarding(w: &mut World) -> Out {
 /// A secret landed in a paste field: only its handle and shape reach the core (law 13).
 fn pasted(w: &mut World, field: SecretField, id: crate::world::SecretId, shape: Shape) -> Out {
     let scene = derive(w);
-    // The setup window's slice whether it shows or not: an agent's token lands as a paste (N88).
+    // The setup window's slice whether it shows or not: an agent's token lands as a paste (N89).
     let plan = onboarding::slice(w);
     let takes = plan.as_ref().is_some_and(|o| o.takes_paste(field)) || scene.settings.as_ref().is_some_and(|s| s.takes_paste(field));
     if !takes {

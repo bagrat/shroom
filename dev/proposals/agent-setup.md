@@ -1,8 +1,8 @@
 # Agent-driven setup: `shroom setup …` (a proposal)
 
 **Status: approved by Bagrat 2026-10-30, with the Law 13 deviation (§4), and the board
-("Agent setup", images in `agent-setup/`) approved the same day; built as spec N88, DECISIONS
-B277 and DEVIATIONS #59.** What the build settled differently from this draft: the
+("Agent setup", images in `agent-setup/`) approved the same day; built as spec N89, DECISIONS
+B278 and DEVIATIONS #59.** What the build settled differently from this draft: the
 installer's lines are unchanged (Installed is the agent's cue to run `shroom setup`); an
 agent's setup never registers the login item (its box was never shown); and a Settings
 repair (`space-degraded`) stays the window's for now — `shroom setup` drives the setup

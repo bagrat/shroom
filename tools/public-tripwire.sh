@@ -18,9 +18,10 @@ SESSION='claude\.ai/code/session_|session_0[0-9A-Za-z]{20,}'
 TRAILER='Claude-Session:[[:space:]]*http'
 MOVED='RETHINK|analytics\.md|after-v1-accounts-ai|demo-recording|demo-script'
 EMAIL='[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}'
-# Allowed: invented, role and noreply addresses, the URL-parsing test vector, and asset
-# names like icon@2x.png that only look like one.
-ALLOWED='@(([A-Za-z0-9-]+\.)*example\.(com|org|net)|shroom\.am|evil\.com|users\.noreply\.github\.com)$|^noreply@(anthropic|github)\.com$|\.(png|jpg|jpeg|svg|webp|gif)$'
+# Allowed: invented, role and noreply addresses, the URL-parsing test vector, the landing's
+# company sign-in placeholder (N88, Bagrat's words), and asset names like icon@2x.png that
+# only look like one.
+ALLOWED='@(([A-Za-z0-9-]+\.)*example\.(com|org|net)|shroom\.am|evil\.com|users\.noreply\.github\.com)$|^noreply@(anthropic|github)\.com$|^you@company\.com$|\.(png|jpg|jpeg|svg|webp|gif)$'
 SKIP=(':!tools/public-tripwire.sh' ':!THIRD-PARTY-NOTICES.md' ':!tools/licence-texts'
       ':!vendor' ':!worker/vendor' ':!Cargo.lock' ':!package-lock.json')
 

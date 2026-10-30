@@ -1,4 +1,4 @@
-//! The setup a coding agent drives with `shroom setup`, no window (spec N88): the wizard's
+//! The setup a coding agent drives with `shroom setup`, no window (spec N89): the wizard's
 //! own states, run with its window shut. Every step the commands can stand on has its agent
 //! line in the spec; an `--agent` launch opens no window; each ask is the click it names,
 //! answered with where the setup stands; the token rides the stash like a paste; a click on
@@ -97,7 +97,7 @@ fn every_step_the_commands_stand_on_has_its_agent_line() {
         "wizard-offline", "wizard-unexpected",
     ] {
         let s = spec.state(id).unwrap_or_else(|| panic!("{id}: not a state"));
-        let line = s.agent.as_ref().unwrap_or_else(|| panic!("{id}: no agent line (N88)"));
+        let line = s.agent.as_ref().unwrap_or_else(|| panic!("{id}: no agent line (N89)"));
         assert_eq!(line.id, format!("{id}.agent"));
         assert!(!line.text.is_empty());
     }
@@ -107,7 +107,7 @@ fn every_step_the_commands_stand_on_has_its_agent_line() {
 fn an_agent_launch_opens_no_window() {
     let mut r = Run::new(World::blank());
     r.send(Event::Booted(Box::new(disk(LaunchKind::Agent, &World::blank(), fresh_quick(), None))));
-    assert_eq!(r.arm.edge, Some(("first-launch", "idle-unprovisioned")), "N88: the mushroom only");
+    assert_eq!(r.arm.edge, Some(("first-launch", "idle-unprovisioned")), "N89: the mushroom only");
     unseen(&r);
     assert!(r.ids().contains(&"idle-unprovisioned"));
 }
@@ -118,7 +118,7 @@ fn an_agent_drives_the_whole_setup_with_no_window() {
     r.send(Event::Booted(Box::new(disk(LaunchKind::Agent, &World::blank(), fresh_quick(), None))));
 
     // The first ask passes the welcome by (Set up my space), never registering the login
-    // item: its box was never shown (N88).
+    // item: its box was never shown (N89).
     let s = ask(&mut r, SetupAsk::Status);
     assert_eq!(s.at, "account");
     assert!(!r.has(|e| matches!(e, Effect::Shell(ShellCmd::SetLoginItem(_)))), "never set silently");

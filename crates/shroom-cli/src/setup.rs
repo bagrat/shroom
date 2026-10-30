@@ -1,4 +1,4 @@
-//! `shroom setup …` — the setup a coding agent drives, with no window (spec N88; the
+//! `shroom setup …` — the setup a coding agent drives, with no window (spec N89; the
 //! write-up, dev/proposals/agent-setup.md). The app runs the wizard's own states with its
 //! window shut; each command here is one of the window's clicks or its paste, asked over the
 //! control socket (`app.rs`), and every answer says where the setup stands:
@@ -23,7 +23,7 @@ use crate::home::Home;
 use crate::out::{Done, Fail};
 use crate::say;
 
-/// Every step the app can answer with: each has its agent line in the spec (N88; the spec
+/// Every step the app can answer with: each has its agent line in the spec (N89; the spec
 /// test reads it).
 #[cfg_attr(not(test), allow(dead_code))]
 pub const STEPS: [&str; 23] = [

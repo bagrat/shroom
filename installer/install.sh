@@ -32,7 +32,7 @@
 # release, and the official release once it's newer. It leaves ~/.shroom/channel saying
 # so, and the app's own updater keeps to that channel; remove the file to leave it.
 #
-# --agent (spec N88) is for a coding agent that sets shroom up for you: shroom opens as the
+# --agent (spec N89) is for a coding agent that sets shroom up for you: shroom opens as the
 # mushroom in the menu bar, with no window, and the agent walks you through the setup with
 # the `shroom setup` command. Click the mushroom to see shroom's own window instead.
 
@@ -422,7 +422,7 @@ launch() {
       printf '{"v":1,"link":"%s","arrived":"%s"}\n' "$join" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/invite.tmp" &&
       mv -f "$dir/invite.tmp" "$dir/invite" ) 2>/dev/null && invite=--invite
   fi
-  # --agent (N88): a fresh install opens as the mushroom only — the agent's `shroom setup`
+  # --agent (N89): a fresh install opens as the mushroom only — the agent's `shroom setup`
   # drives it. An invite's window is the member lane's, and an update reopens as it does.
   if [ -n "$agent" ] && [ -z "$invite" ] && [ "$how" = install ]; then how=agent; fi
   link_cli

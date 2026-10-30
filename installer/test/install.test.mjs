@@ -254,7 +254,7 @@ describe("installing", () => {
     assert.match(invite.arrived, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   });
 
-  it("with --agent, opens shroom as the mushroom only, for the agent's shroom setup (N88)", async () => {
+  it("with --agent, opens shroom as the mushroom only, for the agent's shroom setup (N89)", async () => {
     const r = await run({ args: ["--agent"] });
     assert.equal(r.code, 0);
     assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."], "the same lines: Installed is the agent's cue");

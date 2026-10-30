@@ -596,13 +596,13 @@ pub enum CliOp {
     /// `shroom edit` saved revision `rev` of the video's edit: its final video is owed, as
     /// after the editor's Done (N63, B197).
     Copy { rec: crate::world::RecId, rev: u64 },
-    /// `shroom setup …` (N88): a coding agent drives the setup with no window. Each ask is
+    /// `shroom setup …` (N89): a coding agent drives the setup with no window. Each ask is
     /// the setup window's own click or paste, held to what the window would offer now, and
     /// answered with where the setup stands.
     Setup(SetupAsk),
 }
 
-/// What `shroom setup` may ask (N88): each one a click or a paste of the setup window's.
+/// What `shroom setup` may ask (N89): each one a click or a paste of the setup window's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SetupAsk {
     /// `shroom setup`: where it stands. Starts the setup unseen on a Mac that has none (the

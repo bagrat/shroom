@@ -278,7 +278,7 @@ pub(crate) fn row_fact(w: &World, row: u8) -> Option<String> {
 }
 
 pub fn derive(w: &World) -> Option<Window<OnboardingBody>> {
-    // An agent's setup runs the window's plan with the window shut (N88): no window to show.
+    // An agent's setup runs the window's plan with the window shut (N89): no window to show.
     if w.setup_headless() {
         return None;
     }
@@ -286,7 +286,7 @@ pub fn derive(w: &World) -> Option<Window<OnboardingBody>> {
 }
 
 /// The setup window's slice, whether it shows or not: what an agent's `shroom setup` ask is
-/// held to (N88), as a click is held to what the window offers.
+/// held to (N89), as a click is held to what the window offers.
 pub fn slice(w: &World) -> Option<Window<OnboardingBody>> {
     let door = w.session.windows.get(&WindowKind::Onboarding)?;
     if !w.window_visible(WindowKind::Onboarding) {

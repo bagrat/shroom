@@ -92,7 +92,7 @@ def render(m):
                 w("")
             if s.get("agent"):
                 a = s["agent"]
-                w(f"**The agent says** (`shroom setup`, N88) · {a['copy']}: “{a['text']}”" + (f" — {a['note']}" if a.get("note") else ""))
+                w(f"**The agent says** (`shroom setup`, N89) · {a['copy']}: “{a['text']}”" + (f" — {a['note']}" if a.get("note") else ""))
                 w("")
             if s["actions"]:
                 w("| Action | Kind | Return | Goes to | Note |")

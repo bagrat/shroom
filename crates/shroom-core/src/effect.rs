@@ -36,11 +36,11 @@ pub struct CliAnswer {
     pub take: &'static str,
     pub error: Option<&'static str>,
     pub link: Option<String>,
-    /// A `shroom setup` ask's answer (N88): where the setup stands.
+    /// A `shroom setup` ask's answer (N89): where the setup stands.
     pub setup: Option<SetupReport>,
 }
 
-/// Where the setup stands, for `shroom setup` (N88): the state's id and the facts its words
+/// Where the setup stands, for `shroom setup` (N89): the state's id and the facts its words
 /// carry. Never a token, a key or a path (law 13); account names are the person's own.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SetupReport {

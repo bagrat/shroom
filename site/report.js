@@ -124,12 +124,13 @@ function b64(s) {
 /** An encoded-word for a header that may hold any character. @param {string} s */
 const word = (s) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${btoa(String.fromCharCode(...new TextEncoder().encode(s)))}?=`);
 
-/** The whole message, as MIME: the text, and the log attached when there is one.
- * @param {{ to: string, subject: string, text: string, log: string, replyTo?: string, id: string, date: Date }} m */
+/** The whole message, as MIME: the text, and the log attached when there is one. `name` is
+ * the sender's display name (“shroom reports” unless another door gives its own).
+ * @param {{ to: string, subject: string, text: string, log: string, replyTo?: string, id: string, date: Date, name?: string }} m */
 export function mime(m) {
   const boundary = `shroom-${m.id}`;
   const head = [
-    `From: shroom reports <${FROM}>`,
+    `From: ${m.name ?? "shroom reports"} <${FROM}>`,
     `To: <${m.to}>`,
     ...(m.replyTo ? [`Reply-To: <${m.replyTo}>`] : []),
     `Subject: ${word(m.subject)}`,
@@ -157,7 +158,7 @@ export function mime(m) {
 }
 
 /** @param {number} status @param {Record<string, unknown>} body */
-const json = (status, body) =>
+export const json = (status, body) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
 
 /** Whether Turnstile says the page's sender is a person.
@@ -180,7 +181,7 @@ async function person(secret, token, ip, fetcher) {
 /** The binding's message, made: `cloudflare:email`'s EmailMessage on Cloudflare; a test hands
  * its own maker in as `env.EMAIL_MESSAGE`.
  * @param {any} env @param {string} from @param {string} to @param {string} raw */
-async function message(env, from, to, raw) {
+export async function message(env, from, to, raw) {
   const Message = env.EMAIL_MESSAGE ?? (await import("cloudflare:email")).EmailMessage;
   return new Message(from, to, raw);
 }

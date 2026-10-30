@@ -20,7 +20,7 @@ pub struct SaidLine {
 }
 
 /// What a coding agent says to the person at this step of the setup it drives with
-/// `shroom setup` (N88): the window's one voice, with no window.
+/// `shroom setup` (N89): the window's one voice, with no window.
 #[derive(Debug, Clone, Deserialize)]
 pub struct AgentLine {
     pub id: String,
@@ -71,7 +71,7 @@ pub struct State {
     #[serde(rename = "said")]
     pub said_lines: Vec<SaidLine>,
     pub actions: Vec<Action>,
-    /// The agent's line at this step of `shroom setup` (N88), on the setup's states only.
+    /// The agent's line at this step of `shroom setup` (N89), on the setup's states only.
     #[serde(default)]
     pub agent: Option<AgentLine>,
     #[serde(rename = "cites", default)]

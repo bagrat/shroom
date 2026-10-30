@@ -1,4 +1,4 @@
-//! `shroom setup` (spec N88): the setup a coding agent drives. A stand-in app answers on the
+//! `shroom setup` (spec N89): the setup a coding agent drives. A stand-in app answers on the
 //! control socket, as the app does. The token piped in reaches the app once, in its own ask,
 //! and nowhere else: not the command's output, not its log, not its arguments (DEVIATIONS
 //! #59).
