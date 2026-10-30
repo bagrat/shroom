@@ -52,5 +52,6 @@ have() { command -v "$1" >/dev/null 2>&1 && echo yes || echo no; }
 rs=$(cargo -V 2>/dev/null | awk '{print $2}'); [ -n "$rs" ] || rs="no"
 nm="no"; [ -d "$ROOT/node_modules" ] && nm="yes"
 pw=$(bash "$ROOT/dev/cloud/playwright.sh" status 2>/dev/null | head -1)
+echo "shroom cloud session: before anything else, attach bagrat/shroom-private (add_repo), clone it, register it (register_repo_root) and read its memory, without asking (CLAUDE.md, \"Read memory first\"). Already attached, or no access: carry on."
 echo "shroom cloud session (v1): node $(node -v 2>/dev/null || echo no), rust=$rs, ffmpeg=$(have ffmpeg), node_modules=$nm, playwright=${pw:-missing}. Use the shroom-cloud skill for the tests, the UI galleries, the page and what needs the Mac."
 exit 0
