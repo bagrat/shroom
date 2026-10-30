@@ -71,6 +71,10 @@ pub enum LaunchKind {
     /// The install script reopened shroom after replacing it (`--relaunched=install-update`):
     /// the `updating` lane — silent, tray-only, and no “Updated to … ✓” (N9, N41).
     InstallUpdate,
+    /// Opened for a coding agent's setup (`--relaunched=agent`: the install line's `--agent`,
+    /// or the `shroom` command opening shroom for `shroom setup`): silent, tray-only — the
+    /// agent drives the setup with no window (N88).
+    Agent,
     /// The swap helper couldn't put the new version in place and reopened the old one
     /// (`--update-failed`): the running version is unchanged.
     UpdateFailed,
@@ -106,6 +110,9 @@ pub struct Restore {
     /// The window to reopen — after an update, the one that was in front (DEVIATIONS #14).
     pub window: WindowKind,
     pub written: Wall,
+    /// The setup a coding agent drove had no window (N88): the chapter comes back unseen.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub headless: bool,
 }
 
 /// A handle into the runner's stash of pasted secrets. The core never holds secret text
@@ -1263,14 +1270,21 @@ pub struct Door {
     pub opened: Mono,
     pub entered: Mono,
     pub asked: bool,
+    /// The setup window, open but never shown: a coding agent drives the setup with
+    /// `shroom setup` (N88). Its plan runs as the window's; the Scene shows no window.
+    pub headless: bool,
 }
 
 impl Door {
     pub fn asked(at: Mono) -> Door {
-        Door { opened: at, entered: at, asked: true }
+        Door { opened: at, entered: at, asked: true, headless: false }
     }
     pub fn unasked(at: Mono) -> Door {
-        Door { opened: at, entered: at, asked: false }
+        Door { opened: at, entered: at, asked: false, headless: false }
+    }
+    /// The setup window an agent's `shroom setup` opens: never shown (N88).
+    pub fn headless(at: Mono) -> Door {
+        Door { opened: at, entered: at, asked: false, headless: true }
     }
 }
 
@@ -1703,6 +1717,11 @@ impl World {
     /// Row six — this Mac's permissions chapter — is done.
     pub fn row_six_done(&self) -> bool {
         self.mac.primed.is_some()
+    }
+
+    /// The setup runs with its window shut: a coding agent drives it (N88).
+    pub fn setup_headless(&self) -> bool {
+        self.session.windows.get(&WindowKind::Onboarding).is_some_and(|d| d.headless)
     }
 
     pub fn provisioned(&self) -> bool {

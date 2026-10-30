@@ -326,7 +326,7 @@ fn settings_base() -> World {
     w.now = Mono(10_000);
     w.launch.version = "1.3.0".into();
     w.prefs.settings_tab = Some(SettingsTab::Space);
-    w.session.windows.insert(WindowKind::Settings, Door { opened: Mono(900), entered: Mono(5_000), asked: true });
+    w.session.windows.insert(WindowKind::Settings, Door { opened: Mono(900), entered: Mono(5_000), asked: true, headless: false });
     w
 }
 

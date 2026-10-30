@@ -447,6 +447,10 @@ pub fn launch_kind(args: &[String], at_login: bool) -> LaunchKind {
     } else if args.iter().any(|a| a == "--relaunched=install-update") {
         // The `updating` lane stays silent (N9, N41).
         LaunchKind::InstallUpdate
+    } else if args.iter().any(|a| a == "--relaunched=agent") {
+        // Opened for a coding agent's setup (N88): the install line's `--agent`, or the
+        // `shroom` command opening shroom for `shroom setup` — the mushroom only.
+        LaunchKind::Agent
     } else if at_login {
         LaunchKind::LoginItem
     } else {
@@ -948,6 +952,7 @@ fn launch_word(launch: LaunchKind) -> &'static str {
         LaunchKind::Install { join: true } => "install-invite",
         LaunchKind::InstallUpdate => "install-update",
         LaunchKind::UpdateFailed => "relaunch-update-failed",
+        LaunchKind::Agent => "agent",
     }
 }
 
@@ -1586,6 +1591,7 @@ mod tests {
         // The install script's fresh install is the first launch; its update lane is silent.
         assert_eq!(launch_kind(&args("shroom --relaunched=install"), false), LaunchKind::Install { join: false });
         assert_eq!(launch_kind(&args("shroom --relaunched=install-update"), false), LaunchKind::InstallUpdate);
+        assert_eq!(launch_kind(&args("shroom --relaunched=agent"), false), LaunchKind::Agent);
         // A join link handed over by file opens the invite, on either lane (N9's `--join`).
         assert_eq!(launch_kind(&args("shroom --relaunched=install --invite"), false), LaunchKind::Install { join: true });
         assert_eq!(launch_kind(&args("shroom --relaunched=install-update --invite"), false), LaunchKind::Install { join: true });
@@ -1991,7 +1997,7 @@ mod tests {
         assert!(log.contains("boot: launch login") && log.contains("boot: home default · shell quiet · cloud test fence"), "{log}");
         assert!(!log.contains(&tmp.path().display().to_string()), "no paths: {log}");
         // Every launch has its own word (the login one is what docs/CHECKPOINT.md looks for).
-        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed];
+        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed, LaunchKind::Agent];
         let words: std::collections::HashSet<_> = kinds.iter().map(|k| launch_word(*k)).collect();
         assert_eq!(words.len(), kinds.len());
     }
@@ -2103,7 +2109,7 @@ mod tests {
         // Every runtime file's log lines; a grep may name a line by its opening words. Each
         // reads the release's own log.
         let src: String = std::fs::read_dir(root.join("app/src-tauri/src/runtime")).unwrap().flatten().filter(|e| e.path().extension().is_some_and(|x| x == "rs")).map(|e| std::fs::read_to_string(e.path()).unwrap()).collect();
-        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed];
+        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed, LaunchKind::Agent];
         let grep_lines: Vec<&str> = doc.lines().filter(|l| l.starts_with("grep '")).collect();
         let greps: Vec<&str> = grep_lines.iter().map(|l| l.strip_prefix("grep '").unwrap().split('\'').next().unwrap()).collect();
         for want in ["boot: launch login", "power: macOS will sleep", "updater staged", "updater not applied"] {
@@ -2266,7 +2272,7 @@ mod tests {
     #[test]
     fn restore_json_round_trips_with_its_version() {
         use shroom_core::world::{RelaunchWhy, WindowKind};
-        let f = RestoreFile { v: 1, restore: Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(42) } };
+        let f = RestoreFile { v: 1, restore: Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(42), headless: false } };
         let json = serde_json::to_string(&f).unwrap();
         assert_eq!(json, r#"{"v":1,"why":"permission","window":"onboarding","written":42}"#);
         let back: RestoreFile = serde_json::from_str(&json).unwrap();

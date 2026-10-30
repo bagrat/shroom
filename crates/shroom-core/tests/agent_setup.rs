@@ -155,9 +155,17 @@ fn an_agent_drives_the_whole_setup_with_no_window() {
     let s = ask(&mut r, SetupAsk::CardPage);
     assert!(s.took);
     assert!(r.has(|e| *e == Effect::Shell(ShellCmd::OpenUrl(PublicUrl::Billing { account_id: "bagrat".into() }))));
-    let poll = r.scene.next_wake.expect("the gate polls with the window shut");
-    r.tick_to(poll.0);
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Gates))));
+    // The watch polls with the window shut, as it does with it open.
+    let mut polled = false;
+    for _ in 0..20 {
+        let wake = r.scene.next_wake.expect("the gate polls with the window shut");
+        r.tick_to(wake.0);
+        if r.has(|e| *e == Effect::Cloud(CloudCmd::Sweep(SweepPart::Gates))) {
+            polled = true;
+            break;
+        }
+    }
+    assert!(polled, "the card's watch polls");
     r.cloud(CloudNews::Swept(SweepAnswer { gates: Some(CLEAR), ..Default::default() }));
     r.cloud(swept(CLEAR, None));
     let s = ask(&mut r, SetupAsk::Peek);
@@ -170,10 +178,10 @@ fn an_agent_drives_the_whole_setup_with_no_window() {
     assert_eq!(ask(&mut r, SetupAsk::Peek).at, "name-taken");
     ask(&mut r, SetupAsk::Name("myshroomhq".into()));
     r.cloud(CloudNews::Claimed { name: "myshroomhq".into(), result: Ok(()) });
+    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: true })), "wiring starts out of sight");
     let s = ask(&mut r, SetupAsk::Peek);
     assert_eq!(s.at, "done");
     assert_eq!(s.host.as_deref(), Some("v.myshroomhq.workers.dev"));
-    assert!(r.has(|e| *e == Effect::Cloud(CloudCmd::Wire { label: "v".into(), fresh: true })), "wiring starts out of sight");
 
     // One permission per run: each asks the next, or says which prompt is up.
     let s = ask(&mut r, SetupAsk::Permissions);

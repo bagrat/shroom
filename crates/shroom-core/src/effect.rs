@@ -36,6 +36,29 @@ pub struct CliAnswer {
     pub take: &'static str,
     pub error: Option<&'static str>,
     pub link: Option<String>,
+    /// A `shroom setup` ask's answer (N88): where the setup stands.
+    pub setup: Option<SetupReport>,
+}
+
+/// Where the setup stands, for `shroom setup` (N88): the state's id and the facts its words
+/// carry. Never a token, a key or a path (law 13); account names are the person's own.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct SetupReport {
+    /// The setup's state id (`account` … `all-set`), or its offline or unexpected face.
+    pub at: &'static str,
+    /// The ask was taken: its click or paste was offered here, and made.
+    pub took: bool,
+    /// shroom is working on it (a token's check, the probe pass, wiring, a relaunch): the
+    /// person has nothing to do yet.
+    pub busy: bool,
+    /// The link name, once there is one (`v.myshroom.workers.dev`).
+    pub host: Option<String>,
+    /// `token-pick-account`'s choices.
+    pub accounts: Vec<crate::world::Account>,
+    /// `space-found`'s count.
+    pub videos: Option<u32>,
+    /// The account was just made (I signed up): the token waits on its email.
+    pub signed_up: bool,
 }
 
 impl Effect {

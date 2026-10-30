@@ -13,7 +13,8 @@ fn state(w: &World) -> Option<&'static str> {
         Some(Phase::Starting | Phase::Recording | Phase::Pausing(_) | Phase::Resuming) => Some("recording"),
         Some(_) => None,
         // Both idle states are tray-only life: the onboarding window is closed.
-        None if w.session.windows.contains_key(&WindowKind::Onboarding) => None,
+        // An agent's setup has no window (N88): the tray's own idle states.
+        None if w.session.windows.get(&WindowKind::Onboarding).is_some_and(|d| !d.headless) => None,
         // A space whose chapter isn't done on this Mac is idle-ready too (its entry is
         // "provisioned, no take, the window closed"); only its click differs (bend 5).
         None if w.provisioned() => Some("idle-ready"),

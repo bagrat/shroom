@@ -3548,6 +3548,7 @@ dependencies = [
  "shroom-cloud",
  "shroom-core",
  "shroom-edit",
+ "shroom-spec",
  "shroom-storage",
  "shroom-upload",
  "tempfile",
