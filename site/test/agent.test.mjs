@@ -25,6 +25,8 @@ describe("the agent page", () => {
   it("mirrors the landing's ratified lines", () => {
     for (const l of landing.said) {
       // The Homebrew road (N52) is the person's: the agent runs the install line it names.
+      // The company sign-in band (N88) is for a person weighing a paid tier, not an install.
+      if ((l.cites ?? []).includes("N88")) continue;
       if (PAGE_ONLY.test(l.text) || /^For macOS/.test(l.text) || (l.cites ?? []).includes("copy table") || (l.cites ?? []).includes("N52")) continue;
       assert.ok(flat.includes(l.text), `missing: ${l.text}`);
     }

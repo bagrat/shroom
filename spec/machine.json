@@ -1508,6 +1508,17 @@
     "N67 (the bar shows the owner's chapters when there are any)"
    ],
    "amended_by": []
+  },
+  {
+   "id": "N88",
+   "title": "shroom.am: company sign-in, coming soon",
+   "decision": "**Bagrat, 2026-10-30**, approving the canvas boards LandingTeams (laptop), LandingTeamsPhone (phone) and LandingTeamsStates (the signup box's states, and the email that arrives), their words with them. Teams already work for free: an owner invites each person with a link and removes them by hand when they leave. The coming paid tier, **company sign-in**, is about two things: no invites (people sign in with their company's Google Workspace account) and leavers losing access on their own when their Google account is removed; plus videos only the company can watch. Its videos stay in the owner's own Cloudflare account. (1) **A band** across the landing's grid, under the two stacks and above the foot: “For companies · coming soon” in small capitals, the heading “Company sign-in”, a lead line, and four points, each with its own icon on a blue chip (as the terms'): a door, a person crossed out, a lock, a cloud. On a laptop the words take seven columns and the box five; on a phone the band comes last, the box under the words behind a rule. (2) **The box**: the early price, “$59” “a month per space, any number of people”, then “Early price. Nothing to pay until it's ready.”, then the signup: “Want it for your team?”, an address field (“you@company.com”), “Tell me when it's ready”, and “One email when it's ready, and nothing else.” (3) **Its states**: Sending (the button reads “Sending…”, dimmed); Sent (the signup gives way to one line with a green tick, “Thanks. We'll write to <address> once, when it's ready.”); not an address, checked in the page before anything is sent (the field's edge turns red and the note reads “That doesn't look like an email address.”); and failed (“That didn't go through. Try again, or write to hi@shroom.am.”). Without script the signup is hidden and the box says “Want it for your team? Write to hi@shroom.am, and we'll tell you when it's ready.” (the build's words, approved by Bagrat as written the same day, with the privacy page's line). (4) **What it sends**: the address only, once, by email to the inbox that reads reports (POST shroom.am/teams), so that person can be told when it is ready; nothing keeps it on the site, and the privacy page says so. No cookie and no one else's script come with it. Built: DECISIONS B277.",
+   "status": "ratified",
+   "date": "2026-10-30",
+   "amends": [
+    "landing (the company sign-in band under the two stacks)"
+   ],
+   "amended_by": []
   }
  ],
  "surfaces": [
@@ -2712,7 +2723,7 @@
    "surface": "web-page",
    "status": "ratified",
    "board": "Landing",
-   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. On a laptop one 12-column grid with one gutter (N59, N86). The masthead sits on the grid's edges: the shroom mark and wordmark, large, at the left; at the right the headline on one line, a little smaller, its middle on the wordmark's middle, with no line under it (Bagrat, 2026-10-25); a rule under them. Under it two stacks that end on one line. Left, seven columns: a tile with the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70) and a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70); under it Install in its own tile (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). Right, five columns: the price in its own box (what Cloudflare would charge a month, one slider and the cleanup choice, a busy team's month as its last line; N86), then the seven terms in a tile under a small-capitals title, each with its own icon on a blue chip, the last one ending in a link to sponsor shroom (N86). Whichever stack is shorter grows to meet the other: install's tile on the left, the terms' tile on the right; the video always shows whole, never cropped (Bagrat, 2026-10-25). No header: the page's foot, at the bottom of the first screen, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the hero and Setup walkthrough, the price box, install, the terms, the foot, its links wrapping.",
+   "summary": "shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. On a laptop one 12-column grid with one gutter (N59, N86). The masthead sits on the grid's edges: the shroom mark and wordmark, large, at the left; at the right the headline on one line, a little smaller, its middle on the wordmark's middle, with no line under it (Bagrat, 2026-10-25); a rule under them. Under it two stacks that end on one line. Left, seven columns: a tile with the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70) and a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70); under it Install in its own tile (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). Right, five columns: the price in its own box (what Cloudflare would charge a month, one slider and the cleanup choice, a busy team's month as its last line; N86), then the seven terms in a tile under a small-capitals title, each with its own icon on a blue chip, the last one ending in a link to sponsor shroom (N86). Whichever stack is shorter grows to meet the other: install's tile on the left, the terms' tile on the right; the video always shows whole, never cropped (Bagrat, 2026-10-25). Under both stacks, across the grid, a band for companies, coming soon (N88): “Company sign-in”, a lead and four points with icons in seven columns, and in five a box with the early price and a signup for one email when it's ready. No header: the page's foot, at the bottom of the first screen, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the hero and Setup walkthrough, the price box, install, the terms, the company sign-in band (the box under its words), the foot, its links wrapping.",
    "entry": "A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.",
    "said": [
     {
@@ -3012,6 +3023,186 @@
      "id": "landing.for-macos-14-or"
     },
     {
+     "text": "For companies · coming soon",
+     "role": "label",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): its eyebrow, in small capitals over the heading.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.for-companies-coming-soon"
+    },
+    {
+     "text": "Company sign-in",
+     "role": "heading",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): its heading.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.company-sign-in"
+    },
+    {
+     "text": "Teams already work for free: you invite each person with a link, and remove them by hand when they leave. Company sign-in does both for you.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the lead, under the heading.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.teams-already-work-for"
+    },
+    {
+     "text": "No invites. Your team signs in with their Google Workspace account, and they’re in.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 1, its first sentence bold; a door icon.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.no-invites"
+    },
+    {
+     "text": "Leavers are out on their own. Remove someone’s Google account, and their shroom access ends with it.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 2, its first sentence bold; a person crossed out.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.leavers-are-out-on"
+    },
+    {
+     "text": "Videos only your company can watch. Mark a video so it opens only for people signed in with your company’s Google account.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 3, its first sentence bold; a lock.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.videos-only-your-company"
+    },
+    {
+     "text": "Still your own Cloudflare. Your videos never pass through us.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 4, its first sentence bold; a cloud.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.still-your-own-cloudflare"
+    },
+    {
+     "text": "$59 a month per space, any number of people",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the box's first line, “$59” large. An early price.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.59-a-month-per"
+    },
+    {
+     "text": "Early price. Nothing to pay until it’s ready.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): under the price.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.early-price-nothing-to"
+    },
+    {
+     "text": "Want it for your team?",
+     "role": "field-label",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the address field's label.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.want-it-for-your"
+    },
+    {
+     "text": "you@company.com",
+     "role": "placeholder",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the address field's placeholder.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.you-company-com"
+    },
+    {
+     "text": "Tell me when it’s ready",
+     "role": "button",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): sends the address to shroom.am/teams, once it looks like one.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.tell-me-when-its"
+    },
+    {
+     "text": "One email when it’s ready, and nothing else.",
+     "role": "note",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): under the field; an error takes its place.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.one-email-when-its"
+    },
+    {
+     "text": "Sending…",
+     "role": "status",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the button while the address goes, dimmed.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.sending"
+    },
+    {
+     "text": "Thanks. We’ll write to <address> once, when it’s ready.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): sent: the signup gives way to this one line, a green tick before it; <address> is what was typed, bold.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.thanks-well-write-to"
+    },
+    {
+     "text": "That doesn’t look like an email address.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): in the note's place, checked in the page before anything is sent (or the site refused its shape); the field's edge turns red.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.that-doesnt-look-like"
+    },
+    {
+     "text": "That didn’t go through. Try again, or write to hi@shroom.am.",
+     "role": "status",
+     "copy": "ratified",
+     "note": "The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): in the note's place when the site didn't take it (off, too many, or the email failed); hi@shroom.am is a mail link.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.that-didnt-go-through"
+    },
+    {
+     "text": "Want it for your team? Write to hi@shroom.am, and we’ll tell you when it’s ready.",
+     "role": "line",
+     "copy": "ratified",
+     "note": "The box without script, in the signup's place (N88). Written in the build; approved by Bagrat as written, 2026-10-30.",
+     "cites": [
+      "N88"
+     ],
+     "id": "landing.want-it-for-your-write"
+    },
+    {
      "text": "Send feedback",
      "role": "link",
      "copy": "ratified",
@@ -3121,6 +3312,13 @@
      "return_default": false,
      "goes_to": "landing",
      "note": "Opens github.com/sponsors/bagrat, outside shroom. At the end of the open-source term (N86)."
+    },
+    {
+     "label": "Tell me when it’s ready",
+     "kind": "filled-default",
+     "return_default": false,
+     "goes_to": "landing",
+     "note": "Checks the address in the page, then posts it to shroom.am/teams, which emails it once to the inbox that reads reports and keeps nothing. The box shows Sending…, then the sent line, or why it didn't go (N88)."
     }
    ],
    "cites": [
@@ -3136,7 +3334,8 @@
     "N59",
     "N61",
     "N70",
-    "N86"
+    "N86",
+    "N88"
    ],
    "was": {
     "fixture": "r1.json",

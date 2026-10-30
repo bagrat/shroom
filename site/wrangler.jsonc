@@ -8,7 +8,7 @@
     "directory": "public",
     "binding": "ASSETS",
     // Only these reach worker.js; the favicons and og.png are served as they are, and free.
-    "run_worker_first": ["/", "/next", "/install", "/agent", "/agent.md", "/cli", "/cli.md", "/whats-new", "/whats-new/*", "/faq", "/privacy", "/terms", "/feedback", "/report", "/how-to.mp4", "/hero-2.mp4", "/download/*", "/_/*"],
+    "run_worker_first": ["/", "/next", "/install", "/agent", "/agent.md", "/cli", "/cli.md", "/whats-new", "/whats-new/*", "/faq", "/privacy", "/terms", "/feedback", "/report", "/teams", "/how-to.mp4", "/hero-2.mp4", "/download/*", "/_/*"],
     "html_handling": "none",
     "not_found_handling": "none"
   },
@@ -26,17 +26,21 @@
   // none, it can reach only the account's verified destinations, and the address stays out
   // of this repo. TURNSTILE_SECRET is the feedback form's check. Neither secret is here: they
   // live in the Worker (`wrangler secret put`). Without REPORT_TO, /report answers "off";
-  // without TURNSTILE_SECRET, so does the feedback form's.
+  // without TURNSTILE_SECRET, so does the feedback form's. POST /teams (site/teams.js), the
+  // landing's company sign-in signup, sends through the same binding to the same inbox.
   "send_email": [{ "name": "EMAIL" }],
   // A few reports a minute from one address, and a ceiling for all of them (per Cloudflare
   // location): the feedback page's pair, and the app's own, tighter by address, so neither
   // door spends the other's budget. Without its pair, a door answers "off". The counters
-  // are Cloudflare's own and short-lived; nothing else is kept.
+  // are Cloudflare's own and short-lived; nothing else is kept. The landing's company sign-in
+  // signup (/teams) has a pair of its own too.
   "ratelimits": [
     { "name": "REPORT_RATE", "namespace_id": "1801", "simple": { "limit": 3, "period": 60 } },
     { "name": "REPORT_CEILING", "namespace_id": "1802", "simple": { "limit": 30, "period": 60 } },
     { "name": "REPORT_APP_RATE", "namespace_id": "1803", "simple": { "limit": 2, "period": 60 } },
-    { "name": "REPORT_APP_CEILING", "namespace_id": "1804", "simple": { "limit": 30, "period": 60 } }
+    { "name": "REPORT_APP_CEILING", "namespace_id": "1804", "simple": { "limit": 30, "period": 60 } },
+    { "name": "TEAMS_RATE", "namespace_id": "1805", "simple": { "limit": 3, "period": 60 } },
+    { "name": "TEAMS_CEILING", "namespace_id": "1806", "simple": { "limit": 30, "period": 60 } }
   ],
   // No request logs: nothing about who visited is kept.
   "observability": { "enabled": false }

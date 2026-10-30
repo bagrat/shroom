@@ -30,7 +30,7 @@
   :root {
     --bg: #2b2f36; --card: #333944; --card-edge: #333944; --line: #434a56; --line-strong: #4c566a; --well: #1f2228;
     --text: #eceff4; --muted: #c3cad6; --quiet: #aeb6c4; --frost: #88c0d0; --frost-2: #8fbcbb; --on-frost: #2b2f36; --stem: #e5e9f0;
-    --green: #a3be8c;
+    --green: #a3be8c; --red: #bf616a; --orange: #d08770;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
     --sans: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", sans-serif;
     color-scheme: dark;
@@ -39,7 +39,7 @@
     :root {
       --bg: #f6f7f9; --card: #ffffff; --card-edge: #dfe3ea; --line: #dfe3ea; --line-strong: #c5ccd8; --well: #eef1f5;
       --text: #2e3440; --muted: #4c566a; --quiet: #5c6779; --frost: #4c6f9a; --frost-2: #3f5f86; --on-frost: #ffffff; --stem: #b8c0cc;
-      --green: #4f7a3a;
+      --green: #4f7a3a; --red: #b23a48; --orange: #a8501f;
       color-scheme: light;
     }
   }
@@ -178,6 +178,46 @@
   .terms .sponsor a:hover { text-decoration: underline; }
   .terms .sponsor svg { display: inline-block; width: 15px; height: 15px; margin-right: 5px; vertical-align: -2px; fill: none; stroke: #bf616a; stroke-width: 2.2; stroke-linejoin: round; }
 
+  /* Company sign-in, coming soon (N88; Bagrat, 2026-10-30, the canvas boards LandingTeams,
+     LandingTeamsPhone and LandingTeamsStates): a band across the grid under the two stacks,
+     the words in seven columns and the early price with its signup box in five. The box posts one
+     address to /teams (site/teams.js). Without script the form is hidden and the box says
+     where to write instead. */
+  .teams { grid-column: 1 / -1; margin-top: 32px; padding: 28px; border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  .teams .say { grid-column: 1 / 8; display: flex; flex-direction: column; gap: 14px; }
+  .teams .eyebrow { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--quiet); }
+  .teams h2 { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+  .teams .lead { margin: 0; color: var(--muted); font-size: 17px; }
+  .teams ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; color: var(--muted); font-size: 16px; line-height: 1.45; }
+  .teams li { display: flex; align-items: flex-start; gap: 12px; }
+  .teams li > span:last-child { padding-top: 5px; }
+  .teams .ic { flex: none; width: 34px; height: 34px; border-radius: 8px; background: color-mix(in srgb, var(--frost) 15%, transparent); display: flex; align-items: center; justify-content: center; }
+  .teams .ic svg { width: 20px; height: 20px; fill: none; stroke: var(--frost); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .teams b { color: var(--text); font-weight: 600; }
+  .teams .box { grid-column: 8 / 13; padding: 22px 22px 20px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 14px; }
+  .teams .early { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin: 0; font-size: 16px; color: var(--muted); }
+  .teams .early strong { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; color: var(--text); font-variant-numeric: tabular-nums; }
+  .teams .soon { margin: -6px 0 0; font-size: 14px; color: var(--quiet); }
+  .teams form { display: none; flex-direction: column; gap: 8px; margin: 0; }
+  .js .teams form { display: flex; }
+  .js .teams .nojs { display: none; }
+  .teams .nojs { margin: 0; font-size: 15px; color: var(--muted); }
+  .teams label { font-size: 15px; color: var(--muted); }
+  .teams .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .teams input[type=email] { flex: 1 1 200px; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--well); color: var(--text); font: 400 16px var(--sans); }
+  .teams input[type=email][aria-invalid="true"] { border-color: var(--red); }
+  .teams button { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--frost); color: var(--on-frost); font: 600 15px var(--sans); cursor: pointer; }
+  .teams button:hover { background: var(--frost-2); }
+  .teams button:disabled { opacity: .6; cursor: default; }
+  .teams .note { margin: 0; font-size: 13px; color: var(--quiet); }
+  .teams .note.bad { color: var(--orange); }
+  .teams .done { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 14px; border-radius: 9px; background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--text); font-size: 15px; }
+  .teams .done svg { flex: none; width: 20px; height: 20px; margin-top: 2px; fill: none; stroke: var(--green); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .teams .done strong { font-weight: 600; overflow-wrap: anywhere; }
+  .teams .trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
   /* The hero: the still sits over the video, and fades once the video is playing. */
   .how-to { position: relative; }
   .stage { position: relative; aspect-ratio: 1280 / 832; border-radius: 10px; overflow: hidden; background: var(--well); border: 1px solid var(--line); }
@@ -239,6 +279,11 @@
     .tiles { margin-top: 20px; grid-template-columns: minmax(0, 1fr); row-gap: 20px; }
     .stack { display: contents; }
     .watch { order: 1; } .price { order: 2; } .install { order: 3; } .terms { order: 4; }
+    /* The band last, the box under the words (the board's phone). */
+    .teams { order: 5; margin-top: 0; padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+    .teams h2 { font-size: 24px; }
+    .teams .lead { font-size: 16px; }
+    .teams .box { padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
     .tile { padding: 16px; gap: 16px; }
     .price { padding: 16px 16px 14px; }
     .price .sum b { font-size: 40px; }
@@ -346,6 +391,33 @@
       </ul>
     </section>
   </div>
+
+  <section class="teams" id="teams" aria-labelledby="teams-h">
+    <div class="say">
+      <div class="eyebrow">For companies · coming soon</div>
+      <h2 id="teams-h">Company sign-in</h2>
+      <p class="lead">Teams already work for free: you invite each person with a link, and remove them by hand when they leave. Company sign-in does both for you.</p>
+      <ul>
+        <li><span class="ic" data-icon="log-in" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg></span><span><b>No invites.</b> Your team signs in with their Google Workspace account, and they’re in.</span></li>
+        <li><span class="ic" data-icon="user-x" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5"/><path d="m22 8-5 5"/></svg></span><span><b>Leavers are out on their own.</b> Remove someone’s Google account, and their shroom access ends with it.</span></li>
+        <li><span class="ic" data-icon="lock" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><span><b>Videos only your company can watch.</b> Mark a video so it opens only for people signed in with your company’s Google account.</span></li>
+        <li><span class="ic" data-icon="cloud" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span><span><b>Still your own Cloudflare.</b> Your videos never pass through us.</span></li>
+      </ul>
+    </div>
+    <div class="box" id="teams-box">
+      <p class="early"><strong>$59</strong> <span>a month per space, any number of people</span></p>
+      <p class="soon">Early price. Nothing to pay until it’s ready.</p>
+      <!-- POST /teams (site/teams.js): the address, and `website`, a field no person sees (a
+           bot that fills it is answered as if sent, and nothing goes). -->
+      <form id="teams-form" novalidate>
+        <label for="teams-email">Want it for your team?</label>
+        <div class="row"><input id="teams-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@company.com" required aria-describedby="teams-note"><button type="submit">Tell me when it’s ready</button></div>
+        <div class="trap" aria-hidden="true"><label for="teams-website">Website</label><input id="teams-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+        <p class="note" id="teams-note" aria-live="polite">One email when it’s ready, and nothing else.</p>
+      </form>
+      <p class="nojs">Want it for your team? Write to <a href="mailto:hi@shroom.am">hi@shroom.am</a>, and we’ll tell you when it’s ready.</p>
+    </div>
+  </section>
 </main>
 
 <footer class="foot">
@@ -361,8 +433,8 @@
 
 <script>
   // What runs on this page: a link's ?ref= tag (or utm_*) leaves the address bar once counted,
-  // so it isn't shared onward; the hero; the setup walkthrough; the install tabs; and Copy, which reads "Copied" for a
-  // moment (law 10).
+  // so it isn't shared onward; the hero; the setup walkthrough; company sign-in's box; the install
+  // tabs; and Copy, which reads "Copied" for a moment (law 10).
   (function () {
     var u = new URL(location.href), tagged = false;
     Array.from(u.searchParams.keys()).forEach(function (k) {
@@ -442,6 +514,61 @@
       });
     });
     show();
+  })();
+  // Company sign-in's box (N88): the address is checked here first, then posted to /teams; while
+  // it goes the button reads “Sending…”; once sent the form gives way to one line with a tick.
+  (function () {
+    var form = document.getElementById("teams-form");
+    if (!form) return;
+    var EMAIL = /^[^\s@<>"(),;:\\[\]]+@(?:[^\s@<>"(),;:\\[\]./]+\.)+[^\s@<>"(),;:\\[\]./]{2,}$/;
+    var input = document.getElementById("teams-email"), trap = document.getElementById("teams-website");
+    var button = form.querySelector('button[type="submit"]'), note = document.getElementById("teams-note");
+    var NOTE = note.textContent, SEND = button.textContent;
+    var say = function (text, bad, link) {
+      note.textContent = text;
+      if (link) {
+        var a = document.createElement("a");
+        a.href = "mailto:" + link; a.textContent = link;
+        note.appendChild(a); note.appendChild(document.createTextNode("."));
+      }
+      note.classList.toggle("bad", !!bad);
+    };
+    var notEmail = function () {
+      input.setAttribute("aria-invalid", "true");
+      say("That doesn’t look like an email address.", true);
+      input.focus();
+    };
+    var failed = function () { say("That didn’t go through. Try again, or write to ", true, "hi@shroom.am"); };
+    input.addEventListener("input", function () {
+      if (note.classList.contains("bad")) { input.removeAttribute("aria-invalid"); say(NOTE, false); }
+    });
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (button.disabled) return;
+      var email = input.value.trim();
+      if (email.length > 254 || !EMAIL.test(email)) { notEmail(); return; }
+      input.removeAttribute("aria-invalid");
+      say(NOTE, false);
+      button.disabled = true; button.textContent = "Sending…"; input.readOnly = true;
+      var back = function () { button.disabled = false; button.textContent = SEND; input.readOnly = false; };
+      fetch("/teams", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: email, website: trap.value }) })
+        .then(function (res) {
+          back();
+          if (res.ok) {
+            var done = document.createElement("p"), who = document.createElement("strong");
+            done.className = "done"; done.setAttribute("role", "status");
+            done.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+            var line = document.createElement("span");
+            who.textContent = email;
+            line.appendChild(document.createTextNode("Thanks. We’ll write to "));
+            line.appendChild(who);
+            line.appendChild(document.createTextNode(" once, when it’s ready."));
+            done.appendChild(line);
+            form.replaceWith(done);
+          } else if (res.status === 400) notEmail();
+          else failed();
+        }, function () { back(); failed(); });
+    });
   })();
   // The install tabs (N59): one command shows; ←/→ move between the tabs.
   (function () {
