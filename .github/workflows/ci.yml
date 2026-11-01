@@ -22,10 +22,8 @@ name: CI
 on:
   push:
     branches: [main]
+  # A PR's title and body are checked by pr-text.yml, which an edit re-runs alone.
   pull_request:
-    # `edited` re-runs the tripwire when a PR's title or body changes: a fixed body would
-    # otherwise stay red until the next push.
-    types: [opened, synchronize, reopened, edited]
   # "Run workflow" on `main` warms the caches before a tag, when nothing ran for a week.
   workflow_dispatch:
 
@@ -53,8 +51,9 @@ env:
 jobs:
   # ── Public tripwire ─────────────────────────────────────────────────────────────────
   # This repo is public: no session links, `Claude-Session:` trailers, personal email
-  # addresses or names of the files that moved private, in the tree, the commits this
-  # run brings or the PR's title and body (CLAUDE.md, "Public and private"). Seconds.
+  # addresses or names of the files that moved private, in the tree or the commits this
+  # run brings (CLAUDE.md, "Public and private"); pr-text.yml holds the PR's title and
+  # body. Seconds.
   public:
     name: Public tripwire
     runs-on: ubuntu-latest
@@ -67,9 +66,6 @@ jobs:
       - name: Tripwire
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          PR_TEXT: |-
-            ${{ github.event.pull_request.title }}
-            ${{ github.event.pull_request.body }}
         run: |
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             bash tools/public-tripwire.sh "$BASE" HEAD

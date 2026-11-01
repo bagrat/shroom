@@ -1,0 +1,40 @@
+# The public tripwire on a pull request's title and body (CLAUDE.md, "Public and private").
+# Apart from ci.yml so that editing a PR's text re-runs only this: in ci.yml, an edit would
+# re-run every job and, sharing its concurrency group, cancel a run still going. ci.yml's
+# Public tripwire holds the tree and the commits; this holds the text, and turns green as
+# soon as a fixed body is saved.
+#
+# Every action is pinned to a full commit SHA, as in ci.yml. No secret is read; it runs on
+# the plain `pull_request` event with a read-only token.
+name: PR text
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-text-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  text:
+    name: Public tripwire (PR text)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # Only the script: the tree is ci.yml's to check.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: tools/public-tripwire.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Tripwire
+        env:
+          PR_TEXT: |-
+            ${{ github.event.pull_request.title }}
+            ${{ github.event.pull_request.body }}
+        run: bash tools/public-tripwire.sh
