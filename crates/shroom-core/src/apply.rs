@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::copy;
 use crate::derive::onboarding::{self, At};
 use crate::derive::settings::{self as settings_view, SpaceAt};
-use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, OneShot, UNDO_MS, derive, library as library_view};
+use crate::derive::{COPIED_MS, COUNTDOWN_MS, LIT_MS, MARKER_TOAST_MS, OneShot, UNDO_MS, derive, library as library_view};
 use crate::effect::{CloudCmd, EditCmd, Effect, LibCmd, MemberCmd, MoviesCopy, Perm, PersistOp, PublicUrl, RecCmd, ShellCmd, TakeCmd, UpCmd, UpdCmd};
 use crate::event::{
     ClaimFail, CloudNews, EditStep, EditorNews, Event, Field, JoinAnswer, Key, LibraryNews, MemberNews, OsNews, PeekAnswer, QuitVia, RecNews, ReportNews,
@@ -18,9 +18,9 @@ use crate::report::{Kind, Post};
 use crate::scene::{Action, Click};
 use crate::time::{Fact, Mono};
 use crate::world::{
-    Access, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
+    Access, AiEnd, AiRun, AiTurn, Arming, Blocked, Born, Cause, Confirm, CopyOwed, CopyTarget, Door, EditLink, EditLinkNo, EditorFields, EditorId, EditorMedia, EditorSave, FailClass, Failure, Fields, Fork, Invite,
     JoinRefusal, Landed, LaunchKind, Leaving, RecId,
-    LibraryFields, LibraryOps, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
+    LibraryFields, LibraryOps, MarkerToastSays, Members, OpenTake, Op, PageOpen, Paste, Phase, Progress, QuickProbe, Reach, RelaunchWhy, Removal, ReportFields, FeedbackFields, Restore, Role, SavedCause,
     SavedTake, SecretId, SettingsFields, SettingsTab, SourceId, Space, SpaceIdentity, StopOutcome, Strike, Sweep, TakeDir, TakeLost, TokenVerdict,
     UpdateOffer, Why, WindowKind, WorkerFact, World,
 };
@@ -63,7 +63,7 @@ pub fn apply(w: &mut World, event: Event) -> Out {
     // features are turned on.”, turns it on — so it's said before anything is heard.
     if w.online() != Some(false) && crate::derive::popover::ai_default_due(w) {
         w.space.ai_turn = Some(AiTurn::TurningOn);
-        fx.push(Effect::Cloud(CloudCmd::SetAi(true)));
+        fx.push(set_ai(w, true));
     }
     // A press on the page's Edit in shroom held for a take goes on once it's over (law 4).
     if !w.take_open() && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: false, .. })) {
@@ -86,6 +86,13 @@ pub fn apply(w: &mut World, event: Event) -> Out {
 
 /// The space's AI, settled on this Mac for good (N76): never turned on by default again,
 /// and its banner never shown again here.
+/// The AI's re-wiring, asked (N66): its run starts over at part 1, the switch showing where
+/// it's going (N80).
+fn set_ai(w: &mut World, on: bool) -> Effect {
+    w.space.ai_run = Some(AiRun { on, part: 1, since: w.now, end: None });
+    Effect::Cloud(CloudCmd::SetAi(on))
+}
+
 fn settle_ai(w: &mut World) -> Vec<Effect> {
     if w.once.ai_offer_answered {
         return vec![];
@@ -121,19 +128,21 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             // A permission relaunch resumes the chapter (bend 9: macOS's own quit-and-reopen
             // is recognized by a fresh restore.json, since it looks like a user launch).
             let permission = disk.restore.as_ref().filter(|r| fresh(r, RelaunchWhy::Permission)).map(|r| r.window);
+            // An agent's setup had no window (N89): its chapter comes back unseen.
+            let headless = disk.restore.as_ref().is_some_and(|r| r.headless);
             let updated = disk.restore.as_ref().filter(|r| fresh(r, RelaunchWhy::Update)).map(|r| r.window);
             let mut arm = Arm::named("booted");
             match disk.launch {
-                LaunchKind::PermissionRelaunch => arm = resume_chapter(w, permission.unwrap_or(WindowKind::Onboarding)),
+                LaunchKind::PermissionRelaunch => arm = resume_chapter(w, permission.unwrap_or(WindowKind::Onboarding), headless),
                 LaunchKind::User | LaunchKind::Install { join: false } if permission.is_some() => {
-                    arm = resume_chapter(w, permission.unwrap_or(WindowKind::Onboarding))
+                    arm = resume_chapter(w, permission.unwrap_or(WindowKind::Onboarding), headless)
                 }
                 // An update relaunch brings back the window that was in front (law 5,
                 // N37) — without the keyboard…
                 LaunchKind::UpdateRelaunch | LaunchKind::UpdateFailed => {
                     // Never the editor: its steps lived in the process that quit (N63).
                     if let Some(kind) = updated.filter(|k| !matches!(k, WindowKind::Editor(_))) {
-                        w.session.windows.insert(kind, Door::unasked(w.now));
+                        w.session.windows.insert(kind, Door { headless, ..Door::unasked(w.now) });
                     }
                     if disk.launch == LaunchKind::UpdateFailed {
                         // The running version is unchanged: say so once, and try again
@@ -166,7 +175,10 @@ fn apply_event(w: &mut World, event: Event) -> Out {
                         arm = Arm { name: a.name, edge: None };
                     }
                 }
-                LaunchKind::LoginItem | LaunchKind::InstallUpdate | LaunchKind::Install { join: true } => {}
+                // Opened for an agent's setup (N89): silent, the mushroom only — the agent
+                // drives the setup with `shroom setup`, and a click opens the window.
+                LaunchKind::Agent if !w.provisioned() => arm = Arm { name: "agent-launch", edge: Some(("first-launch", "idle-unprovisioned")) },
+                LaunchKind::Agent | LaunchKind::LoginItem | LaunchKind::InstallUpdate | LaunchKind::Install { join: true } => {}
             }
             if disk.restore.is_some() {
                 fx.push(Effect::Persist(PersistOp::Restore(None)));
@@ -210,8 +222,8 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             }
         }
         Event::MarkerShortcut(q) => {
-            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — nothing on
-            // screen answers, the take goes on; paused, Drop a marker where it's offered.
+            // ⌥⌘M (N64), under ⌥⌘P's rule: recording, a marker at this moment — the toast
+            // answers (N78), the take goes on; paused, Drop a marker where it's offered.
             quick(w, &q);
             if let Some(out) = guard_take(w) {
                 return out;
@@ -219,14 +231,32 @@ fn apply_event(w: &mut World, event: Event) -> Out {
             if !derive(w).tray.shortcut {
                 return (vec![], Arm::DROPPED);
             }
+            // The toast answers (N78); with the popover open its row does, and `update` puts the
+            // toast away under it.
+            let now = w.now;
+            let says = |t: &mut OpenTake, s: MarkerToastSays| t.toast = Some((s, now));
             match w.take.as_ref().map(|t| t.phase) {
                 Some(Phase::Recording) => {
                     if let Some(t) = w.take.as_mut() {
                         t.markers += 1;
+                        says(t, MarkerToastSays::Dropped(t.markers));
                     }
                     (vec![Effect::Recorder(RecCmd::Marker)], Arm::named("marker-shortcut"))
                 }
-                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => act(w, Action::DropMarker),
+                Some(Phase::Paused(_)) if crate::derive::marker_offered(w) => {
+                    let out = act(w, Action::DropMarker);
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Dropped(t.markers));
+                    }
+                    out
+                }
+                // Again at a pause that has its marker: nothing drops, and the toast says so.
+                Some(Phase::Paused(Cause::User)) if w.session.popover.is_none() && w.session.confirm.is_none() && w.take.as_ref().is_some_and(|t| t.marked_at_pause) => {
+                    if let Some(t) = w.take.as_mut() {
+                        says(t, MarkerToastSays::Already);
+                    }
+                    (vec![], Arm::named("marker-already"))
+                }
                 _ => (vec![], Arm::DROPPED),
             }
         }
@@ -442,12 +472,14 @@ fn click(w: &mut World, at: Option<u32>) -> Out {
             let now = w.now;
             // An open window comes forward (entered moves, so the plan re-probes); it keeps
             // the instant it opened (law 4's visibility).
+            // An agent's setup shows its window now, at the step it stands on (N89).
             w.session
                 .windows
                 .entry(WindowKind::Onboarding)
                 .and_modify(|d| {
                     d.entered = now;
                     d.asked = true;
+                    d.headless = false;
                 })
                 .or_insert(Door::asked(now));
             let edge = (onboarding::at(w) == At::Welcome).then_some(("idle-unprovisioned", "welcome"));
@@ -548,9 +580,13 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
         }
     };
     let answer = |w: &World, error: Option<&'static str>, link: Option<String>| {
-        Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: face(w), error, link })
+        Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: face(w), error, link, setup: None })
     };
     let refuse = |w: &World, code: &'static str| (vec![answer(w, Some(code), None)], Arm::named("cli-refused"));
+    // `shroom setup` (N89) drives the setup itself: no space needed, no switch to ask.
+    if let CliOp::Setup(ask) = op {
+        return setup(w, id, ask);
+    }
     // Set up first: the switch lives in Settings, and Settings needs a space (B160) — so
     // the refusal's link always has a Settings to open (B216).
     if w.space.identity.is_none() {
@@ -641,7 +677,7 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
             Some(Phase::Paused(_)) => return refuse(w, "not_ready"),
             _ => return refuse(w, "no_take"),
         },
-        CliOp::Editing { .. } | CliOp::Copy { .. } => unreachable!("an edit's asks are answered above"),
+        CliOp::Editing { .. } | CliOp::Copy { .. } | CliOp::Setup(_) => unreachable!("an edit's and the setup's asks are answered above"),
         CliOp::Stop => match phase {
             Some(Phase::Paused(_)) if w.session.confirm.is_some() => return refuse(w, "not_ready"),
             Some(Phase::Paused(_)) => act(w, Action::Stop),
@@ -657,6 +693,125 @@ fn cli(w: &mut World, id: u64, op: crate::event::CliOp) -> Out {
     let link = stop.then(|| crate::derive::cli_link(w)).flatten();
     fx.push(answer(w, None, link));
     (fx, arm)
+}
+
+/// `shroom setup …` (spec N89): a coding agent drives the setup with no window. The plan runs
+/// as the window's, its window open but never shown (`Door::headless`); each ask is the
+/// window's own click or paste, made only where the window would offer it now — asked at the
+/// wrong moment it takes nothing — and every ask is answered with where the setup stands.
+/// The first ask on a Mac with no setup passes the welcome by, as Set up my space does, but
+/// never registers the login item: its box was never shown. A take open refuses them all
+/// (law 4); a set-up Mac answers all-set, and an agent's window that was never shown goes.
+fn setup(w: &mut World, id: u64, ask: crate::event::SetupAsk) -> Out {
+    use crate::event::SetupAsk;
+    let reply = |w: &World, error: Option<&'static str>, took: bool| {
+        let report = error.is_none().then(|| setup_report(w, took));
+        Effect::Cli(crate::effect::CliAnswer { id, ok: error.is_none(), take: "none", error, link: None, setup: report })
+    };
+    if w.take_open() {
+        return (vec![reply(w, Some("take_open"), false)], Arm::named("setup-refused"));
+    }
+    // An invite this Mac holds is the invite window's (Region 6): the agent doesn't drive it.
+    if crate::derive::members::invite_at(w).is_some() {
+        return (vec![reply(w, Some("joining"), false)], Arm::named("setup-refused"));
+    }
+    if w.provisioned() && w.row_six_done() {
+        let fx = vec![reply(w, None, false)];
+        if w.setup_headless() {
+            leave_onboarding(w);
+        }
+        return (fx, Arm::named("setup-all-set"));
+    }
+    let now = w.now;
+    let mut fx = Vec::new();
+    match w.session.windows.get_mut(&WindowKind::Onboarding) {
+        None => {
+            w.session.windows.insert(WindowKind::Onboarding, Door::headless(now));
+        }
+        // `shroom setup` is an entry: the plan re-probes (law 1). A wait's polls aren't.
+        Some(d) if ask == SetupAsk::Status => d.entered = now,
+        Some(_) => {}
+    }
+    if onboarding::at(w) == At::Welcome {
+        w.prefs.setup_chosen = true;
+        fx.push(persist_prefs(w));
+    }
+    let at = onboarding::at(w);
+    let offers = |w: &World, a: &Action| onboarding::slice(w).is_some_and(|s| s.offers(a));
+    let mut arm = Arm::named("setup-status");
+    let mut took = false;
+    let run = |w: &mut World, a: Action, fx: &mut Vec<Effect>, arm: &mut Arm| -> bool {
+        if !offers(w, &a) {
+            return false;
+        }
+        let (more, a) = act(w, a);
+        fx.extend(more);
+        *arm = a;
+        true
+    };
+    match ask {
+        SetupAsk::Status | SetupAsk::Peek => {}
+        SetupAsk::Account { new } => {
+            let a = match (new, &at) {
+                (true, At::SigningUp) => Action::SignupAgain,
+                (true, _) => Action::NotYet,
+                (false, At::SigningUp) => Action::SignedUp,
+                (false, _) => Action::HaveOne,
+            };
+            took = run(w, a, &mut fx, &mut arm);
+        }
+        SetupAsk::TokenPage => took = run(w, Action::CreateToken, &mut fx, &mut arm),
+        SetupAsk::CardPage => took = run(w, Action::AddCard, &mut fx, &mut arm),
+        SetupAsk::Permissions => {
+            took = [Action::AllowRecording, Action::OpenScreenSettings].into_iter().any(|a| run(w, a, &mut fx, &mut arm));
+        }
+        SetupAsk::Pick(account) => {
+            if run(w, Action::PickAccount(account.clone()), &mut fx, &mut arm) && onboarding::picked(w).as_deref() == Some(account.as_str()) {
+                took = run(w, Action::UseAccount, &mut fx, &mut arm);
+            }
+        }
+        SetupAsk::Name(name) => {
+            if matches!(at, At::Name | At::NameTaken) {
+                let (more, _) = apply_event(w, Event::Field { field: Field::Name, value: name });
+                fx.extend(more);
+                took = run(w, Action::Claim, &mut fx, &mut arm);
+            }
+        }
+        SetupAsk::Token { id: secret, shape } => {
+            let (more, a) = pasted(w, SecretField::Token, secret, shape);
+            took = a != Arm::DROPPED;
+            fx.extend(more);
+            if took {
+                arm = a;
+            }
+        }
+    }
+    fx.push(reply(w, None, took));
+    (fx, arm)
+}
+
+/// Where the setup stands, as `shroom setup` reports it (N89): the window's own state id —
+/// its offline and unexpected faces too — and the facts the agent's line carries.
+fn setup_report(w: &World, took: bool) -> crate::effect::SetupReport {
+    let at = onboarding::at(w);
+    let done = w.provisioned() && w.row_six_done();
+    let id = if done { "all-set" } else { onboarding::slice(w).map_or(at.id(), |s| s.id) };
+    let accounts = match &w.sweep.paste {
+        Some(Paste::PickAccount { accounts, .. }) => accounts.clone(),
+        _ => Vec::new(),
+    };
+    crate::effect::SetupReport {
+        at: id,
+        took,
+        busy: !done && matches!(at, At::TokenChecking | At::Card | At::Wiring | At::Found(_) | At::Relaunching | At::Priming),
+        host: onboarding::host(w),
+        accounts,
+        videos: match at {
+            At::Found(n) => Some(n),
+            _ => None,
+        },
+        signed_up: w.session.fields.signed_up,
+    }
 }
 
 /// A `shroom://settings/…` link (N62, B216): Settings on the spot's tab, the spot lit for a
@@ -824,7 +979,7 @@ fn act(w: &mut World, action: Action) -> Out {
                 return (vec![], Arm { name: "delete-all-cancelled", edge: Some(("delete-confirm-cleanup", "library-cleanup")) });
             }
             if matches!(was, Some(Confirm::Autoclean(_))) {
-                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-general")) });
+                return (vec![], Arm { name: "autoclean-cancelled", edge: Some(("autoclean-confirm", "settings-videos")) });
             }
             // No sheet to take back: it's Suggested to clean up's ‹ Library (N68).
             if was.is_none() && w.session.fields.library.cleanup {
@@ -1060,7 +1215,7 @@ fn act(w: &mut World, action: Action) -> Out {
             w.launch.ending = true;
             // The chapter runs where it was opened: the onboarding window, or Settings.
             let window = if w.window_visible(WindowKind::Onboarding) { WindowKind::Onboarding } else { WindowKind::Settings };
-            let restore = Restore { why: RelaunchWhy::Permission, window, written: w.wall };
+            let restore = Restore { why: RelaunchWhy::Permission, window, written: w.wall, headless: w.setup_headless() };
             (
                 vec![Effect::Persist(PersistOp::Restore(Some(restore))), Effect::Shell(ShellCmd::Relaunch(RelaunchWhy::Permission))],
                 Arm { name: "reopen-shroom", edge: Some(("perm-screen", "relaunching")) },
@@ -1227,6 +1382,10 @@ fn act(w: &mut World, action: Action) -> Out {
         // ── Settings ──
         Action::SettingsTab(tab) => {
             w.prefs.settings_tab = Some(tab);
+            // Another tab ends the AI switch's done list (N80).
+            if w.space.ai_run.is_some_and(|r| r.end == Some(AiEnd::Done)) {
+                w.space.ai_run = None;
+            }
             // Another tab puts the link's light out: coming back never lights it again.
             w.session.fields.settings.lit = None;
             // A name being changed and left is put back (B158).
@@ -1235,7 +1394,11 @@ fn act(w: &mut World, action: Action) -> Out {
             if let Some(d) = w.session.windows.get_mut(&WindowKind::Settings) {
                 d.entered = now;
             }
-            let edge = (tab == SettingsTab::Space).then_some(("settings-general", "settings-space"));
+            let edge = match tab {
+                SettingsTab::Space => Some(("settings-general", "settings-space")),
+                SettingsTab::Videos => Some(("settings-general", "settings-videos")),
+                _ => None,
+            };
             (vec![persist_prefs(w)], Arm { name: "settings-tab", edge })
         }
         Action::SetLoginItem(on) => (vec![Effect::Shell(ShellCmd::SetLoginItem(on))], Arm::named("login-item")),
@@ -1522,7 +1685,7 @@ fn act(w: &mut World, action: Action) -> Out {
         Action::SetAi(on) => {
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = None;
-            let mut fx = vec![Effect::Cloud(CloudCmd::SetAi(on))];
+            let mut fx = vec![set_ai(w, on)];
             fx.extend(settle_ai(w));
             (fx, Arm::named("set-ai"))
         }
@@ -1549,7 +1712,7 @@ fn act(w: &mut World, action: Action) -> Out {
             }
             w.inflight.failures.remove(&Op::Ai);
             w.space.ai_turn = Some(AiTurn::TurningOff);
-            (vec![Effect::Cloud(CloudCmd::SetAi(false))], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
+            (vec![set_ai(w, false)], Arm { name: "ai-turn-off", edge: Some((from, "ai-turning-off")) })
         }
         Action::SetScope(scope) => {
             w.session.fields.library.scope = scope;
@@ -1656,14 +1819,14 @@ fn act(w: &mut World, action: Action) -> Out {
             let sooner = days > 0 && (now_days == 0 || days < now_days);
             if sooner && crate::derive::settings::qualifying(w, days) > 0 {
                 w.session.confirm = Some(Confirm::Autoclean(days));
-                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-general", "autoclean-confirm")) });
+                return (vec![], Arm { name: "autoclean-asked", edge: Some(("settings-videos", "autoclean-confirm")) });
             }
             set_autoclean(w, days, Arm::named("autoclean-set"))
         }
         Action::ConfirmAutoclean => {
             let Some(Confirm::Autoclean(days)) = w.session.confirm.clone() else { return (vec![], Arm::DROPPED) };
             w.session.confirm = None;
-            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-general")) })
+            set_autoclean(w, days, Arm { name: "autoclean-set", edge: Some(("autoclean-confirm", "settings-videos")) })
         }
         Action::SetPlays(on) => {
             w.library_ops.plays = Some(on);
@@ -1871,7 +2034,7 @@ fn joined(w: &mut World, identity: SpaceIdentity) -> Out {
         // The editor is on a video of the space left behind (N63).
         gone.extend(leave_editor(w));
     }
-    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None };
+    w.space = Space { identity: Some(identity.clone()), token: false, device_key: true, broken: Fact::Unknown, page_checked: None, ai: None, ai_turn: None, ai_run: None };
     w.sweep = Sweep::default();
     w.library = Fact::Unknown;
     w.library_ops = LibraryOps::default();
@@ -2116,6 +2279,7 @@ fn get_link(w: &mut World, dir: TakeDir) -> Out {
         length_ms: saved.length_ms,
         markers: 0,
         marked_at_pause: false,
+        toast: None,
         mic: None,
         camera: None,
     });
@@ -2218,8 +2382,9 @@ fn onboarding_at(w: &World) -> Option<At> {
     w.window_visible(WindowKind::Onboarding).then(|| onboarding::at(w))
 }
 
-fn resume_chapter(w: &mut World, window: WindowKind) -> Arm {
-    w.session.windows.insert(window, Door::asked(w.now));
+fn resume_chapter(w: &mut World, window: WindowKind, headless: bool) -> Arm {
+    let door = if headless && window == WindowKind::Onboarding { Door::headless(w.now) } else { Door::asked(w.now) };
+    w.session.windows.insert(window, door);
     w.session.chapter = true;
     Arm { name: "permission-relaunch", edge: Some(("relaunching", "perm-screen")) }
 }
@@ -2318,11 +2483,13 @@ fn close_onboarding(w: &mut World) -> Out {
 /// A secret landed in a paste field: only its handle and shape reach the core (law 13).
 fn pasted(w: &mut World, field: SecretField, id: crate::world::SecretId, shape: Shape) -> Out {
     let scene = derive(w);
-    let takes = scene.onboarding.as_ref().is_some_and(|o| o.takes_paste(field)) || scene.settings.as_ref().is_some_and(|s| s.takes_paste(field));
+    // The setup window's slice whether it shows or not: an agent's token lands as a paste (N89).
+    let plan = onboarding::slice(w);
+    let takes = plan.as_ref().is_some_and(|o| o.takes_paste(field)) || scene.settings.as_ref().is_some_and(|s| s.takes_paste(field));
     if !takes {
         return (vec![], Arm::DROPPED);
     }
-    let welcome_door = matches!(scene.onboarding.as_ref().map(|o| &o.body), Some(crate::scene::OnboardingBody::Welcome(_)));
+    let welcome_door = matches!(plan.as_ref().map(|o| &o.body), Some(crate::scene::OnboardingBody::Welcome(_)));
     match (field, shape) {
         (SecretField::Token, Shape::Token) => {
             w.sweep.paste = Some(Paste::Checking(id));
@@ -2860,6 +3027,11 @@ fn editor_news(w: &mut World, news: EditorNews) -> Out {
             w.library_ops.upkept = Some(now);
             (vec![], Arm::named("editor-upkept"))
         }
+        EditorNews::CutsLanded { .. } => {
+            // Nothing on screen moves: the upkeep, due now, makes the copy the cuts owe.
+            w.library_ops.upkeep_asked = Some(now);
+            (vec![], Arm::named("editor-cuts-landed"))
+        }
     }
 }
 
@@ -2927,7 +3099,8 @@ fn apply_update(w: &mut World) -> Out {
     // editor, whose steps live in this process (N63): the one behind it.
     let front = w.session.windows.iter().filter(|(k, _)| !matches!(k, WindowKind::Editor(_))).max_by_key(|(_, d)| d.entered).map(|(k, _)| *k);
     if let Some(window) = front {
-        fx.push(Effect::Persist(PersistOp::Restore(Some(Restore { why: RelaunchWhy::Update, window, written: w.wall }))));
+        let headless = window == WindowKind::Onboarding && w.setup_headless();
+        fx.push(Effect::Persist(PersistOp::Restore(Some(Restore { why: RelaunchWhy::Update, window, written: w.wall, headless }))));
     }
     fx.push(Effect::Updater(UpdCmd::Apply(version)));
     (fx, Arm { name: "update", edge: Some(("update-ready", "updating-app")) })
@@ -3123,7 +3296,7 @@ fn os(w: &mut World, news: OsNews) -> Out {
                 // Nothing waits forever: if macOS never ends the process, perm-screen
                 // comes back with Reopen shroom offered again.
                 w.inflight.ops.insert(Op::Relaunch, at.plus(Op::Relaunch.deadline_ms()));
-                let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: w.wall };
+                let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: w.wall, headless: w.setup_headless() };
                 fx.push(Effect::Persist(PersistOp::Restore(Some(restore))));
                 return (fx, Arm { name: "macos-relaunch", edge: Some(("perm-screen", "relaunching")) });
             }
@@ -3244,6 +3417,7 @@ fn rec(w: &mut World, news: RecNews) -> Out {
                 length_ms: 0,
                 markers: 0,
                 marked_at_pause: false,
+                toast: None,
                 mic,
                 camera,
             });
@@ -3517,6 +3691,10 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         CloudNews::AiSet(on) => {
             answered(w, Op::Ai);
             w.space.ai = Some(on);
+            // Done once the page said so (N80): every part ticked, from now.
+            if let Some(run) = w.space.ai_run.as_mut() {
+                *run = AiRun { part: 3, since: w.now, end: Some(AiEnd::Done), ..*run };
+            }
             if w.space.ai_turn == Some(AiTurn::TurningOn) {
                 w.space.ai_turn = None;
             }
@@ -3614,6 +3792,14 @@ fn cloud(w: &mut World, news: CloudNews) -> Out {
         // parts before it in a blink — they stay ticked, the clock counts from the first.
         CloudNews::Part { op, part } => {
             let now = w.now;
+            // The AI's re-wiring (N80): its part underway, counted from when it began.
+            if op == Op::Ai {
+                if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none() && r.part != part) {
+                    run.part = part;
+                    run.since = now;
+                }
+                return (vec![], Arm::named("part"));
+            }
             let slot = match op {
                 Op::Sweep => &mut w.sweep.check,
                 Op::Wire => &mut w.sweep.wiring,
@@ -3976,6 +4162,12 @@ fn upload(w: &mut World, news: UploadNews) -> Out {
 fn failed(w: &mut World, op: Op, class: crate::world::FailClass) -> Out {
     w.inflight.ops.remove(&op);
     note_failure(w, op, class);
+    // The AI's re-wiring stopped at its part underway (N80, law 12).
+    if op == Op::Ai {
+        if let Some(run) = w.space.ai_run.as_mut().filter(|r| r.end.is_none()) {
+            run.end = Some(AiEnd::Stopped);
+        }
+    }
     // The page's Edit in shroom waited on this refresh: nothing opens (B221 (c)).
     if op == Op::LibRefresh && matches!(w.session.fields.edit_link, Some(EditLink::Waiting { asked: true, .. })) {
         w.session.fields.edit_link = None;
@@ -4095,6 +4287,10 @@ fn tick(w: &mut World) -> Out {
     if w.session.arming.as_ref().is_some_and(|a| !a.fired && now >= a.deadline) {
         fx.extend(fire(w));
     }
+    // The marker toast goes (N78).
+    if let Some(t) = w.take.as_mut().filter(|t| t.toast.is_some_and(|(_, at)| now >= at.plus(MARKER_TOAST_MS))) {
+        t.toast = None;
+    }
     // "Copied" reverts.
     if w.session.copied.as_ref().is_some_and(|(_, at)| now >= at.plus(COPIED_MS)) {
         w.session.copied = None;
@@ -4121,7 +4317,7 @@ fn tick(w: &mut World) -> Out {
     // again at its backoff (N76), with the popover shut too — it has been said.
     if let Some(turn @ (AiTurn::TurningOn | AiTurn::TurningOff)) = w.space.ai_turn {
         if !w.inflight.ops.contains_key(&Op::Ai) && w.inflight.failures.get(&Op::Ai).is_some_and(|f| now >= f.ai_retry_at()) {
-            fx.push(Effect::Cloud(CloudCmd::SetAi(turn == AiTurn::TurningOn)));
+            fx.push(set_ai(w, turn == AiTurn::TurningOn));
         }
     }
     (fx, Arm::named("tick"))

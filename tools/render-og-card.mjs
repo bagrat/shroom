@@ -1,6 +1,7 @@
 // Renders shroom.am's link preview card — the canvas board "shroom.am — the link preview
 // card": one 1200 × 630 picture every page names as its og:image. The words are the
-// landing's heading and sub-line (B140), held to site/index.html by site/test/og.test.mjs.
+// landing's heading (B140), held to site/index.html by site/test/og.test.mjs; the sub-line
+// left the card with the landing's (Bagrat, 2026-10-25).
 //
 //   node tools/render-og-card.mjs   → site/og.png
 //
@@ -12,7 +13,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const HEADING = "Record. Share. Pay-as-you-go.";
-export const SUB = "No monthly seat, sometimes completely free";
 export const FOOT = "Your videos, in your own Cloudflare account";
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -22,7 +22,6 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   .brand { display: flex; align-items: center; gap: 18px; font-size: 44px; font-weight: 600; }
   .brand svg { width: 64px; height: 69px; display: block; }
   h1 { margin: 0; white-space: nowrap; font-size: 70px; font-weight: 700; line-height: 1.05; letter-spacing: -0.015em; }
-  .sub { margin: 20px 0 0; font-size: 38px; color: #88c0d0; }
   .foot { display: flex; justify-content: space-between; align-items: center; font-size: 28px; color: #c3cad6; }
   .foot b { font: 400 28px ui-monospace, "DejaVu Sans Mono", monospace; color: #eceff4; }
 </style></head><body><div class="card">
@@ -32,7 +31,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
     <circle cx="50" cy="44" r="6" fill="#ECEFF4"/><circle cx="72" cy="48" r="3.6" fill="#ECEFF4"/><circle cx="33" cy="58" r="3.4" fill="#ECEFF4"/>
     <circle cx="64" cy="58" r="2.6" fill="#ECEFF4"/><circle cx="88" cy="58" r="2.2" fill="#ECEFF4"/>
   </svg>shroom</div>
-  <div><h1>${HEADING}</h1><p class="sub">${SUB}</p></div>
+  <div><h1>${HEADING}</h1></div>
   <div class="foot"><span>${FOOT}</span><b>shroom.am</b></div>
 </div></body></html>`;
 

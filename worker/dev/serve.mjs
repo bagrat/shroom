@@ -42,6 +42,12 @@
 //   /_dev/space/<host>/put        POST {key, json}: a JSON object under meta/, rec/ or
 //                                 .shroom/views/ — a video and its counts as Macs and
 //                                 viewers left them (the cleanup drive, N68)
+//   /_dev/space/<host>/schedule   POST {aheadHours?, runs?}: the page's own schedule (N75's
+//                                 auto-cleanup, `autocleanTick`) run `runs` times (default:
+//                                 until its walk has read every record, then once more), at
+//                                 now plus `aheadHours` — the seam's clock, so a drive sees the
+//                                 page warn and then delete, days apart, in a minute. Answers
+//                                 the auto-cleanup state the runs left
 //   /_dev/space/<host>/roster     GET: the roster as the Worker keeps it
 //   /_dev/space/<host>/objects    GET: every key in the bucket, with its size and metadata
 //                                 (and the text of the small JSON ones: records, ledger,
@@ -52,7 +58,7 @@
 // land in one place the drive can read back.
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
-import { handle } from "../src/worker.js";
+import { autocleanTick, handle } from "../src/worker.js";
 import { space, COOKIE_KEY } from "../test/space-fixture.js";
 
 const args = process.argv.slice(2);
@@ -253,7 +259,7 @@ async function dev(req, res, host, what) {
     const page = await B.list({ include: ["customMetadata"] });
     const out = [];
     for (const o of page.objects) {
-      const small = o.key.startsWith("meta/") || o.key.startsWith(".shroom/registry/recs/") || o.key.startsWith(".shroom/views/") || o.key === ".shroom/plays.json";
+      const small = o.key.startsWith("meta/") || o.key.startsWith(".shroom/registry/recs/") || o.key.startsWith(".shroom/views/") || o.key === ".shroom/plays.json" || o.key.startsWith(".shroom/autoclean");
       const text = small ? await (await B.get(o.key)).text() : undefined;
       out.push({ key: o.key, size: o.size, customMetadata: o.customMetadata ?? {}, ...(text === undefined ? {} : { text }) });
     }
@@ -272,6 +278,24 @@ async function dev(req, res, host, what) {
     if (typeof b.key !== "string" || !/^(meta\/|rec\/|\.shroom\/views\/)/.test(b.key) || b.json === undefined) return json(res, 400, { error: "put takes a meta/, rec/ or .shroom/views/ key and json" });
     await B.put(b.key, JSON.stringify(b.json), { httpMetadata: { contentType: "application/json" } });
     return json(res, 200, { ok: true });
+  }
+  if (what === "schedule") {
+    // The cron's run, as the page's `scheduled` makes it — at the drive's hour.
+    const at = Date.now() + (Number(b.aheadHours) || 0) * 3600 * 1000;
+    const state = async () => { const o = await B.get(".shroom/autoclean/state.json"); return o ? JSON.parse(await o.text()) : null; };
+    let runs = 0;
+    if (Number.isInteger(b.runs)) {
+      for (; runs < b.runs; runs++) await autocleanTick(s.env, at);
+    } else {
+      for (; runs < 60; runs++) {
+        await autocleanTick(s.env, at);
+        const st = await state();
+        if (!st || (st.cursor === null && st.scanAt > 0)) break;
+      }
+      await autocleanTick(s.env, at);
+      runs++;
+    }
+    return json(res, 200, { at: iso(at), runs, state: await state() });
   }
   if (what === "parent") {
     if (!["account_id", "bucket", "key_id", "secret"].every((k) => typeof b[k] === "string" && b[k])) return json(res, 400, { error: "a parent has account_id, bucket, key_id and secret" });

@@ -120,6 +120,7 @@ pub const READS: &[Read] = &[
     // ── Settings (r5) ──
     r("settings", "A space exists, so config is reachable"),
     r("settings-general", "Settings window on the General tab (the default on first open)."),
+    r("settings-videos", "Settings window on the Videos tab"),
     r("settings-space", "Settings window on the Space tab."),
     r("settings-members", "Owner-class Mac only."),
     r("settings-space-inspection", "This Mac holds the Cloudflare token and every probe passes."),
@@ -188,6 +189,7 @@ pub const ONBOARDING_FACES: &[&str] = &["first-launch", "name-v-clash", "wizard-
 /// The Settings faces the oracle reads: the tab, and the Space tab's mood.
 pub const SETTINGS_FACES: &[&str] = &[
     "settings-general",
+    "settings-videos",
     "settings-space",
     "settings-members",
     "settings-space-inspection",
@@ -234,10 +236,11 @@ fn open_since(w: &World) -> Option<u64> {
     }
 }
 
-/// A window shows unless it opened after the take began (law 4). Law 6 reads the setup
-/// window's from here (`laws::law_6`): the Dock icon's side of the World.
+/// A window shows unless it opened after the take began (law 4), or it is the setup window
+/// an agent's `shroom setup` keeps shut (N89). Law 6 reads the setup window's from here
+/// (`laws::law_6`): the Dock icon's side of the World.
 pub fn shows(w: &World, kind: WindowKind) -> bool {
-    w.session.windows.get(&kind).is_some_and(|d| open_since(w).is_none_or(|t| d.opened.0 < t))
+    w.session.windows.get(&kind).is_some_and(|d| !d.headless && open_since(w).is_none_or(|t| d.opened.0 < t))
 }
 
 fn has_space(w: &World) -> bool {
@@ -415,7 +418,8 @@ fn tray(w: &World) -> Option<&'static str> {
     if recording(w) {
         return Some("recording");
     }
-    if w.take.is_some() || w.session.windows.contains_key(&WindowKind::Onboarding) {
+    // The setup window an agent keeps shut (N89) is no window: the tray rests as it would.
+    if w.take.is_some() || w.session.windows.get(&WindowKind::Onboarding).is_some_and(|d| !d.headless) {
         return None;
     }
     Some(if has_space(w) { "idle-ready" } else { "idle-unprovisioned" })
@@ -685,10 +689,12 @@ fn settings(w: &World) -> Option<Option<Win>> {
     let tab = match w.prefs.settings_tab {
         Some(SettingsTab::Members) if owner_class => SettingsTab::Members,
         Some(SettingsTab::Space) => SettingsTab::Space,
+        Some(SettingsTab::Videos) => SettingsTab::Videos,
         _ => SettingsTab::General,
     };
     let faces = match tab {
         SettingsTab::General => vec!["settings-general"],
+        SettingsTab::Videos => vec!["settings-videos"],
         SettingsTab::Members => vec!["settings-members"],
         SettingsTab::Space => {
             let mood = if role(w) == Some(Role::Member) {
@@ -827,6 +833,7 @@ pub fn disagreements(w: &World, s: &Scene) -> Vec<String> {
         // The pane must be the tab the faces name (the faces are what the oracle reads).
         let pane_ok = s.settings.as_ref().is_none_or(|d| match &d.body.pane {
             SettingsPane::General(_) => d.faces.contains(&"settings-general"),
+            SettingsPane::Videos(_) => d.faces.contains(&"settings-videos"),
             SettingsPane::Space(_) => d.faces.contains(&"settings-space"),
             SettingsPane::Members(_) => d.faces.contains(&"settings-members"),
         });

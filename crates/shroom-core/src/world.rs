@@ -71,6 +71,10 @@ pub enum LaunchKind {
     /// The install script reopened shroom after replacing it (`--relaunched=install-update`):
     /// the `updating` lane — silent, tray-only, and no “Updated to … ✓” (N9, N41).
     InstallUpdate,
+    /// Opened for a coding agent's setup (`--relaunched=agent`: the install line's `--agent`,
+    /// or the `shroom` command opening shroom for `shroom setup`): silent, tray-only — the
+    /// agent drives the setup with no window (N89).
+    Agent,
     /// The swap helper couldn't put the new version in place and reopened the old one
     /// (`--update-failed`): the running version is unchanged.
     UpdateFailed,
@@ -106,6 +110,9 @@ pub struct Restore {
     /// The window to reopen — after an update, the one that was in front (DEVIATIONS #14).
     pub window: WindowKind,
     pub written: Wall,
+    /// The setup a coding agent drove had no window (N89): the chapter comes back unseen.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub headless: bool,
 }
 
 /// A handle into the runner's stash of pasted secrets. The core never holds secret text
@@ -452,6 +459,9 @@ pub struct Space {
     /// re-wiring the page until it answers, tried again quietly while it doesn't; a Turn off,
     /// once through, `config` says once — behind us when the popover that said it closes.
     pub ai_turn: Option<AiTurn>,
+    /// The AI's re-wiring as it goes (N80): which way, its part underway and since when, and
+    /// how it ended. Never stored (law 1); a new try starts over.
+    pub ai_run: Option<AiRun>,
 }
 
 impl Space {
@@ -549,12 +559,24 @@ pub struct OpenTake {
     /// A marker was dropped at this pause (N64): the paused popover's row reads Marker
     /// dropped, greyed, until the take resumes.
     pub marked_at_pause: bool,
+    /// The marker toast (N78): what ⌥⌘M's last press said, and when — it shows for
+    /// `MARKER_TOAST_MS` from then, and goes with the take.
+    pub toast: Option<(MarkerToastSays, Mono)>,
     /// The microphone this take records from, by uid (`None` = silent): the one chosen when
     /// capture began, then whichever Resume used (N39's `mic-lost` fallback).
     pub mic: Option<String>,
     /// Camera as the source: the camera recorded, by uid — `camera-lost` is about this one
     /// leaving, never about some other camera (N39).
     pub camera: Option<String>,
+}
+
+/// What the marker toast says (N78).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarkerToastSays {
+    /// A marker dropped: the take's count of them, after it.
+    Dropped(u32),
+    /// Pressed again at a pause that has its marker: nothing dropped.
+    Already,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -652,6 +674,9 @@ pub struct LibraryOps {
     /// When the editor's upkeep last answered (B197 (d)): originals kept past their two days
     /// baked, and copies an edit is missing made.
     pub upkept: Option<Mono>,
+    /// When voice cuts last landed on a video of this Mac's (`CutsLanded`): the upkeep is due
+    /// from then, not at its six-hour turn, until one runs or fails after it.
+    pub upkeep_asked: Option<Mono>,
     /// Pins and unpins under way (N75, the record's `keep`): what was asked, so a row reads
     /// it at once and a suggestion leaves while the write runs.
     pub pinning: BTreeMap<RecId, bool>,
@@ -778,7 +803,7 @@ pub struct Members {
     pub left_behind: BTreeSet<TakeDir>,
     /// Published takes already holding an upload credential, and until when (each take's
     /// `cred.json`, from the takes scan): a space that stops minting for this Mac still
-    /// lets these finish (N32: “a video already on its way can still finish”).
+    /// lets these finish (N32, N81: a video already on its way has up to an hour to finish).
     pub minted: BTreeMap<TakeDir, Wall>,
 }
 
@@ -1190,6 +1215,8 @@ impl Default for Prefs {
 pub enum SettingsTab {
     #[default]
     General,
+    /// Your videos, a tab of its own since General outgrew the window (N79).
+    Videos,
     Space,
     /// Owner-class Macs only — Region 6's tab.
     Members,
@@ -1225,6 +1252,17 @@ pub enum WindowKind {
     Editor(EditorId),
 }
 
+impl WindowKind {
+    /// Whether a take records this window while it's on screen, like any app's (law 4, N85):
+    /// every one, so a bug report of shroom shows it. Only the overlays stay out of every
+    /// capture. A new kind of window says here which it is.
+    pub fn recorded(self) -> bool {
+        match self {
+            WindowKind::Onboarding | WindowKind::Library | WindowKind::Settings | WindowKind::Feedback | WindowKind::Editor(_) => true,
+        }
+    }
+}
+
 /// An open surface: when it opened (law 4 visibility), when it was last entered (probe
 /// freshness), and whether the person asked for it (an unasked one never takes the keyboard).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1232,14 +1270,21 @@ pub struct Door {
     pub opened: Mono,
     pub entered: Mono,
     pub asked: bool,
+    /// The setup window, open but never shown: a coding agent drives the setup with
+    /// `shroom setup` (N89). Its plan runs as the window's; the Scene shows no window.
+    pub headless: bool,
 }
 
 impl Door {
     pub fn asked(at: Mono) -> Door {
-        Door { opened: at, entered: at, asked: true }
+        Door { opened: at, entered: at, asked: true, headless: false }
     }
     pub fn unasked(at: Mono) -> Door {
-        Door { opened: at, entered: at, asked: false }
+        Door { opened: at, entered: at, asked: false, headless: false }
+    }
+    /// The setup window an agent's `shroom setup` opens: never shown (N89).
+    pub fn headless(at: Mono) -> Door {
+        Door { opened: at, entered: at, asked: false, headless: true }
     }
 }
 
@@ -1393,7 +1438,7 @@ pub struct EditorFields {
     pub kept_until: Option<Wall>,
     pub media: EditorMedia,
     pub save: EditorSave,
-    /// ✕ with changes not saved asked first (N71): the question takes the footer's place,
+    /// ✕ with changes not saved asked first (N71): the question in a sheet over the window,
     /// the edit held behind it, until Save, Keep editing or Discard.
     pub closing: bool,
 }
@@ -1588,6 +1633,23 @@ pub enum AiTurn {
     Off,
 }
 
+/// Turning the AI on or off, part by part (N80): 1 checking the space, 2 the page put up
+/// again with the AI or without it, 3 its schedule and the page saying so.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AiRun {
+    pub on: bool,
+    pub part: u8,
+    pub since: Mono,
+    pub end: Option<AiEnd>,
+}
+
+/// How a run of the AI's re-wiring ended (N80): the page said so, or it stopped at its part.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AiEnd {
+    Done,
+    Stopped,
+}
+
 impl Failure {
     /// When the AI's re-wiring that didn't go through is tried again, quietly (N76, law 12):
     /// ten minutes, doubling, at most an hour — the banner's Turn off until it goes through,
@@ -1655,6 +1717,11 @@ impl World {
     /// Row six — this Mac's permissions chapter — is done.
     pub fn row_six_done(&self) -> bool {
         self.mac.primed.is_some()
+    }
+
+    /// The setup runs with its window shut: a coding agent drives it (N89).
+    pub fn setup_headless(&self) -> bool {
+        self.session.windows.get(&WindowKind::Onboarding).is_some_and(|d| d.headless)
     }
 
     pub fn provisioned(&self) -> bool {

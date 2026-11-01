@@ -20,14 +20,14 @@ const SECRET: &str = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d
 const REC: &str = "AbCdEfGhIjKlMnOp";
 /// 2026-10-02T12:00:00Z.
 const IAT: u64 = 1_790_942_400;
-/// An upload credential lives seven days (§3.4; B35 caps it there).
-const TTL: u64 = 604_800;
+/// An upload credential lives an hour (§3.4).
+const TTL: u64 = 3_600;
 
 /// The expected JWT, byte for byte.
 const GOLDEN: &str = concat!(
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.",
-    "eyJhdWQiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZi5yMi5jbG91ZGZsYXJlc3RvcmFnZS5jb20iLCJidWNrZXQiOiJzaHJvb20tc3BhY2UiLCJleHAiOjE3OTE1NDcyMDAsImlhdCI6MTc5MDk0MjQwMCwiaXNzIjoiMDAxMTIyMzM0NDU1NjY3Nzg4OTlhYWJiY2NkZGVlZmYiLCJwYXRocyI6eyJvYmplY3RQYXRocyI6WyJtZXRhL0FiQ2RFZkdoSWpLbE1uT3AuanNvbiJdLCJwcmVmaXhQYXRocyI6WyJyZWMvQWJDZEVmR2hJaktsTW5PcC8iXX0sInNjb3BlIjoib2JqZWN0LXJlYWQtd3JpdGUiLCJzdWIiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiJ9.",
-    "SjlFTu38wdAOOr-s_PB-X6_Qy8vwi7sf2DhE4c2TNA4",
+    "eyJhdWQiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZi5yMi5jbG91ZGZsYXJlc3RvcmFnZS5jb20iLCJidWNrZXQiOiJzaHJvb20tc3BhY2UiLCJleHAiOjE3OTA5NDYwMDAsImlhdCI6MTc5MDk0MjQwMCwiaXNzIjoiMDAxMTIyMzM0NDU1NjY3Nzg4OTlhYWJiY2NkZGVlZmYiLCJwYXRocyI6eyJvYmplY3RQYXRocyI6WyJtZXRhL0FiQ2RFZkdoSWpLbE1uT3AuanNvbiJdLCJwcmVmaXhQYXRocyI6WyJyZWMvQWJDZEVmR2hJaktsTW5PcC8iXX0sInNjb3BlIjoib2JqZWN0LXJlYWQtd3JpdGUiLCJzdWIiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiJ9.",
+    "n9e_7MejDb8Ey6iGgbBKfoXnQE3U81PEd3U7WuimBts",
 );
 
 fn parent() -> Credentials {

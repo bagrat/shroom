@@ -55,7 +55,7 @@ jobs:
           SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
         run: |
           [ -n "$SHROOM_E2E_ACCOUNT_ID" ] || { echo "::error title=No account id::the cf-e2e environment has no SHROOM_E2E_ACCOUNT_ID secret"; exit 1; }
-          SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e-account-token" cargo test -p shroom-e2e-live --locked -- --test-threads=1
+          SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e-account-token" cargo test -p shroom-e2e-live --locked -- --test-threads=1 --nocapture
 
       - name: Forget the token
         if: always()

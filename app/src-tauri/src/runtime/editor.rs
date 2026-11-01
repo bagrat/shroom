@@ -550,7 +550,7 @@ fn encoders(ffmpeg: &Path) -> Vec<shroom_encode::cut::Encoder> {
 /// became the video since — that file is on the old clock, and a copy cut from it with the
 /// record's ranges would show what neither clock holds.
 fn registered_source(registered: Option<PathBuf>, opened: Option<&Plays>, meta: &Meta) -> Option<PathBuf> {
-    registered.filter(|_| opened.is_some_and(|o| *o == Plays::of(meta)))
+    registered.filter(|_| opened.is_some_and(|o| o.same_clock(&Plays::of(meta))))
 }
 
 /// Cuts the permanent copy of `rev` and puts it up. `Ok(true)`: named in the record (with

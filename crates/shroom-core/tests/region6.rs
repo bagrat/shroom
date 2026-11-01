@@ -847,7 +847,7 @@ fn an_owner_invites_from_members_and_the_born_link_copies_only_on_its_click() {
     let mut r = Run::new(with_popover(owner()));
     r.act(Action::OpenSettings);
     let tabs: Vec<String> = r.scene.settings.as_ref().unwrap().body.tabs.iter().map(|t| t.label.clone()).collect();
-    assert_eq!(tabs, ["General", "Space", "Members"], "the third tab, owner-class Macs only (N36)");
+    assert_eq!(tabs, ["General", "Videos", "Space", "Members"], "Members, owner-class Macs only (N36); Videos before Space (N79)");
     r.set(Action::SettingsTab(SettingsTab::Members));
     assert!(r.has(|e| *e == Effect::Member(MemberCmd::Roster)), "every entry reads the rows (law 1)");
     r.hear(MemberNews::Roster(roster()));
@@ -978,7 +978,7 @@ fn removing_asks_at_its_own_beat_and_never_on_return() {
     assert_eq!(sh.title, "Remove Mher?");
     assert_eq!(
         sh.lines,
-        ["Mher won't be able to record to your space anymore — a video already on its way can still finish. Mher's videos stay; you'll find them in your Library."]
+        ["Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library."]
     );
     assert_eq!(sh.buttons.iter().map(|b| (b.label.as_str(), b.style)).collect::<Vec<_>>(), [("Cancel", Style::Plain), ("Remove", Style::RedOutline)]);
     r.key(Surface::Settings, Key::Return);

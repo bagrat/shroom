@@ -125,6 +125,19 @@ pub fn sweep_run(cloud: &Cloud, account_id: &str, token_id: &str, run: &str) -> 
     delete_where(cloud, account_id, token_id, |name| wire::run_of(name) == Some(run))
 }
 
+/// The product's own names (`v` or its fallbacks over `shroom-space`), which only a release
+/// build sets up — the AI migration check (`e2e-migration.yml`) installs a signed release,
+/// so its space has them. No other lane deploys them on the test account (D3).
+pub fn product_name(name: &str) -> bool {
+    sweep::LABELS.contains(&name) || name == wire::BUCKET
+}
+
+/// The release's space on the test account: its page under the product's labels and the
+/// `shroom-space` bucket — nothing named by a run.
+pub fn sweep_product(cloud: &Cloud, account_id: &str, token_id: &str) -> Result<Vec<String>, CloudError> {
+    delete_where(cloud, account_id, token_id, product_name)
+}
+
 /// A run older than this is a crashed run's leftover (a whole run takes well under it);
 /// a younger one may still be going, and is never touched.
 pub const RUN_FRESH_SECS: u64 = 45 * 60;
@@ -322,6 +335,16 @@ pub fn close(cfg: &Config, run: Option<&str>) -> Result<Vec<String>, String> {
     gone.sort();
     gone.dedup();
     Ok(gone)
+}
+
+/// The release's space deleted (its page and its bucket, emptied first): before the
+/// migration check sets one up, so a crashed check's leftover is never reconnected, and
+/// after it. Returns what went.
+pub fn close_product(cfg: &Config) -> Result<Vec<String>, String> {
+    let parent = Cloud::new(&cfg.token, Policy::Unfenced);
+    pin(&parent, &cfg.account_id)?;
+    let parent_token_id = parent.verify(&cfg.account_id).map_err(|e| format!("verify: {e:?}"))?.id;
+    sweep_product(&parent, &cfg.account_id, &parent_token_id).map_err(|e| format!("the release's space: {e:?}"))
 }
 
 /// One run on the e2e account, in its own space. Dropping it deletes that space and the

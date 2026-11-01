@@ -1,0 +1,53 @@
+name: Early release branch
+
+# Moves `early-release` — the one branch an early build is published from (release.yml's
+# EARLY_BRANCH, and the only branch besides `main` the `release` environment allows) — to
+# the head of claude/early-integration, where sessions merge `main` in and bump the version.
+# Sessions push only claude/ branches, so this is how the early branch moves: Run workflow
+# on claude/early-integration. It moves only forward, and only to a commit CI is green on,
+# so the Release run that follows builds the very commit CI and the heartbeat tested
+# (docs/RELEASING.md, "Pre-releases").
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: early-release
+  cancel-in-progress: false
+
+jobs:
+  move:
+    name: early-release takes the integration branch's head
+    if: github.ref == 'refs/heads/claude/early-integration'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: CI is green on the head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.app.slug == "github-actions") | {name, status, conclusion}]')
+          for job in "Tests" "Release build (ad hoc)" "Signing rehearsal" "Advisories"; do
+            got=$(printf '%s' "$runs" | jq -r --arg n "$job" '[.[] | select(.name == $n)] | if length == 0 then "missing" else (.[0].status + "/" + (.[0].conclusion // "")) end')
+            [ "$got" = "completed/success" ] || { echo "::error::CI's $job on $GITHUB_SHA is $got — early-release moves only to a commit CI is green on."; exit 1; }
+          done
+
+      - name: early-release moves forward to it
+        run: |
+          if git ls-remote --exit-code origin refs/heads/early-release >/dev/null; then
+            git fetch --quiet origin refs/heads/early-release
+            git merge-base --is-ancestor FETCH_HEAD "$GITHUB_SHA" ||
+              { echo "::error::early-release ($(git rev-parse --short FETCH_HEAD)) isn't behind $GITHUB_SHA — it only moves forward."; exit 1; }
+          fi
+          git push origin "$GITHUB_SHA:refs/heads/early-release"
+          echo "early-release is at $GITHUB_SHA. Next: Release → Run workflow on early-release, Publish and Early ticked." >>"$GITHUB_STEP_SUMMARY"

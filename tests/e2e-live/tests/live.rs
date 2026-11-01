@@ -103,3 +103,75 @@ fn wiring_from_nothing_is_found_after() {
     assert!(after.bucket, "{after:?}");
     assert!(after.found.is_some(), "{after:?}");
 }
+
+/// The AI switch's parts, timed (N66, N76): the run's space wired with the real page, then
+/// AI turned on and off three times through the same calls `set_ai` makes — the page's
+/// version asked, the token proved, the page read as ours, the script put up again, its
+/// schedule — each part's time printed, and how long after it the page says so. What the
+/// switch's progress names comes from these.
+#[test]
+fn the_ai_switch_parts_are_timed() {
+    use shroom_cloud::member::{Ping, Space};
+    use shroom_cloud::Binding;
+    use std::time::{Duration, Instant};
+    let Some(run) = run() else { return eprintln!("skipped: set SHROOM_E2E=1") };
+    if !named(&run) {
+        return;
+    }
+    const MODULE: &str = include_str!("../../../worker/src/worker.js");
+    let (labels, bucket) = (run.space.labels(), run.space.bucket.as_str());
+    let before = sweep::survey(&run.product, &run.account_id, &run.token_id, &labels, bucket).expect("survey");
+    let label = before.label.expect("a fresh run's label is free");
+    let spec = WireSpec { account_id: &run.account_id, token_id: &run.token_id, label: &label, bucket, worker_module: MODULE, compatibility_date: "2026-09-01", assets: &[] };
+    let wired = wire::wire(&run.product, &spec).expect("wiring");
+    let page = Space::new(&wired.host);
+    let ping = |want: Option<bool>, within: Duration| {
+        let t = Instant::now();
+        loop {
+            if let Ping::Shroom { ai, .. } = page.ping() {
+                if want.is_none_or(|w| w == ai) {
+                    return t.elapsed();
+                }
+            }
+            assert!(t.elapsed() < within, "the page didn't answer as wanted ({want:?}) in {within:?}");
+            std::thread::sleep(Duration::from_millis(250));
+        }
+    };
+    eprintln!("ai-switch: the page answered after wiring in {:?}", ping(None, Duration::from_secs(180)));
+    let ms = |d: Duration| d.as_millis();
+    for round in 1..=3 {
+        for on in [true, false] {
+            let all = Instant::now();
+            let t = Instant::now();
+            let _ = page.ping();
+            let version = t.elapsed();
+            let t = Instant::now();
+            assert!(matches!(sweep::verify(&run.product).expect("verify"), Verdict::Valid { .. }));
+            assert!(sweep::powers(&run.product, &run.account_id).expect("powers").both());
+            let prove = t.elapsed();
+            let t = Instant::now();
+            assert_eq!(sweep::worker_fact(&run.product, &run.account_id, &label, bucket).expect("worker fact"), sweep::WorkerFact::Ours);
+            let fact = t.elapsed();
+            let mut bindings = vec![
+                Binding::R2Bucket { name: "BUCKET".into(), bucket: bucket.into() },
+                Binding::SecretText { name: wire::PARENT_BINDING.into(), text: wire::parent_text(&run.product, &run.account_id, bucket, &run.token_id) },
+            ];
+            if on {
+                bindings.push(Binding::Ai { name: "AI".into() });
+            }
+            let t = Instant::now();
+            run.product.put_worker(&run.account_id, &label, "worker.js", MODULE, &bindings, "2026-09-01").expect("the script");
+            let script = t.elapsed();
+            let t = Instant::now();
+            run.product.put_schedules(&run.account_id, &label, if on { &[wire::AI_SCHEDULE] } else { &[] }).expect("the schedule");
+            let schedule = t.elapsed();
+            let calls = all.elapsed();
+            let says = ping(Some(on), Duration::from_secs(120));
+            eprintln!(
+                "ai-switch: round {round} {}: version {}ms, prove {}ms, fact {}ms, script {}ms, schedule {}ms — calls {}ms; the page says so {}ms later",
+                if on { "on " } else { "off" },
+                ms(version), ms(prove), ms(fact), ms(script), ms(schedule), ms(calls), ms(says)
+            );
+        }
+    }
+}

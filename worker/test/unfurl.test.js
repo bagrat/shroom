@@ -49,7 +49,7 @@ describe("unfurl tags", () => {
 
   it("refuse framing on the page itself", async () => {
     const res = await get(env(), `/${ID}`);
-    expect(res.headers.get("content-security-policy")).toBe("frame-ancestors 'none'");
+    expect(res.headers.get("content-security-policy")).toMatch(/(^|;)\s*frame-ancestors 'none'\s*(;|$)/);
   });
 });
 
@@ -74,7 +74,7 @@ describe("oEmbed", () => {
 describe("the embed face", () => {
   it("is the player alone, framable, with the mark small", async () => {
     const res = await get(env(), `/${ID}?embed=1`);
-    expect(res.headers.get("content-security-policy")).toBe("frame-ancestors *");
+    expect(res.headers.get("content-security-policy")).toMatch(/(^|;)\s*frame-ancestors \*\s*(;|$)/);
     expect(res.headers.get("x-frame-options")).toBeNull();
     const body = await res.text();
     expect(body).toContain(`/m/${ID}/master.m3u8`);

@@ -2,6 +2,7 @@
 //! `derive`, present, dispatch effects to lanes whose results come back as events.
 
 pub mod camera;
+pub mod cli_link;
 pub mod cloud;
 pub mod editor;
 pub mod control;
@@ -446,6 +447,10 @@ pub fn launch_kind(args: &[String], at_login: bool) -> LaunchKind {
     } else if args.iter().any(|a| a == "--relaunched=install-update") {
         // The `updating` lane stays silent (N9, N41).
         LaunchKind::InstallUpdate
+    } else if args.iter().any(|a| a == "--relaunched=agent") {
+        // Opened for a coding agent's setup (N89): the install line's `--agent`, or the
+        // `shroom` command opening shroom for `shroom setup` — the mushroom only.
+        LaunchKind::Agent
     } else if at_login {
         LaunchKind::LoginItem
     } else {
@@ -714,6 +719,14 @@ impl Runtime {
         }
     }
 
+    /// Whether a credential's store may take this build's bytes: in a release build only R2's
+    /// own (`shroom_cloud::device::r2_store`) — checked where a mint arrives and where a
+    /// take's `cred.json` is read back; a dev build keeps its stand-ins (the L1 fake, the
+    /// local space), which the e2e run's real R2 passes either way.
+    pub fn store_ok(&self, endpoint: &str, bucket: &str) -> bool {
+        self.dev || shroom_cloud::device::r2_store(endpoint, bucket)
+    }
+
     /// The space's bucket under the token's own derived pair (the token Mac's Library, its
     /// ledger entries, the owner grant, the roster seed): the account's R2 endpoint — or,
     /// on the local stand-in (dev), that space's bucket there.
@@ -748,17 +761,21 @@ static BUILD: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 /// every file 600), rolled to `run.log.1` past `LOG_ROLL_BYTES` so it never grows without
 /// bound. Each line opens with the UTC wall clock (`report::stamp`); a fresh log after a
 /// roll opens with the build. One write per call, so lines from several threads never
-/// interleave.
+/// interleave. Only into the folder and the file that are ours, as `cli.log` is: a `logs`
+/// that isn't a real folder, or a `run.log` that isn't a plain file (a link among them),
+/// takes nothing.
 pub fn log_line(dir: &Path, line: &str) {
     use std::io::Write;
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
     match std::fs::symlink_metadata(dir) {
         // A folder from before the rule (or loosened since): closed to everyone else, the
-        // way the log itself is. Never through a link — only the folder that is ours.
-        Ok(m) if m.is_dir() && m.permissions().mode() & 0o077 != 0 => {
-            let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+        // way the log itself is.
+        Ok(m) if m.is_dir() => {
+            if m.permissions().mode() & 0o077 != 0 {
+                let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+            }
         }
-        Ok(_) => {}
+        Ok(_) => return,
         Err(_) => {
             let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir);
         }
@@ -766,17 +783,21 @@ pub fn log_line(dir: &Path, line: &str) {
     let stamp = report::stamp(SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0));
     let mut out: String = line.split_inclusive('\n').map(|l| format!("{stamp} {l}")).collect();
     let log = dir.join("run.log");
-    if let Ok(m) = std::fs::metadata(&log) {
-        if m.len() >= LOG_ROLL_BYTES && std::fs::rename(&log, dir.join("run.log.1")).is_ok() {
+    match std::fs::symlink_metadata(&log) {
+        Ok(m) if !m.file_type().is_file() => return,
+        Ok(m) if m.len() >= LOG_ROLL_BYTES && std::fs::rename(&log, dir.join("run.log.1")).is_ok() => {
             if let Some(build) = BUILD.get() {
                 out = format!("{stamp} rolled: {build}\n{out}");
             }
-        } else if m.permissions().mode() & 0o077 != 0 {
-            // A log written before this rule: closed to everyone else.
-            let _ = std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o600));
         }
+        _ => {}
     }
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).mode(0o600).open(&log) {
+    let open = std::fs::OpenOptions::new().create(true).append(true).mode(0o600).custom_flags(libc::O_NOFOLLOW).open(&log);
+    if let Ok(mut f) = open {
+        // A log written before this rule: closed to everyone else, on the file just opened.
+        if f.metadata().is_ok_and(|m| m.permissions().mode() & 0o077 != 0) {
+            let _ = f.set_permissions(std::fs::Permissions::from_mode(0o600));
+        }
         let _ = f.write_all(out.as_bytes());
     }
 }
@@ -931,6 +952,7 @@ fn launch_word(launch: LaunchKind) -> &'static str {
         LaunchKind::Install { join: true } => "install-invite",
         LaunchKind::InstallUpdate => "install-update",
         LaunchKind::UpdateFailed => "relaunch-update-failed",
+        LaunchKind::Agent => "agent",
     }
 }
 
@@ -1072,6 +1094,8 @@ fn start_inner(app: &AppHandle, launch: LaunchKind, quiet: bool, flags: &DevFlag
     });
     net::watch(rt.clone());
     observe::watch(rt.clone(), rt.home.root.clone());
+    // The `shroom` command on PATH, once per Mac, for one installed before it (B239).
+    cli_link::boot(&rt);
     // macOS's will-sleep, held for a take's pause (DECISIONS B92).
     power::watch(rt.clone());
     // The seam's own re-read of the grants (the core's facts move only on entry events).
@@ -1534,7 +1558,10 @@ mod tests {
         assert!(rel.contains("actions/cache/restore@") && !rel.contains("actions/cache@"), "the tag run restores, never saves");
         // The signing secrets: the tag workflow's alone, in the `release` environment.
         assert!(!ci.contains("secrets."), "CI reads no secret");
-        assert!(rel.contains("environment: release"));
+        assert!(rel.contains("environment: ${{ needs.check.outputs.signs == 'true' && 'release' || '' }}"), "the secrets' environment, only on a run that signs");
+        // Built before the identity is on the runner; only then signed with it.
+        let (built, imported, signed) = (rel.find("release-build.sh \"$RUNNER_TEMP/release\" --adhoc"), rel.find("signing-keychain.sh import"), rel.find("--resign --identity"));
+        assert!(built.is_some() && built < imported && imported < signed, "built ad hoc, then the identity imported, then the bundle signed with it");
         for name in ["RELEASE_CERT_P12_BASE64", "RELEASE_CERT_PASSWORD"] {
             assert!(rel.contains(&format!("secrets.{name}")) && include_str!("../../../../docs/RELEASING.md").contains(name), "{name}");
         }
@@ -1564,6 +1591,7 @@ mod tests {
         // The install script's fresh install is the first launch; its update lane is silent.
         assert_eq!(launch_kind(&args("shroom --relaunched=install"), false), LaunchKind::Install { join: false });
         assert_eq!(launch_kind(&args("shroom --relaunched=install-update"), false), LaunchKind::InstallUpdate);
+        assert_eq!(launch_kind(&args("shroom --relaunched=agent"), false), LaunchKind::Agent);
         // A join link handed over by file opens the invite, on either lane (N9's `--join`).
         assert_eq!(launch_kind(&args("shroom --relaunched=install --invite"), false), LaunchKind::Install { join: true });
         assert_eq!(launch_kind(&args("shroom --relaunched=install-update --invite"), false), LaunchKind::Install { join: true });
@@ -1646,6 +1674,32 @@ mod tests {
         assert!(!logs.join("run.log.2").exists());
         assert_eq!(short("AbCdEfGhIjKlMnOp"), "AbCd…");
         assert_eq!(short("ab"), "ab");
+    }
+
+    /// The run log writes only into its own folder and its own file: a `logs` that's a link
+    /// or a file, or a `run.log` that's a link, takes nothing, and the link isn't rolled.
+    #[test]
+    fn the_run_log_writes_only_its_own_folder_and_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let elsewhere = tmp.path().join("elsewhere");
+        std::fs::create_dir(&elsewhere).unwrap();
+        let linked = tmp.path().join("linked-logs");
+        std::os::unix::fs::symlink(&elsewhere, &linked).unwrap();
+        log_line(&linked, "one\n");
+        assert!(!elsewhere.join("run.log").exists());
+        let file = tmp.path().join("file-logs");
+        std::fs::write(&file, "x").unwrap();
+        log_line(&file, "one\n");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "x");
+        let logs = tmp.path().join("logs");
+        std::fs::create_dir(&logs).unwrap();
+        let target = tmp.path().join("target.txt");
+        std::fs::write(&target, vec![b'x'; LOG_ROLL_BYTES as usize]).unwrap();
+        std::os::unix::fs::symlink(&target, logs.join("run.log")).unwrap();
+        log_line(&logs, "two\n");
+        assert_eq!(std::fs::metadata(&target).unwrap().len(), LOG_ROLL_BYTES);
+        assert!(std::fs::symlink_metadata(logs.join("run.log")).unwrap().file_type().is_symlink());
+        assert!(!logs.join("run.log.1").exists());
     }
 
     /// A tick that changed nothing outward isn't logged; every other step is.
@@ -1783,6 +1837,23 @@ mod tests {
         for bad in ["v", "shroom-space", "1792000000-AB12", "../1792000000-ab12", ""] {
             std::fs::write(dir.join("e2e-space-id"), bad).unwrap();
             assert_eq!(e2e_space_id_in(&dir), None, "{bad:?}");
+        }
+    }
+
+    /// A release build sends a recording's bytes only to R2's own store for an account
+    /// (`https://<account>.r2.cloudflarestorage.com`, a bucket name R2 takes), whatever a
+    /// credential names; a dev build keeps its stand-ins (the fake, the local space).
+    #[test]
+    fn a_release_build_stores_only_on_r2() {
+        let r2 = "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com";
+        let tmp = tempfile::tempdir().unwrap();
+        let (mut rt, _rx) = Runtime::for_test(tmp.path().join("a"), Some(("http://127.0.0.1:1/client/v4".into(), "http://127.0.0.1:2".into())), None);
+        assert!(rt.store_ok("http://127.0.0.1:2", "shroom-space"), "the fake's");
+        assert!(rt.store_ok(r2, "shroom-space"));
+        rt.dev = false;
+        assert!(rt.store_ok(r2, "shroom-space"));
+        for (endpoint, bucket) in [("http://127.0.0.1:2", "shroom-space"), ("http://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com", "shroom-space"), ("https://media.example.com", "shroom-space"), (r2, "shroom/space")] {
+            assert!(!rt.store_ok(endpoint, bucket), "{endpoint} {bucket}");
         }
     }
 
@@ -1926,7 +1997,7 @@ mod tests {
         assert!(log.contains("boot: launch login") && log.contains("boot: home default · shell quiet · cloud test fence"), "{log}");
         assert!(!log.contains(&tmp.path().display().to_string()), "no paths: {log}");
         // Every launch has its own word (the login one is what docs/CHECKPOINT.md looks for).
-        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed];
+        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed, LaunchKind::Agent];
         let words: std::collections::HashSet<_> = kinds.iter().map(|k| launch_word(*k)).collect();
         assert_eq!(words.len(), kinds.len());
     }
@@ -2038,7 +2109,7 @@ mod tests {
         // Every runtime file's log lines; a grep may name a line by its opening words. Each
         // reads the release's own log.
         let src: String = std::fs::read_dir(root.join("app/src-tauri/src/runtime")).unwrap().flatten().filter(|e| e.path().extension().is_some_and(|x| x == "rs")).map(|e| std::fs::read_to_string(e.path()).unwrap()).collect();
-        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed];
+        let kinds = [LaunchKind::User, LaunchKind::LoginItem, LaunchKind::UpdateRelaunch, LaunchKind::PermissionRelaunch, LaunchKind::Install { join: false }, LaunchKind::Install { join: true }, LaunchKind::InstallUpdate, LaunchKind::UpdateFailed, LaunchKind::Agent];
         let grep_lines: Vec<&str> = doc.lines().filter(|l| l.starts_with("grep '")).collect();
         let greps: Vec<&str> = grep_lines.iter().map(|l| l.strip_prefix("grep '").unwrap().split('\'').next().unwrap()).collect();
         for want in ["boot: launch login", "power: macOS will sleep", "updater staged", "updater not applied"] {
@@ -2074,8 +2145,8 @@ mod tests {
         ] {
             assert!(has(cmd), "docs/CHECKPOINT.md should carry `{cmd}` in a block");
         }
-        assert!(flat.contains("curl -fsSL https://shroom.am/install | sh"), "the install line, as the landing shows it");
-        assert!(read("site/index.html").contains("curl -fsSL https://shroom.am/install | sh</code>"));
+        // That the install line and "Read it first" are the landing's own words is held on
+        // Linux, beside the landing (site/test/landing.test.mjs): a landing change needs no Mac.
         assert!(read("installer/install.sh").contains("if [ \"${1:-}\" = \"--uninstall\" ]; then uninstall; return; fi"), "the install line takes --uninstall (B135)");
         for b in &blocks {
             assert!(!b.contains("tests/") && !b.contains("cargo ") && !b.contains("dev/"), "nothing from the tree runs on his Mac: {b}");
@@ -2088,7 +2159,6 @@ mod tests {
         for said in ["Getting shroom…", "verified ✓", "Installed — opening shroom now."] {
             assert!(flat.contains(said) && installer.contains(said), "the installer says {said:?}");
         }
-        assert!(read("site/index.html").contains(">Read it first</a>") && flat.contains("\"Read it first\""));
 
         // Step 5's name row: the uninstall leaves the space, so setup finds `v` again.
         {
@@ -2202,7 +2272,7 @@ mod tests {
     #[test]
     fn restore_json_round_trips_with_its_version() {
         use shroom_core::world::{RelaunchWhy, WindowKind};
-        let f = RestoreFile { v: 1, restore: Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(42) } };
+        let f = RestoreFile { v: 1, restore: Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(42), headless: false } };
         let json = serde_json::to_string(&f).unwrap();
         assert_eq!(json, r#"{"v":1,"why":"permission","window":"onboarding","written":42}"#);
         let back: RestoreFile = serde_json::from_str(&json).unwrap();

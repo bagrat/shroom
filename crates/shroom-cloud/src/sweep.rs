@@ -165,16 +165,39 @@ pub fn gates(cloud: &Cloud, account_id: &str, probe: &str) -> Result<Gates, Clou
     Ok(Gates { email: email_gate(cloud, account_id, probe)?, card: card_gate(cloud, account_id)? })
 }
 
-/// The email gate alone (true = still up): the throwaway write, removed again.
+/// The email gate alone (true = still up): the throwaway write, removed again. The probe
+/// writes only a Worker it makes: under `probe` when no Worker has that name, else under a
+/// fresh `<probe>-<8 hex>` — one already there, whoever's, is never written or deleted. The
+/// probe it made is removed without force (nothing hangs on it). With neither name free the
+/// gate reads as down, and wiring's own write classifies it as ever (`gate_of`).
 pub fn email_gate(cloud: &Cloud, account_id: &str, probe: &str) -> Result<bool, CloudError> {
-    match cloud.put_worker(account_id, probe, "probe.js", PROBE_MODULE, &[], "2026-09-01") {
+    let name = match free_probe_name(cloud, account_id, probe) {
+        Ok(Some(name)) => name,
+        Ok(None) => return Ok(false),
+        Err(e) if gate_of(&e) == Some(Gate::Email) => return Ok(true),
+        Err(e) => return Err(e),
+    };
+    match cloud.put_worker(account_id, &name, "probe.js", PROBE_MODULE, &[], "2026-09-01") {
         Ok(()) => {
-            let _ = cloud.delete_worker(account_id, probe);
+            let _ = cloud.remove_worker(account_id, &name);
             Ok(false)
         }
         Err(e) if gate_of(&e) == Some(Gate::Email) => Ok(true),
         Err(e) => Err(e),
     }
+}
+
+/// A name no Worker in the account has: `probe`, else a fresh `<probe>-<8 hex>`.
+fn free_probe_name(cloud: &Cloud, account_id: &str, probe: &str) -> Result<Option<String>, CloudError> {
+    let mut b = [0u8; 4];
+    getrandom::fill(&mut b).expect("the OS random source works");
+    let fresh = format!("{probe}-{:02x}{:02x}{:02x}{:02x}", b[0], b[1], b[2], b[3]);
+    for name in [probe.to_string(), fresh] {
+        if worker_fact(cloud, account_id, &name, BUCKET)? == WorkerFact::Absent {
+            return Ok(Some(name));
+        }
+    }
+    Ok(None)
 }
 
 /// The card gate alone (true = still up): R2's own list call.

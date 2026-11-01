@@ -1,8 +1,9 @@
 // Region 6's drives (join, members, switch, token, stale) through the real app against the local
 // Worker (worker/dev/serve.mjs, three spaces) and the L1 Cloudflare fake, under a throwaway
 // home. Run from the repo: node worker/dev/region6-drive.mjs <join|members|switch|token|stale|cleanup>
-// `cleanup` (N68): the owner's token Mac meets videos worth deleting — the line, the view, Keep,
-// Delete and Undo, Count plays off and on — with the plays counted by the local Worker.
+// `cleanup` (N68, N75): the owner's token Mac meets videos worth deleting — the line, the view,
+// Pin, Delete and Undo, Delete all…, Count plays off and on, auto-cleanup's setting, warning
+// and round — with the plays counted, and the page's schedule run, by the local Worker.
 // `stale` (DECISIONS B90): the fake hands an R2_PARENT placed on a Worker to the local Worker's
 // binding (`--relay-parent`), so the app's own re-place of a stale binding is driven end to end.
 // Needs the debug bundle (cd app && npm run build:dev — the harness is built in only on purpose) and the fake

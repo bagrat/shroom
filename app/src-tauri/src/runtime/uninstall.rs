@@ -3,7 +3,8 @@
 //! In order: the login item off, then a helper started in its own session, and the app
 //! quits. The helper — as readable as the installer, like the updater's swap (B31) — waits
 //! for the app to be gone, resets every permission, lets LaunchServices forget the app and
-//! removes it, shroom's folder and what macOS keeps for its bundle id. Copies saved to
+//! removes it, shroom's folder and what macOS keeps for its bundle id; the app takes back
+//! the `shroom` command's link and profile line itself (`cli_link.rs`). Copies saved to
 //! Movies are never touched.
 
 use std::path::{Path, PathBuf};
@@ -91,6 +92,11 @@ pub fn uninstall(rt: &Runtime, app: &tauri::AppHandle) {
             Ok(disclaimed) => {
                 if !disclaimed {
                     rt.log("uninstall: the helper couldn't disclaim shroom — its permissions may stay");
+                }
+                // The `shroom` command's link and its profile line, as `install.sh --uninstall`
+                // takes them back (B239) — never a dev build's, whose home is a throwaway.
+                if !rt.dev {
+                    super::cli_link::unlink(&user_home, &bundle);
                 }
                 rt.log("uninstall: the helper waits; shroom quits");
                 rt.exit(&app);

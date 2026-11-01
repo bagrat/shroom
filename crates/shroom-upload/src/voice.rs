@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use shroom_edit::{Answer, Cut, CutKind, Levels, Options, Question, Saved, Silence, Transcript, find_cues, questions};
+use shroom_edit::{Answer, Cut, CutKind, Levels, Options, Question, Saved, Silence, Transcript, find_cues, questions, spoken};
 use shroom_storage::s3::{Client, S3Error};
 
 use crate::keys;
@@ -303,7 +303,9 @@ fn look(s3: &Client, id: &str, dir: &Path, now: u64, memo: &mut Memo, judge: Jud
     match land(s3, id, &t, now, &answers) {
         Ok(Landed::Planned { at, cues, cuts, fresh }) => {
             if fresh {
-                let found = find_cues(&t.words);
+                // The cues the planner counts: one heard in the take's quiet was never said.
+                let found = spoken(&t, Options::default());
+                let silent = find_cues(&t.words).len().saturating_sub(found.len());
                 note(&format!(
                     "heard {} words over {:.0} s after {} look{}; {quiet}; {}; landed {} cut{} in {} ms",
                     t.words.len(),
@@ -314,7 +316,7 @@ fn look(s3: &Client, id: &str, dir: &Path, now: u64, memo: &mut Memo, judge: Jud
                         0 => "no cue".to_string(),
                         1 => "1 cue".to_string(),
                         n => format!("{n} cues"),
-                    },
+                    } + &if silent > 0 { format!(" ({silent} more in its quiet, left alone)") } else { String::new() },
                     cuts.iter().filter(|c| c.kind != CutKind::Manual).count(),
                     if cuts.len() == 1 { "" } else { "s" },
                     began.elapsed().as_millis()

@@ -70,7 +70,12 @@ pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
             }
         }
         Op::Cut { start, end } => {
-            if !start.is_finite() || !end.is_finite() || end < start || end <= next.in_ || start >= next.out {
+            if !start.is_finite()
+                || !end.is_finite()
+                || end < start
+                || end <= next.in_
+                || start >= next.out
+            {
                 return Err(Refusal::OutOfRange);
             }
             let (s, e) = (start.max(next.in_).max(0.0), end.min(next.out).min(d));
@@ -84,7 +89,11 @@ pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
             });
         }
         Op::PutBack { index } => {
-            let c = next.cuts.get(index).filter(|c| c.applied).ok_or(Refusal::NoSuchCut)?;
+            let c = next
+                .cuts
+                .get(index)
+                .filter(|c| c.applied)
+                .ok_or(Refusal::NoSuchCut)?;
             if c.kind == CutKind::Manual {
                 next.cuts.remove(index);
             } else {
@@ -92,7 +101,11 @@ pub fn check(list: &EditList, op: &Op) -> Result<EditList, Refusal> {
             }
         }
         Op::Apply { index } => {
-            let c = next.cuts.get_mut(index).filter(|c| !c.applied).ok_or(Refusal::NoSuchCut)?;
+            let c = next
+                .cuts
+                .get_mut(index)
+                .filter(|c| !c.applied)
+                .ok_or(Refusal::NoSuchCut)?;
             c.applied = true;
         }
         Op::Resize { index, start, end } => {
@@ -295,22 +308,63 @@ mod tests {
     #[test]
     fn what_changes_nothing_that_plays_is_refused() {
         let mut h = History::new(list());
-        assert!(h.act(&Op::Cut { start: 10.0, end: 22.0 }));
+        assert!(h.act(&Op::Cut {
+            start: 10.0,
+            end: 22.0
+        }));
         h.saved_as_now();
         let cut = |start, end| Op::Cut { start, end };
-        assert_eq!(check(&h.now, &cut(12.0, 15.0)), Err(Refusal::NothingChanges), "a part already cut");
+        assert_eq!(
+            check(&h.now, &cut(12.0, 15.0)),
+            Err(Refusal::NothingChanges),
+            "a part already cut"
+        );
         assert!(!h.act(&cut(12.0, 15.0)) && !h.dirty());
-        assert!(h.act(&Op::Trim { in_: 0.0, out: 30.0 }));
+        assert!(h.act(&Op::Trim {
+            in_: 0.0,
+            out: 30.0
+        }));
         h.saved_as_now();
         let (cuts, keep) = (h.now.cuts.clone(), h.now.keep());
-        assert_eq!(check(&h.now, &cut(25.0, 31.0)).map(|l| l.keep()), Ok(vec![(0.0, 10.0), (22.0, 25.0)]), "held to the end");
+        assert_eq!(
+            check(&h.now, &cut(25.0, 31.0)).map(|l| l.keep()),
+            Ok(vec![(0.0, 10.0), (22.0, 25.0)]),
+            "held to the end"
+        );
         let mut l = EditList::new(60.0);
         l.cuts.push(Cut::manual(0.0, 5.0));
-        assert_eq!(check(&l, &Op::Trim { in_: 3.0, out: 60.0 }), Err(Refusal::NothingChanges), "an end moved within a cut");
-        assert_eq!(check(&l, &Op::Trim { in_: 6.0, out: 60.0 }).map(|l| l.keep()), Ok(vec![(6.0, 60.0)]));
+        assert_eq!(
+            check(
+                &l,
+                &Op::Trim {
+                    in_: 3.0,
+                    out: 60.0
+                }
+            ),
+            Err(Refusal::NothingChanges),
+            "an end moved within a cut"
+        );
+        assert_eq!(
+            check(
+                &l,
+                &Op::Trim {
+                    in_: 6.0,
+                    out: 60.0
+                }
+            )
+            .map(|l| l.keep()),
+            Ok(vec![(6.0, 60.0)])
+        );
         let mut inner = l.clone();
-        inner.cuts.push(Cut { id: "m2".into(), ..Cut::manual(1.0, 2.0) });
-        assert_eq!(check(&inner, &Op::PutBack { index: 1 }), Err(Refusal::NothingChanges), "a cut inside a cut put back");
+        inner.cuts.push(Cut {
+            id: "m2".into(),
+            ..Cut::manual(1.0, 2.0)
+        });
+        assert_eq!(
+            check(&inner, &Op::PutBack { index: 1 }),
+            Err(Refusal::NothingChanges),
+            "a cut inside a cut put back"
+        );
         assert_eq!((h.now.cuts.clone(), h.now.keep()), (cuts, keep));
     }
 
@@ -319,41 +373,138 @@ mod tests {
         let l = list();
         let cut = |start, end| Op::Cut { start, end };
         assert_eq!(check(&l, &cut(f64::NAN, 3.0)), Err(Refusal::OutOfRange));
-        assert_eq!(check(&l, &cut(9.0, 3.0)), Err(Refusal::OutOfRange), "backwards");
-        assert_eq!(check(&l, &cut(61.0, 70.0)), Err(Refusal::OutOfRange), "past the end");
+        assert_eq!(
+            check(&l, &cut(9.0, 3.0)),
+            Err(Refusal::OutOfRange),
+            "backwards"
+        );
+        assert_eq!(
+            check(&l, &cut(61.0, 70.0)),
+            Err(Refusal::OutOfRange),
+            "past the end"
+        );
         assert_eq!(check(&l, &cut(5.0, 5.05)), Err(Refusal::TooShort));
         assert_eq!(check(&l, &cut(0.0, 59.5)), Err(Refusal::LeavesTooLittle));
-        assert_eq!(check(&l, &Op::Trim { in_: 30.0, out: 30.5 }), Err(Refusal::LeavesTooLittle));
-        assert_eq!(check(&l, &Op::Trim { in_: 0.0, out: 60.0 }), Err(Refusal::NothingChanges));
-        assert_eq!(check(&l, &Op::PutBack { index: 0 }), Err(Refusal::NoSuchCut));
+        assert_eq!(
+            check(
+                &l,
+                &Op::Trim {
+                    in_: 30.0,
+                    out: 30.5
+                }
+            ),
+            Err(Refusal::LeavesTooLittle)
+        );
+        assert_eq!(
+            check(
+                &l,
+                &Op::Trim {
+                    in_: 0.0,
+                    out: 60.0
+                }
+            ),
+            Err(Refusal::NothingChanges)
+        );
+        assert_eq!(
+            check(&l, &Op::PutBack { index: 0 }),
+            Err(Refusal::NoSuchCut)
+        );
         assert_eq!(check(&l, &Op::Apply { index: 0 }), Err(Refusal::NoSuchCut));
         assert_eq!(check(&l, &Op::Revert), Err(Refusal::NothingChanges));
-        assert_eq!(serde_json::to_string(&Refusal::LeavesTooLittle).unwrap(), r#""leaves-too-little""#);
-        let trimmed = check(&l, &Op::Trim { in_: 10.0, out: 50.0 }).unwrap();
-        assert_eq!(check(&trimmed, &cut(2.0, 8.0)), Err(Refusal::OutOfRange), "wholly before the trim's in");
-        assert_eq!(check(&trimmed, &cut(8.0, 12.0)).map(|l| l.keep()), Ok(vec![(12.0, 50.0)]), "held to the in");
+        assert_eq!(
+            serde_json::to_string(&Refusal::LeavesTooLittle).unwrap(),
+            r#""leaves-too-little""#
+        );
+        let trimmed = check(
+            &l,
+            &Op::Trim {
+                in_: 10.0,
+                out: 50.0,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            check(&trimmed, &cut(2.0, 8.0)),
+            Err(Refusal::OutOfRange),
+            "wholly before the trim's in"
+        );
+        assert_eq!(
+            check(&trimmed, &cut(8.0, 12.0)).map(|l| l.keep()),
+            Ok(vec![(12.0, 50.0)]),
+            "held to the in"
+        );
     }
 
     #[test]
     fn a_cuts_edges_move_and_it_keeps_what_it_was() {
         let mut l = list();
-        l.cuts.push(Cut { id: "m1".into(), ..Cut::manual(20.0, 28.0) });
-        l.cuts.push(Cut { kind: CutKind::Retake, applied: false, removed: "so um".into(), ..Cut::manual(40.0, 44.0) });
+        l.cuts.push(Cut {
+            id: "m1".into(),
+            ..Cut::manual(20.0, 28.0)
+        });
+        l.cuts.push(Cut {
+            kind: CutKind::Retake,
+            applied: false,
+            removed: "so um".into(),
+            ..Cut::manual(40.0, 44.0)
+        });
         let resize = |index, start, end| Op::Resize { index, start, end };
         let moved = check(&l, &resize(0, 20.0, 30.4)).unwrap();
         assert_eq!(moved.keep(), vec![(0.0, 20.0), (30.4, 60.0)]);
-        assert_eq!((moved.cuts[0].id.as_str(), moved.cuts[0].kind, moved.cuts[0].applied, moved.cuts[0].adjusted), ("m1", CutKind::Manual, true, true));
+        assert_eq!(
+            (
+                moved.cuts[0].id.as_str(),
+                moved.cuts[0].kind,
+                moved.cuts[0].applied,
+                moved.cuts[0].adjusted
+            ),
+            ("m1", CutKind::Manual, true, true)
+        );
         let offered = check(&l, &resize(1, 42.5, 44.0)).unwrap();
-        assert_eq!(offered.keep(), l.keep(), "a suggestion moved plays nothing new");
-        assert_eq!((offered.cuts[1].start, offered.cuts[1].applied, offered.cuts[1].removed.as_str(), offered.cuts[1].adjusted), (42.5, false, "so um", true));
+        assert_eq!(
+            offered.keep(),
+            l.keep(),
+            "a suggestion moved plays nothing new"
+        );
+        assert_eq!(
+            (
+                offered.cuts[1].start,
+                offered.cuts[1].applied,
+                offered.cuts[1].removed.as_str(),
+                offered.cuts[1].adjusted
+            ),
+            (42.5, false, "so um", true)
+        );
         assert_eq!(check(&l, &resize(0, 20.0, 20.05)), Err(Refusal::TooShort));
-        assert_eq!(check(&l, &resize(0, 20.0, 28.0)), Err(Refusal::NothingChanges));
+        assert_eq!(
+            check(&l, &resize(0, 20.0, 28.0)),
+            Err(Refusal::NothingChanges)
+        );
         assert_eq!(check(&l, &resize(5, 1.0, 2.0)), Err(Refusal::NoSuchCut));
-        assert_eq!(check(&l, &resize(0, 30.0, 25.0)), Err(Refusal::OutOfRange), "backwards");
-        assert_eq!(check(&l, &resize(0, 0.5, 59.8)), Err(Refusal::LeavesTooLittle));
-        let trimmed = check(&l, &Op::Trim { in_: 10.0, out: 50.0 }).unwrap();
-        assert_eq!(check(&trimmed, &resize(0, 5.0, 28.0)).map(|l| l.cuts[0].start), Ok(10.0), "held to the trim");
-        let ops: Vec<Op> = serde_json::from_str(r#"[{"op":"resize","index":1,"start":2.5,"end":3}]"#).unwrap();
+        assert_eq!(
+            check(&l, &resize(0, 30.0, 25.0)),
+            Err(Refusal::OutOfRange),
+            "backwards"
+        );
+        assert_eq!(
+            check(&l, &resize(0, 0.5, 59.8)),
+            Err(Refusal::LeavesTooLittle)
+        );
+        let trimmed = check(
+            &l,
+            &Op::Trim {
+                in_: 10.0,
+                out: 50.0,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            check(&trimmed, &resize(0, 5.0, 28.0)).map(|l| l.cuts[0].start),
+            Ok(10.0),
+            "held to the trim"
+        );
+        let ops: Vec<Op> =
+            serde_json::from_str(r#"[{"op":"resize","index":1,"start":2.5,"end":3}]"#).unwrap();
         assert_eq!(ops[0], resize(1, 2.5, 3.0));
     }
 

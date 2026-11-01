@@ -247,7 +247,7 @@ describe("while the take is heard, the owner page keeps its one line (hearing)",
 
   it("the upload's line stays under the player: the same words, its spinner turning", async () => {
     const body = await ownerPage(fresh());
-    expect(lineOf(body)).toBe(`<div class="upl" id="ul"><span class="spin" id="b" aria-hidden="true"></span><span class="up" id="u">${html(finishing())}</span></div>`);
+    expect(lineOf(body)).toBe(`<div class="upl" id="ul" data-room><span class="spin" id="b" aria-hidden="true"></span><span class="up" id="u">${html(finishing())}</span></div>`);
     expect(body.indexOf('id="ul"')).toBeGreaterThan(body.indexOf('class="player"'));
     // It never speaks of cuts: the same listening names the video and makes its captions.
     expect(finishing()).not.toMatch(/cut/i);
@@ -263,18 +263,31 @@ describe("while the take is heard, the owner page keeps its one line (hearing)",
     for (const body of [viewer, member, embed]) expect(body).not.toContain(html(finishing()));
   });
 
-  it("goes with the upload in a space that doesn't listen, once the take is planned (cuts or none), five minutes after the go-live, or when its words wait for the next free day", async () => {
+  it("goes with the upload in a space that doesn't listen, once the take is planned (cuts or none) and named (N82), five minutes after the go-live, or when its words wait for the next free day", async () => {
     const noCues = { ...EDITS, voice: { planned_at: NOW - 1_000, cues: 0 }, cuts: [EDITS.cuts[4]] };
+    const named = { by: "ai", title: "Setting up shroom", chapters: [] };
     for (const [meta, listens] of [
       [fresh(), false],
-      [fresh({ edits: EDITS }), true],
-      [fresh({ edits: noCues }), true],
+      [fresh({ edits: EDITS, named }), true],
+      [fresh({ edits: noCues, named }), true],
+      // A naming that ended with none (too few words) ends it the same.
+      [fresh({ edits: noCues, named: { by: "ai", title: null, chapters: [], words: 3 } }), true],
       [fresh({ publishedAt: new Date(NOW - VOICE_WAIT_MS - 1_000).toISOString() }), true],
       [fresh({ naming: { later: "daily", at: new Date(NOW).toISOString() } }), true],
     ]) {
       const body = await ownerPage(meta, listens);
       expect(lineOf(body)).toBe('<div class="upl" id="ul" hidden><span class="up" id="u"></span></div>');
       expect(body).toContain('"listenFor":0');
+    }
+  });
+
+  it("stays, its spinner turning, while the cuts are planned but the name is still on its way (N82)", async () => {
+    const noCues = { ...EDITS, voice: { planned_at: NOW - 1_000, cues: 0 }, cuts: [EDITS.cuts[4]] };
+    for (const meta of [fresh({ edits: noCues }), fresh({ edits: EDITS }), fresh({ edits: noCues, named: { by: "ai", early: true, title: "Setting", chapters: [] } })]) {
+      const body = await ownerPage(meta, true);
+      expect(lineOf(body)).toContain(html(finishing()));
+      expect(lineOf(body)).toContain('<span class="spin" id="b"');
+      expect(body).not.toContain('"listenFor":0');
     }
   });
 

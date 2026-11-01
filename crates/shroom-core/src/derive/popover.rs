@@ -346,7 +346,7 @@ fn banner(w: &World) -> Option<Banner> {
 /// that it didn't go through when it didn't (law 12). On a member's Mac, once the space's
 /// ping says its AI is on: whose space hears the new videos, with OK.
 fn banner_ai(w: &World) -> Option<Banner> {
-    let frost = |id: &'static str, line: String, detail: Option<String>, buttons: Vec<Button>| Banner { id, tone: Tone::Frost, line, detail, buttons };
+    let frost = |id: &'static str, line: String, detail: Option<String>, buttons: Vec<Button>| Banner { id, tone: Tone::Frost, line, detail, buttons, parts: vec![], long: None };
     if w.space.role() == Some(Role::Member) {
         let name = w.space.identity.as_ref().map(|i| i.owner_name.clone()).unwrap_or_default();
         return (w.space.ai == Some(true) && !w.once.ai_offer_answered)
@@ -362,7 +362,9 @@ fn banner_ai(w: &World) -> Option<Banner> {
     let answer = || vec![Button::new(Action::AiOk, copy::ok(), Style::Filled), off.clone()];
     if w.space.ai_turn == Some(AiTurn::TurningOff) {
         if rewiring {
-            return Some(frost("ai-turning-off", copy::ai_turning_off(), None, vec![]));
+            // Its parts under the line as they land (N80).
+            let (parts, long) = super::ai_running(w).map(|r| super::ai_parts(w, r)).unwrap_or_default();
+            return Some(Banner { parts, long, ..frost("ai-turning-off", copy::ai_turning_off(), None, vec![]) });
         }
         if w.inflight.failures.contains_key(&Op::Ai) {
             return Some(frost("ai-turn-off-failed", copy::ai_turned_on(), Some(copy::ai_turn_off_failed()), answer()));
@@ -393,7 +395,7 @@ pub fn ai_default_due(w: &World) -> bool {
 fn banner_autoclean(w: &World) -> Option<Banner> {
     use super::library::{cleaned, going_day, going_in};
     if let Some((n, at)) = w.session.fields.library.pinned_note {
-        return Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::pinned_going(n, &copy::day(at, w.mac.utc_offset_min)), detail: None, buttons: vec![] });
+        return Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::pinned_going(n, &copy::day(at, w.mac.utc_offset_min)), detail: None, buttons: vec![], parts: vec![], long: None });
     }
     let going = going_in(w, true);
     let mut ids: Vec<String> = going.iter().map(|(g, _)| g.rec.0.clone()).collect();
@@ -410,12 +412,12 @@ fn banner_autoclean(w: &World) -> Option<Banner> {
                 Button::new(Action::DismissGoing, copy::not_now(), Style::Link),
                 Button::new(Action::ReviewGoing, copy::review(), Style::Plain),
                 Button::new(Action::PinGoing, copy::pin_going(n), Style::Filled).enabled(w.online() != Some(false)),
-            ],
+            ], parts: vec![], long: None,
         });
     }
     let c = cleaned(w)?;
     let days = w.suggestions.get().map_or(0, |s| s.autoclean.days);
-    Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::autoclean_cleaned(c.recs.len() as u64, days, c.bytes), detail: None, buttons: vec![Button::new(Action::CleanedOk, copy::ok(), Style::Plain)] })
+    Some(Banner { id: "autoclean-warning", tone: Tone::Frost, line: copy::autoclean_cleaned(c.recs.len() as u64, days, c.bytes), detail: None, buttons: vec![Button::new(Action::CleanedOk, copy::ok(), Style::Plain)], parts: vec![], long: None })
 }
 
 /// Kind 2: the space can't take videos — on the token-holding Mac, `space-degraded` (N42).
@@ -426,7 +428,7 @@ fn banner_degraded(w: &World) -> Option<Banner> {
         tone: Tone::Amber,
         line: copy::space_degraded(),
         detail: None,
-        buttons: vec![Button::new(Action::ReconnectSpace, copy::reconnect_space(), Style::Filled)],
+        buttons: vec![Button::new(Action::ReconnectSpace, copy::reconnect_space(), Style::Filled)], parts: vec![], long: None,
     })
 }
 
@@ -434,14 +436,14 @@ fn banner_degraded(w: &World) -> Option<Banner> {
 fn banner_update(w: &World) -> Option<Banner> {
     let v = super::update_ready(w)?;
     Some(if w.update.applying {
-        Banner { id: "updating-app", tone: Tone::Frost, line: copy::updating(), detail: None, buttons: vec![] }
+        Banner { id: "updating-app", tone: Tone::Frost, line: copy::updating(), detail: None, buttons: vec![], parts: vec![], long: None }
     } else {
         Banner {
             id: "update-ready",
             tone: Tone::Frost,
             line: copy::update_ready(v),
             detail: None,
-            buttons: vec![Button::new(Action::Update, copy::update(), Style::Filled), Button::new(Action::WhatsNew, copy::whats_new(), Style::Link)],
+            buttons: vec![Button::new(Action::Update, copy::update(), Style::Filled), Button::new(Action::WhatsNew, copy::whats_new(), Style::Link)], parts: vec![], long: None,
         }
     })
 }
@@ -456,7 +458,7 @@ fn banner_saved(w: &World) -> Option<Banner> {
             buttons: vec![
                 get_link(w),
                 Button::new(Action::DiscardSaved, copy::discard_ellipsis(), Style::RedText),
-            ],
+            ], parts: vec![], long: None,
         });
     }
     None
@@ -475,7 +477,7 @@ fn banner_recording_off(w: &World) -> Option<Banner> {
         tone: Tone::Amber,
         line: copy::recording_off(),
         detail: None,
-        buttons: vec![Button::new(Action::TurnBackOn, copy::turn_back_on(), Style::Filled)],
+        buttons: vec![Button::new(Action::TurnBackOn, copy::turn_back_on(), Style::Filled)], parts: vec![], long: None,
     })
 }
 

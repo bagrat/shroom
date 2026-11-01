@@ -1,0 +1,125 @@
+/* The spinner and a wait's parts (N74, N80): shared by the setup, Settings and the popover. */
+
+/* The spinner: the canvas's ring, its Frost arc turning; at rest it holds still. */
+.spin {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: block;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  animation: spin 0.9s linear infinite;
+}
+
+.spin .track {
+  stroke: var(--border);
+}
+
+.spin .arc {
+  stroke: var(--frost);
+}
+
+.spin.rest {
+  animation: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 2.4s;
+  }
+}
+
+/* ── a wait's parts (N74): the card step's check, the card watch, wiring's parts ── */
+
+.parts {
+  list-style: none;
+  align-self: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+
+.parts .part {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+
+.parts .mark {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.parts .mark .spin {
+  width: 13px;
+  height: 13px;
+}
+
+.parts .icon13 {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.parts .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dim);
+}
+
+.parts .line {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.parts .done .line {
+  color: var(--muted);
+}
+
+.parts .working .line {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.parts .ahead .line {
+  color: var(--fg-3);
+  opacity: 0.7;
+}
+
+.clock {
+  color: var(--frost);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A part that stopped there (N80, law 12): its cross, its words plain. */
+.parts .icon13.cross {
+  stroke: var(--red);
+}
+
+.parts .stopped .line {
+  color: var(--fg);
+}

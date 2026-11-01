@@ -1,7 +1,9 @@
-// B61 (tests-sys #8): the page a space runs moves only with VERSION. B50's refresh puts this
-// app's page up only when the live ping answers an *older* VERSION, so a worker.js change
-// shipped under the same VERSION never reaches an existing space. Every VERSION keeps the
-// fingerprint of the page it shipped; changing the page without a new VERSION fails here.
+// B61 (tests-sys #8), as amended by B248: the page a space runs moves only with VERSION. B50's
+// refresh puts this app's page up only when the live ping answers an *older* VERSION, so a
+// worker.js change shipped under the same VERSION never reaches an existing space. Every
+// VERSION keeps the fingerprint of its page; a page change that doesn't match it fails here.
+// Until a build carrying VERSION is published, the fix is to re-stamp its row; once v<VERSION>
+// is tagged, the row is frozen (tools/page-version-out.sh, CI) and the fix is a new version.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../src/worker.js";
@@ -27,12 +29,13 @@ describe("the page's VERSION guard", () => {
     expect(lock[VERSION], `worker.js says VERSION ${VERSION}, but page-version.json has no row for it — add "${VERSION}": "${fingerprint()}" (node dev/page-fingerprint.mjs)`).toBeTypeOf("string");
   });
 
-  it("the page is the one VERSION shipped — a change needs a new VERSION", () => {
+  it("the page is the one VERSION's row holds", () => {
     const now = fingerprint();
     expect(now, `src/worker.js or vendor/hls.min.js changed since VERSION ${VERSION} was fingerprinted. ` +
-      `Existing spaces only take a newer VERSION (DECISIONS B50 c), so: bump VERSION in src/worker.js ` +
-      `and the app's version in app/src-tauri/tauri.conf.json (they're held equal), then add a row ` +
-      `"<new version>": "${now}" to worker/page-version.json. Never edit an existing row.`).toBe(lock[VERSION]);
+      `If no build of ${VERSION} is out yet (no tag v${VERSION}), re-stamp its row in ` +
+      `worker/page-version.json: "${VERSION}": "${now}" (B248). If it is out, existing spaces only ` +
+      `take a newer VERSION (DECISIONS B50 c): move to the next version with tools/bump-version.sh, ` +
+      `which adds its row, and leave ${VERSION}'s as it was.`).toBe(lock[VERSION]);
   });
 
   it("VERSION is the newest row", () => {

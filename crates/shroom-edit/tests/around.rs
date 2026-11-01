@@ -3,7 +3,9 @@
 //! gives up to six either side: `leads` before the cut's first word, `resumes` after its
 //! last, and nothing where the take starts or ends.
 
-use shroom_edit::{CutKind, Options, Silence, Transcript, plan};
+use shroom_edit::{
+    Answer, Confidence, CutKind, JUDGED, Options, Silence, Transcript, plan, plan_with, questions,
+};
 
 /// `(text, start, end)` words, then the quiet between them.
 fn take(words: &[(&str, f64, f64)], silences: &[(f64, f64)], duration: f64) -> Transcript {
@@ -70,7 +72,8 @@ fn between(middle: &[(&str, f64, f64)]) -> Transcript {
 
 #[test]
 fn a_cut_carries_six_words_either_side() {
-    // Bagrat's reworded redo: the broken-off sentence goes with the cue.
+    // Bagrat's reworded redo: the broken-off sentence goes with the cue, as the line before
+    // it while no judgment says it was said again (N65 (2), 2026-10-25).
     let t = between(&[
         ("Click", 6.5, 6.8),
         ("on", 6.85, 6.95),
@@ -83,7 +86,40 @@ fn a_cut_carries_six_words_either_side() {
         ("cut.", 9.35, 9.8),
     ]);
     let cuts = plan(&t, Options::default()).cuts;
+    assert_eq!(cuts.len(), 2, "{cuts:?}");
+    assert_eq!(
+        cuts[1].leads.as_deref(),
+        Some("quick test of the voice cut.")
+    );
+    assert_eq!(
+        cuts[1].resumes.as_deref(),
+        Some("To get your video, use this")
+    );
+}
+
+#[test]
+fn a_sure_cut_the_judgment_reached_back_for_carries_six_words_either_side() {
+    // The same redo with the judgment's word that the sentence was said again: one sure cut.
+    let t = between(&[
+        ("Click", 6.5, 6.8),
+        ("on", 6.85, 6.95),
+        ("this", 7.0, 7.2),
+        ("link", 7.25, 7.55),
+        ("and", 7.6, 7.7),
+        ("you", 7.75, 7.85),
+        ("will", 7.9, 8.2),
+        ("shroom", 8.9, 9.3),
+        ("cut.", 9.35, 9.8),
+    ]);
+    let n = questions(&t, Options::default())[0].candidates.len();
+    let mut scores = vec![0.0; n];
+    scores[0] = JUDGED;
+    let cuts = plan_with(&t, Options::default(), &[Answer { cue: 0, scores }]).cuts;
     assert_eq!(cuts.len(), 1, "{cuts:?}");
+    assert_eq!(
+        (cuts[0].kind, cuts[0].confidence),
+        (CutKind::Retake, Confidence::High)
+    );
     assert_eq!(
         cuts[0].leads.as_deref(),
         Some("quick test of the voice cut.")

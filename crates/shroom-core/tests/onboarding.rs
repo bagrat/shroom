@@ -1033,7 +1033,7 @@ fn a_relaunch_rederives_where_the_person_was() {
     let mut r = Run::new(chapter(Access::Granted, false));
     r.send(Event::Os(OsNews::Terminating { ours: false }));
     assert_eq!(win(&r.scene), "relaunching");
-    let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(1_790_000_000_000 + r.t as i64) };
+    let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(1_790_000_000_000 + r.t as i64), headless: false };
     let r2 = reboot(&r, LaunchKind::User, QuickProbe { screen: false, ..quick() }, Some(restore.clone()));
     assert_eq!(win(&r2.scene), "perm-screen", "resumes right here — derived state");
     let stale = Restore { written: Wall(restore.written.0 - 200_000), ..restore };
@@ -1052,7 +1052,7 @@ fn a_permission_relaunch_before_wiring_resumes_at_the_permissions_step() {
     assert_eq!(win(&r.scene), "perm-screen");
     r.send(Event::Os(OsNews::Terminating { ours: false }));
     assert_eq!(win(&r.scene), "relaunching");
-    let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(1_790_000_000_000 + r.t as i64) };
+    let restore = Restore { why: RelaunchWhy::Permission, window: WindowKind::Onboarding, written: Wall(1_790_000_000_000 + r.t as i64), headless: false };
     let granted = QuickProbe { screen: true, mic: Access::Granted, camera: Access::Granted, ..quick() };
     for (launch, restore) in [(LaunchKind::User, Some(restore)), (LaunchKind::PermissionRelaunch, None)] {
         let mut r2 = reboot(&r, launch.clone(), granted.clone(), restore);

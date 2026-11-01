@@ -37,6 +37,13 @@ pub fn update(w: &mut World, env: Envelope) -> (Vec<Effect>, Arm) {
     if w.session.popover.is_none() {
         w.session.fields.library.pinned_note = None;
     }
+    // The marker toast goes once the popover or a count comes up over it (N78): it doesn't
+    // come back when they go.
+    if w.session.popover.is_some() || w.session.arming.as_ref().is_some_and(|a| !a.fired) {
+        if let Some(t) = w.take.as_mut() {
+            t.toast = None;
+        }
+    }
     mark(w, &fx);
     let more = settle::settle(w);
     mark(w, &more);

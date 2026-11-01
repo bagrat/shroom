@@ -16,7 +16,7 @@ export type Rich = { text: string; runs: Run[] };
 /** `uninstall`: quiet at the foot (B160); `sheet`: its question over the window, once asked. */
 export type WelcomeBody = { kind: "welcome"; paragraphs: Rich[]; login: Toggle; buttons: Button[]; uninstall: Button; sheet: Sheet | null };
 
-export type Glyph = "current" | "done" | "ahead" | "working";
+export type Glyph = "current" | "done" | "ahead" | "working" | "stopped";
 /** A row and its parts as the core split them (DEVIATIONS #45): the title, the aside under it,
  * a done row's fact at its end. */
 export type PlanRow = { glyph: Glyph; line: string; runs: Run[]; title: string; aside: Run[]; fact: string | null; clock: string | null };
@@ -69,6 +69,8 @@ export type PlanView = { kind: "plan"; header: string; rows: PlanRow[]; current:
 export type InviteBody = {
   kind: "invite";
   title: string | null;
+  /** Under the title, the space the invite joins: “Their space: v.x.workers.dev”. */
+  space: string | null;
   lines: string[];
   /** member-welcome's “Start shroom when you log in” (U4). */
   login: Toggle | null;

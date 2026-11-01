@@ -40,12 +40,11 @@ describe("link previews", () => {
     assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1200, 630]);
   });
 
-  it("draws the landing's own heading and sub-line on the card", () => {
+  it("draws the landing's own heading on the card, and no sub-line (Bagrat, 2026-10-25)", () => {
     const tool = readFileSync(join(ROOT, "tools/render-og-card.mjs"), "utf8");
     const landing = pages["/"];
     const h1 = landing.match(/<h1>([^<]*)<\/h1>/)?.[1];
-    const punch = landing.match(/<p class="punch">([^<]*)<\/p>/)?.[1];
     assert.equal(tool.match(/export const HEADING = "([^"]*)"/)?.[1], h1);
-    assert.equal(tool.match(/export const SUB = "([^"]*)"/)?.[1], punch);
+    assert.doesNotMatch(tool, /No monthly seat/, "the line left the card with the landing's");
   });
 });

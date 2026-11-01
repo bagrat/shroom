@@ -5,7 +5,8 @@
 //! - a law breaks (`trace::breach`, checked after every batch in a dev build);
 //! - a take turns out to have been rescued — a crash-recovery launch finds an interrupted
 //!   take, or a capture died under one (the steps that led there, read beside the log);
-//! - anything panics (a hook chained before the default one);
+//! - anything panics (a hook chained before the default one) — with the panic's own line
+//!   first: its thread, where, and what it said (a shipped app's stderr goes nowhere);
 //! - a harness run (a drive, the heartbeat, the soak) ends — the harness *is* the flag: a
 //!   drive's run log always carries the ring it ended on.
 //!
@@ -34,13 +35,26 @@ pub fn install(rt: &Runtime) {
     }
     let before = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        if let (Some(logs), Ok(ring)) = (LOGS.get(), RING.try_lock()) {
-            if let Some(r) = ring.as_ref() {
-                write(logs, r, "a panic");
+        if let Some(logs) = LOGS.get() {
+            super::log_line(logs, &panic_line(std::thread::current().name(), info.location(), info.payload()));
+            if let Ok(ring) = RING.try_lock() {
+                if let Some(r) = ring.as_ref() {
+                    write(logs, r, "a panic");
+                }
             }
         }
         before(info);
     }));
+}
+
+/// The panic's own line: which thread, where, and what it said — cut short, the way
+/// Cloudflare's error text is (it can quote an error's own words; law 13 keeps secrets out
+/// of what the code panics with).
+fn panic_line(thread: Option<&str>, at: Option<&std::panic::Location>, payload: &(dyn std::any::Any + Send)) -> String {
+    let said = payload.downcast_ref::<&str>().copied().or_else(|| payload.downcast_ref::<String>().map(String::as_str)).unwrap_or("(no message)");
+    let said: String = said.chars().take(160).map(|c| if c.is_control() { ' ' } else { c }).collect();
+    let at = at.map_or_else(|| "somewhere unknown".to_string(), |l| format!("{}:{}:{}", l.file(), l.line(), l.column()));
+    format!("panic: thread '{}' at {at}: {said}\n", thread.unwrap_or("unnamed"))
 }
 
 /// One step of the core, its event named before `update` took it.
@@ -151,6 +165,19 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
             assert_eq!(std::fs::metadata(rt.home.root.join("logs/run.log")).unwrap().permissions().mode() & 0o777, 0o600);
         }
+    }
+
+    /// A panic says which thread, where and what (0.1.25–0.1.30 wrote only the ring, so a
+    /// thread that died left no word of why).
+    #[test]
+    fn a_panic_names_its_thread_place_and_message() {
+        let at = std::panic::Location::caller();
+        let line = panic_line(Some("shroom-observe"), Some(at), &String::from("a Display implementation returned an error unexpectedly: Error"));
+        assert_eq!(line, format!("panic: thread 'shroom-observe' at {}:{}:{}: a Display implementation returned an error unexpectedly: Error\n", at.file(), at.line(), at.column()));
+        assert_eq!(panic_line(None, None, &"boom"), "panic: thread 'unnamed' at somewhere unknown: boom\n");
+        assert_eq!(panic_line(None, None, &42u8), "panic: thread 'unnamed' at somewhere unknown: (no message)\n");
+        let long = panic_line(None, None, &format!("x\ny{}", "z".repeat(500)));
+        assert!(long.starts_with("panic: thread 'unnamed' at somewhere unknown: x y") && long.len() < 220 && long.matches('\n').count() == 1, "{long}");
     }
 
     /// A dev build writes the ring down when a law breaks — once a minute per law.

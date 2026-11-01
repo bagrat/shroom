@@ -3,7 +3,7 @@
 // owner's own page never counts, and POST /_shroom/api/cleanup scores each video under
 // one of four formulas, with the reason and the facts its line needs.
 import { describe, expect, it } from "vitest";
-import { BYTES_PER_SEC, FORMULAS, VIEW_JS, applyView, cleanupFacts, cleanupScore, medianWatched, monthlySaving } from "../src/worker.js";
+import { BYTES_PER_SEC, FORMULAS, VIEW_JS, VIEW_PLAYS_PER_VIEWER, applyView, cleanupFacts, cleanupScore, medianWatched, monthlySaving } from "../src/worker.js";
 import {
   DAY, HOST, M1, MHER, MHER_MAC, NOW, OWNER_MAC, bodyOf, call, cookieFor, iso, ledger, metaKey, metaOf, recId, space, textOf,
 } from "./space-fixture.js";
@@ -53,6 +53,21 @@ describe("counting plays", () => {
     expect(env.BUCKET.json(viewsKey(VID))).toMatchObject({ plays: 3, viewers: 2 });
   });
 
+  it("one viewer's plays count up to a ceiling a day; another viewer, or the next day, counts again", async () => {
+    const env = space({ objects: { [metaKey(VID)]: live(VID) } });
+    for (let i = 0; i < VIEW_PLAYS_PER_VIEWER + 3; i++) await beacon(env, VID, { e: "play", t: `tok_${String(i).padStart(8, "0")}` });
+    expect(env.BUCKET.json(viewsKey(VID))).toMatchObject({ plays: VIEW_PLAYS_PER_VIEWER, viewers: 1 });
+    const writes = env.BUCKET.written().filter((k) => k === viewsKey(VID)).length;
+    await beacon(env, VID, { e: "play", t: "tok_zzzzzzzz" });
+    expect(env.BUCKET.written().filter((k) => k === viewsKey(VID)).length, "past the ceiling, nothing is written").toBe(writes);
+    await beacon(env, VID, { e: "play", t: "tok_otherbrw" }, { ua: "Firefox" });
+    await beacon(env, VID, { e: "play", t: "tok_nextdayy" }, { now: NOW + DAY });
+    expect(env.BUCKET.json(viewsKey(VID))).toMatchObject({ plays: VIEW_PLAYS_PER_VIEWER + 2 });
+    // Its end still lands, for a play that counted.
+    await beacon(env, VID, { e: "end", t: "tok_00000000", f: 1 }, { now: NOW + DAY });
+    expect(env.BUCKET.json(viewsKey(VID)).ends).toBe(1);
+  });
+
   it("a page load's play counts once, and its latest end replaces the one before", async () => {
     const env = space({ objects: { [metaKey(VID)]: live(VID) } });
     await beacon(env, VID, { e: "play", t: "tok_aaaaaaaa" });
@@ -83,6 +98,16 @@ describe("counting plays", () => {
       expect((await beacon(env, VID, body)).status).toBe(400);
     }
     expect(env.BUCKET.json(viewsKey(VID))).toBeNull();
+  });
+
+  it("refuses a beacon that carries no sign of a browser page: no Origin and no Sec-Fetch-*", async () => {
+    const env = space({ objects: { [metaKey(VID)]: live(VID) } });
+    expect((await beacon(env, VID, { e: "play", t: "tok_aaaaaaaa" }, { origin: null })).status).toBe(403);
+    expect(env.BUCKET.json(viewsKey(VID))).toBeNull();
+    // A browser's same-origin beacon says so, with or without an Origin.
+    const sameOrigin = { "content-type": "text/plain", "cf-connecting-ip": "203.0.113.7", "user-agent": "Safari", "sec-fetch-site": "same-origin", "sec-fetch-mode": "no-cors" };
+    expect((await call(env, "POST", `/_shroom/view/${VID}`, { body: { e: "play", t: "tok_aaaaaaaa" }, now: NOW, headers: sameOrigin })).status).toBe(204);
+    expect(env.BUCKET.json(viewsKey(VID))).toMatchObject({ plays: 1 });
   });
 
   it("takes WebKit's beacon from a page being left, sent as Origin: null", async () => {

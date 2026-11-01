@@ -3,6 +3,7 @@ import { reportErrors } from "./lib/ipc";
 
 reportErrors("editor");
 import "./lib/theme.css";
+import "./library/sheet.css";
 import Editor from "./Editor.svelte";
 
 export default mount(Editor, { target: document.getElementById("app")! });

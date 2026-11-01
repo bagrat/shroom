@@ -8,9 +8,9 @@
 #
 #   signing-keychain.sh import          from SIGNING_P12_BASE64 and SIGNING_P12_PASSWORD (the
 #                                       environment, never the command line): a throwaway
-#                                       keychain holding the identity, usable by codesign
-#                                       without a prompt and trusted for code signing on this
-#                                       runner. Says `identity=<name>` and `leaf=<sha1>` to
+#                                       keychain holding the identity (its key can't be
+#                                       exported), usable by codesign without a prompt and
+#                                       trusted for code signing on this runner. Says `identity=<name>` and `leaf=<sha1>` to
 #                                       $GITHUB_OUTPUT — both public: they are in every release.
 #   signing-keychain.sh delete          everything `import` made, gone (an always() step)
 #   signing-keychain.sh scratch <path>  an empty, unlocked keychain file — where the rehearsal
@@ -112,11 +112,12 @@ case "${1-}" in
     security create-keychain -p "$kpw" "$kc"
     security set-keychain-settings "$kc"
     security unlock-keychain -p "$kpw" "$kc"
-    security import "$dir/once.p12" -k "$kc" -f pkcs12 -P "$(cat "$dir/once")" -T /usr/bin/codesign >/dev/null \
+    # Non-extractable (-x): the key can sign here, and can never be exported from here.
+    security import "$dir/once.p12" -k "$kc" -f pkcs12 -P "$(cat "$dir/once")" -x -T /usr/bin/codesign >/dev/null \
       || fail "the keychain didn't take the identity"
     rm -f "$dir/once.p12" "$dir/once"
-    # codesign may use the key without asking anyone.
-    security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kpw" "$kc" >/dev/null
+    # codesign may use the key without asking anyone — Apple's own tools only.
+    security set-key-partition-list -S apple-tool:,apple: -s -k "$kpw" "$kc" >/dev/null
     # On the search list, ahead of the runner's own keychains: where codesign looks a name up.
     rest=$(search_list | grep -vxF "$kc" || true)
     old_ifs=$IFS

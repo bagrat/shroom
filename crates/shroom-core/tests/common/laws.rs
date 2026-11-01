@@ -170,10 +170,12 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
             }
         }
     }
-    // A browser page opens only right after the click that asked for it.
+    // A browser page opens only right after the click that asked for it — or the agent's
+    // `shroom setup` ask, which is that click with the window shut (N89).
     for e in fx {
         if matches!(e, Effect::Shell(ShellCmd::OpenUrl(_))) {
-            assert!(matches!(ev, Event::Act { .. } | Event::Key { .. }), "law 4: a page opened without a click — {}", ctx());
+            let setup = matches!(ev, Event::Cli { op: shroom_core::event::CliOp::Setup(_), .. });
+            assert!(matches!(ev, Event::Act { .. } | Event::Key { .. }) || setup, "law 4: a page opened without a click — {}", ctx());
         }
     }
 
@@ -390,7 +392,8 @@ pub fn check(pw: &World, ps: &Scene, ev: &Event, nw: &World, ns: &Scene, fx: &[E
     // to the last of those (ARCHITECTURE §3.3, N43) — each consumed once; never mid-take.
     use shroom_core::effect::Perm;
     use shroom_core::world::Access;
-    let clicked = matches!(ev, Event::Act { .. } | Event::Key { .. });
+    // The agent's `shroom setup permissions` is the Allow recording click, window shut (N89).
+    let clicked = matches!(ev, Event::Act { .. } | Event::Key { .. } | Event::Cli { op: shroom_core::event::CliOp::Setup(_), .. });
     let grants = matches!(ev, Event::Os(OsNews::Grants { .. }));
     let mic_answered = pw.mac.mic_asked && !nw.mac.mic_asked && !nw.mac.mic.is(&Access::NotAsked);
     let camera_answered = pw.mac.camera_asked && !nw.mac.camera_asked && !nw.mac.camera.is(&Access::NotAsked);

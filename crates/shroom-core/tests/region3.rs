@@ -103,6 +103,14 @@ fn rows() -> Vec<(&'static str, World)> {
         w.take = Some(t);
         w
     }));
+    // The marker toast (N78): ⌥⌘M's answer, the take's first marker and a later one.
+    for n in [1, 3] {
+        rows.push(("recording", {
+            let mut w = ready();
+            w.take = Some(OpenTake { markers: n, toast: Some((MarkerToastSays::Dropped(n), Mono(0))), ..take(Phase::Recording, 0) });
+            w
+        }));
+    }
     rows.push(("tray-red-dot", {
         let mut w = ready();
         w.take = Some(take(Phase::Recording, 0));
@@ -129,6 +137,13 @@ fn rows() -> Vec<(&'static str, World)> {
     rows.push(("paused", {
         let mut w = with_popover(ready());
         w.take = Some(OpenTake { markers: 1, marked_at_pause: true, ..take(Phase::Paused(Cause::User), 272_000) });
+        w
+    }));
+    // ⌥⌘M again at a pause that has its marker, the popover put away (N78): the toast says
+    // nothing dropped.
+    rows.push(("tray-pause-bars", {
+        let mut w = ready();
+        w.take = Some(OpenTake { markers: 1, marked_at_pause: true, toast: Some((MarkerToastSays::Already, Mono(0))), ..take(Phase::Paused(Cause::User), 272_000) });
         w
     }));
     rows.push(("tray-pause-bars", {
@@ -264,6 +279,23 @@ fn the_marker_shortcut_is_held_with_the_pause_shortcut() {
     r.send(Event::MarkerShortcut(quick()));
     assert!(r.has(|e| *e == Effect::Recorder(RecCmd::Marker)), "{:?}", r.effects);
     assert_eq!(r.w.take.as_ref().map(|t| (t.phase, t.markers)), Some((Phase::Recording, 1)), "the take goes on");
+}
+
+/// Law 4 as N85 has it (Bagrat, 2026-10-25 and 2026-10-26): every shroom window is recorded
+/// in a take like any app's — a bug report of shroom shows it. The popover, the count, the
+/// agent label and the marker toast are overlays, never windows: always left out.
+#[test]
+fn a_take_records_every_window_of_ours() {
+    let spec = Spec::load();
+    let law = spec.law(4).expect("law 4");
+    assert!(law.cites.iter().any(|c| c == "N85"), "law 4 cites N85");
+    let held = law.invariants.iter().find(|i| i.contains("(N85)")).expect("law 4's N85 invariant");
+    for name in ["Library", "editor", "Settings", "Send feedback", "onboarding", "popover", "countdown", "agent label", "marker toast"] {
+        assert!(held.contains(name), "law 4's N85 invariant names {name}");
+    }
+    for kind in [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(7))] {
+        assert!(kind.recorded(), "{kind:?} shows in a take");
+    }
 }
 
 // ── walkthroughs (ARCHITECTURE §3.6) ──

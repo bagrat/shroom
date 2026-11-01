@@ -75,9 +75,9 @@ at `bf84b67079a8` (D:B2). Svelte 5, TypeScript 5.9.
 | `app/src-tauri` | `main.rs`, `commands.rs` (IPC), `runtime/` (runner, lanes, presenter, overlays, observers, seam), `harness.rs`/`drives.rs` (only with `dev-harness` in a `.dev` build — D:B5, B55, B62) | drives, `tests/l5/` |
 | `app/src-tauri/src/runtime/editor.rs` | the editor's lane (N63, D:B195, B197): the record read over a rename's door, the video found in a take or fetched to `edits/<rec>/`, its peaks, the save (`meta.edits`), the final video on a lane of its own with its progress, the bake, and the upkeep (§3.3) | `editor::tests`; `--drive editor` |
 | `app/src-tauri/src/runtime/media.rs` | `shroom-media:`: each editor window's video, as the editor's lane registered it, by byte ranges, and its peaks — to that window's webview alone (N73) | `media::tests` |
-| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/theme.css` (D:B122) | galleries; `editor/*.test.ts` (vitest) |
+| `app/src` | webviews (`Popover`, `Onboarding`, `Library`, `Settings`, `Feedback`, `Editor` with `editor/`, `members/`, `join/`, countdown), `lib/ipc.ts`, `lib/typed.ts`, `lib/steady.ts` (a click on what just moved waits, D:B264), `lib/theme.css` (D:B122) | galleries, `late-click.mjs`; `editor/*.test.ts` (vitest) |
 | `worker/` | `src/worker.js` (one dependency-free module), `vendor/hls.min.js`, `page-version.json`, `dev/serve.mjs` | vitest + workerd contract (D:B63) |
-| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
+| `installer/`, `site/` | `install.sh` (D:B29, B44; links the `shroom` command, D:B217; the app links it once for a Mac installed before it, D:B239); the Homebrew cask and its renderer, `homebrew/` (D:B175); shroom.am Worker, with `/agent` for a coding agent (D:B132), `/cli` its guide to the command (D:B219), and `/report` with its `/feedback` form (D:B180) | their `test/` |
 | `tools/`, `.github/workflows/` | release build, packaging, identity, ffmpeg, notices; `ci.yml`, `release.yml`, `site.yml`, `e2e.yml`, `e2e-full.yml`, `mac.yml` | CI |
 
 **Flavors** come from the bundle identifier alone (`runtime::Flavor::of`, D:B97; the
@@ -261,11 +261,14 @@ anything else it runs: Open, Save and Copy answer while a bake or an upkeep pass
   its write (`shroom_upload::library::cleanup_sparing`). Neither bakes a video an editor
   window is open on (the Scene's, asked before each bake); a later pass does.
 
-**Trace.** `logs/run.log` (600, rolled at 5 MB) logs each event, arm and effect kinds.
+**Trace.** `logs/run.log` (600, rolled at 5 MB; written only into its own folder and its
+own file, never through a link, D:B275) logs each event, arm and effect kinds. A window's own
+error is one line there, under a known window's name, cut at the source to the report's 160
+characters (`report::webview_line`).
 `trace::Ring` keeps the last 512 steps (kinds, arm, edge, state ids on change), names read at
 most two variants deep so no value or secret enters; `runtime/ring.rs` writes it into
-`run.log` on a dev-build law breach, a rescued take, a panic and each harness run's end
-(D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
+`run.log` on a dev-build law breach, a rescued take, a panic (after the panic's own line:
+its thread, where, and its message cut to 160 characters) and each harness run's end (D:B93). The `shroom` command keeps its own, `logs/cli.log` (600, rolled at 64 KB; D:B215):
 one line a run — stamped as `run.log`'s are, the verb and the options' names, `ok` or the
 code and exit, what it counted, the space's or the app's refusal, the time it took; never a
 word it was given. Report a problem and Copy diagnostics carry its last 30 lines among the
@@ -305,7 +308,11 @@ live, skipped); `take.json {v, rec, created}`; take files `stream_<k>.m3u8`, `in
 durable intent**; `cred.json`; `claimed`; `live {stream, total}`; `preview.mp4`,
 `poster.jpg`, `teaser.mp4`; `uploaded`; `movies.json`; `tombstoned` / `set-aside` (never
 re-queued, DV #27). Unlocked without `finalized.json` → interrupted (repaired at boot);
-`publish.json` ∧ ¬`uploaded` → the queue; finalized without `publish.json` → saved.
+`publish.json` ∧ ¬`uploaded` → the queue; finalized without `publish.json` → saved. A take
+dir is a real folder in `takes/`, named as `takes::new_dir_name` makes them
+(`posters::valid_dir`): the scan (`takes::dirs`) never follows a link and skips any other
+name; the upload reads an init only by the encoder's own names (`init.mp4`, `init_<k>.mp4`,
+`files::is_init`) and refuses a joined playlist naming any other (D:B274).
 
 **Never on disk:** the Session, the take's phase, inflight, Library and Members rows.
 
@@ -335,10 +342,17 @@ stay. A switch keeps the old space's files until the new join's 200 (D:B42, B54 
   edge (`presenter::label_frame`). It is never made late (`overlay::ensure`): wanted only
   once capture runs, a panel made then could miss that take's list of what it leaves out.
   Made at start or not at all; without it, the tray shows the take.
-- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×620, Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
+- The marker toast (N78, D:B246): the fourth, made and held as the label is. While
+  `Scene.toast` is set — two seconds after ⌥⌘M answered, until a popover or a count comes
+  up over it — the presenter puts it where the label goes, or just under the label when
+  that shows (`presenter::toast_frame`). Its page (`app/toast.html`) draws the pill inside
+  the panel's margin with its own shadow (the panel casts none, so the shadow fades with
+  the pill), fades it in and out, and starts again on a new press (`pressed`). Made at
+  start or not at all; without it, ⌥⌘M still drops its marker, unanswered on screen.
+- Windows: onboarding 600×680 (B189), Library 680×560 (resizable), Settings 600×720 (B247), Send feedback 520×600, the editor 1100×720 (resizable down to 900×640; a resizable window opens no bigger than its screen) — each its frame, macOS's 32 pt title bar inside it. One window each, but the editor's: one per video (N73, D:B227), each labelled `editor-<its number>` (`presenter::label`, the core's `EditorId`), the capability listing them as `editor-*`. A new one opens down and to the right of the newest editor window open (AppKit's cascade). An editor, the Library and Settings are destroyed when they close, not hidden (`presenter::closes_for_good`; D:B229): each comes back only when reached for, so the page made again then brings shroom forward only when asked (B106); the setup window and Send feedback are hidden. An editor's title is its slice's, “Edit — <title>”; its ✕ is posted like any window's, and the core may keep it open to save.
 - Camera panels (`runtime/camera.rs`): bubble and Camera-only preview (§4.4).
-- Every window and overlay joins `Runtime.excluded` when made and is left out of capture;
-  the bubble never is. Overlays and camera panels don't hide on ⌘H (D:B112).
+- Every overlay joins `Runtime.excluded` when made and is left out of capture; every window
+  is recorded like any app's (`WindowKind::recorded`; N85, D:B266), and so is the bubble. Overlays and camera panels don't hide on ⌘H (D:B112).
 
 **Core → webview.** After every loop turn each showing surface gets its whole slice:
 `emit_to(label, "scene", slice)` — no diff, no `rev` (D:B107). On mount, `scene_get`. Slices
@@ -349,14 +363,22 @@ composes no sentences and decides nothing.
 
 | Command | Contract |
 |---|---|
-| `act {surface, action, rev}` | dropped unless offered; Start and popover Return post fresh `Os(Grants)` first (`commands::arms`). An editor window names its surface `editor`; which one is its webview's label (`commands::surface`), never what the webview says |
+| `act {surface, action, rev}` | dropped unless offered; Start and popover Return post fresh `Os(Grants)` first (`commands::arms`). An editor window names its surface `editor`; which one is its webview's label (`commands::surface`), never what the webview says. Every surface is its own window's: the popover only from `popover`, Settings only from `settings`, and so on — a surface named from another window's webview, or the tray's (it has none), is no surface, and `act`, `key` and `scene_get` drop it (D:B274) |
 | `key {surface, key}` | Return/Esc via `ret`/`esc` |
-| `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up |
-| `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104) |
+| `field {field, value}` | `name`, `library-search`, `title`, `invite-name`; returns nothing; cut to 256 chars; the core guards (name charset/63, composer 80). Scene fields carry edit counts; `lib/typed.ts` takes the Scene's value only once its count catches up. Only from the windows with a typed field — the setup, Settings, the Library, Send feedback (`commands::types_from`, D:B274) |
+| `paste_secret {field, text}` | the one path for secret text (`token`, `invite`): classified, stashed (`runtime/stash.rs`), `SecretPasted {id, shape}` posted; the field shows fixed dots while held (D:B104). Only from the windows with a paste field — the setup and Settings (`commands::pastes_from`, D:B274) |
 | `scene_get`, `dismiss`, `popover_keyed`, `popover_fit` | snapshot slice (an editor window's own, by its label); `PopoverDismissed`; first key makes an unasked popover asked; panel height |
 | `edit {step}` | an editor window (N63): `{"op": "undo" \| "redo"}`, or a `shroom_edit::Op` (`trim`, `cut`, `put-back`, `apply`, `revert`), seconds on the recording; posts `Edit(id, EditStep)` for the window its label names, which the core takes or refuses. A step that doesn't read, or from a webview that isn't an editor window's, is dropped |
 
 Window lifecycle comes from Rust window events.
+
+**What the pages may call of Tauri itself** (`capabilities/default.json`, D:B274): listen for
+their slice and stop listening (`core:event:allow-listen`, `core:event:allow-unlisten` —
+`lib/ipc.ts`'s `listen`; its `getCurrentWebviewWindow().label` reads the page's own metadata
+and asks nothing), and a debug build's devtools key. No default set, no emitting, no tray,
+menu, window or webview command: only the Rust side emits a slice. The app's own commands
+are its own, bound to their windows above (`presenter`'s test fails on any of those coming
+back).
 
 **Media.** An editor window plays from `shroom-media://localhost/<rec>/video` and draws from
 `…/<rec>/peaks` (`runtime/media.rs`): only the recording its lane registered for that window,
@@ -368,7 +390,10 @@ policy (`tauri.conf.json`) lets `media-src` and `connect-src` reach the scheme, 
 the flavor's home, opened once the core has handled `Booted` (an earlier ask would meet an
 empty World): the socket 600 in the 700 folder, each connection's peer uid checked
 (`getpeereid`), one JSON line each way, at most 1 KB in: `{"v":1,"op":"record.start"}`
-(`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`. The runtime holds the
+(`.pause`, `.resume`, `.stop`) → `{"ok", "take", "error"?, "link"?}`; `shroom setup`'s
+`setup.*` asks (N89, D:B278: `status`, `peek`, `account`, `token-page`, `token`, `pick`,
+`card-page`, `name`, `permissions`) answer with `"setup": {"at", "took", "busy", …}` (§11.1),
+and `setup.token` is the one ask that carries a secret, straight into the stash (DV #59). The runtime holds the
 connection and posts `Event::Cli {id, op}` (a start posts fresh `Os(Grants)` first, as the
 popover's does); the core answers each once with `Effect::Cli` — a code, never words:
 `not_set_up` for all four on a Mac with no space, then `recording_off` while General's
@@ -379,8 +404,10 @@ with its link and copies nothing. The command words `recording_off` with the set
 (`RunEvent::Opened` → `runtime::opened`, held until the core is up) and the core as
 `Event::SettingsLink` — Settings on General, the switch's row lit for a moment
 (`SettingsFields.lit`); it never flips the switch, and mid-take it opens nothing. The run
-log has each ask and its answer by number (`control: ask 4 record.start no-count`,
-`control: answer 4 no recording_off (3 ms)`), any connection dropped or ask not read, and
+log has each ask and its answer by number, the ask with the process that made it — its pid
+by `LOCAL_PEERPID` and its program by `proc_pidpath` (`control: ask 4 record.start no-count
+from pid 812 /usr/local/bin/shroom`, D:B274) — and the answer
+(`control: answer 4 no recording_off (3 ms)`), any connection dropped or ask not read, and
 the agent label shown and gone. `shroom edit` (spec N72, D:B225) saves an edit itself,
 through the space's page, and adds two asks, answered whatever the switch says:
 `{"v":1,"op":"edit.check","id"}` before a change (`editor_open` while that video is open in an
@@ -499,7 +526,7 @@ The design record has them: history/design/ARCHITECTURE.md §3.9.
 
 - **Bubble = an un-excluded native panel, zero compositing** (`runtime/camera.rs`, D:B47 g):
   180 pt, round, mirrored, a layer shroom draws the exact camera's frames into (the Scene
-  names it; a picture that stops restarts its camera, D:B188); every other shroom window is excluded, the bubble is recorded as-is. Born at
+  names it; a picture that stops restarts its camera, D:B188); the overlays are excluded, the bubble is recorded as-is (as is every window, N85). Born at
   `config`, through the countdown and take; follows the chosen display; dragged position in
   `prefs.bubble_at`; goes quietly if its camera leaves. The popover's camera picker is a camera
   pick or Camera off (DV #43); an iPhone is never auto-picked (D:B48). Panels open at once with a
@@ -667,8 +694,13 @@ One H.264 variant with AAC, under `v0/`; players and unfurls use the master. A l
 **The door follows token presence** (#58, `runtime/uploader.rs:Door`): a token Mac mints
 locally, writing its ledger entry create-only first; every other Mac calls `POST /api/mint`
 under its device key and the Worker signs the byte-identical JWT. Minted per recording when
-its upload starts, so removal stops new mints while minted ones finish (≤ 7 d, N32). Instant
-cut-off is parent-token rotation, docs only.
+its upload starts and minted again as it nears the end of its hour, so removal stops new
+mints and a minted one ends within the hour (N32). Instant
+cut-off is parent-token rotation, docs only. A release build uses a credential only when it
+names R2's own store — `https://<32 hex>.r2.cloudflarestorage.com` and a bucket of 3–63
+`[a-z0-9-]` (`shroom_cloud::device::r2_store`, `Runtime::store_ok`) — checked where a mint
+answer arrives (upload and `manage`) and where a take's `cred.json` is read back; any other
+is not used (re-minted, or the pass waits). Dev builds keep their stand-ins (D:B274).
 
 **Law 13:** secrets ride files only — never argv, logs, slices or the core. The installer
 hands an invite over by file and launches with `--invite` (D:B44). Secret-holding structs
@@ -689,7 +721,7 @@ REST at `api.cloudflare.com/client/v4`, Bearer token, through `shroom_cloud::Clo
 | 2 | `cfat_` → `GET /accounts/{id}/tokens/verify` (never the user endpoint) | rejected → token faces |
 | 3 | powers by use (`sweep::powers`) | `token-wrong-powers` |
 | 4 | persist `token.json` | — |
-| 5 | gates (`sweep::gates`): deploy-and-remove `shroom-probe`; R2 list; polled 5 s | 8000077 → `gate-email`; 10042 / "enable R2" → `gate-card`, button opens the R2 page (DV #47) |
+| 5 | gates (`sweep::gates`): deploy-and-remove `shroom-probe` — only when no Worker has the name (`worker_fact`), else a fresh `shroom-probe-<8 hex>`; one already there is never written or deleted, and the probe it made goes by a plain DELETE, never `?force=true` (D:B274); R2 list; polled 5 s | 8000077 → `gate-email`; 10042 / "enable R2" → `gate-card`, button opens the R2 page (DV #47) |
 | 6 | survey (`sweep::survey`): subdomain, labels `v`/`shroom`/`shroom-v`… via `worker_fact` (Absent, Ours, KeyGone, Foreign), bucket, manifest | 10007 → `name`; foreign `v` → label `shroom` (N42); manifest → `space-found` |
 | 7 | claim on explicit click (`PUT …/workers/subdomain`) | 10031 → `name-taken` |
 | 8 | wire (`wire::wire_with`): bucket → `.shroom/player/hls.min.js` → cookie key (create-only) → roster seed (create-only) → read the page; deploy (`worker.js`, compat 2026-09-01, bindings `BUCKET`, `R2_PARENT`) only if absent, silent or older (`may_deploy_over`), else re-place `R2_PARENT` → route (`…/scripts/{label}/subdomain`) → ping every 3 s ≤ 90 s → self-check → manifest last | `done` |
@@ -722,18 +754,20 @@ foreign `v`. `VERSION` 0.1.9, `IFACE` 2.
 |---|---|
 | `GET /<id>` / `?embed=1` | the page by record face (§10) / the embed face, no `X-Frame-Options` |
 | `GET /<id>?k=<key>` | spend the grant by CAS → `shroom_owner` cookie → 302 to the clean URL |
-| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
+| `GET /m/<id>/<file>` | `rec/<id>/…` with Range/HEAD; only `.m3u8 .m4s .mp4 .jpg .vtt`; `private, max-age=3600` (the viewer's browser only, D:B272); `nosniff`, `CSP: sandbox`; record read beside: deleted → 404, unreadable → 503; an edit's copy current → only its files and the recording's own poster while the edit keeps its first frame (N63); baked → only what `media` names (D:B197); `thumb-*` whatever else is (D:B164), but only the record's current picture once an edit or a bake took something from the first 3 s |
 | `GET /d/<id>` | the recording's own file (`video.mp4`, or a baked `edit-<n>.mp4`) — or an edit's current copy; nothing while an edit waits for one — named from the live title, Range forwarded |
 | `GET /oembed?url=` | iframe of the embed face |
-| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`; an edit's `keep` and `copy`) |
+| `GET /_shroom/hls.js`, `/_shroom/ping`, `/_shroom/status/<id>` | the player (immutable); `{shroom, iface, version}` without storage; the page's poll (`drained`, `pct`, `stalled`, `cuts`, `named`; an edit's `keep` and `copy`) |
 | `POST /_shroom/title/<id>`, `/_shroom/mark` | cookie title edit (`etagMatches`); the mark switch (owner-class) |
 | `POST`, `GET /_shroom/edits/<id>` | a voice cut on or off (`etagMatches`, the maker or owner-class); the owner page's strip and what plays (N65, D:B200) |
 | `GET /favicon.{svg,png,ico}` | the icon carried in the module (D:B109) |
 | `GET /join/<code>` | the join page faces; opening never uses the invite |
 | `/_shroom/api/` | `POST peek, join, enroll, mint, key, library, invites, mark, health, gone, ai, cue`; `GET me, members`; `DELETE invites/<iid>, members/<mid>, devices/<did\|self>` — JSON with `"shroom":1` |
-| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way |
+| `GET /_shroom/cc/<id>`, `/_shroom/named/<id>` | with naming on (N66, N67, WI §4.21): the captions as WebVTT through the saved edit; the owner page's ask for a name on its way, with the chapters and captions it puts in place (B241) |
 
-Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. API bodies
+Every response carries `X-Robots-Tag: noindex`; HEAD and Range never 500. Every HTML page
+carries a script policy (WI §4.17, D:B272): a nonce drawn per response on each inline
+`<script>`, `'self'` for the player's hls.js, no plugins, `<base>` or form posts. API bodies
 ≤ 16 KiB (library 128 KiB); a browser Origin is refused on the API.
 
 ### 8.2 Bindings and secrets
@@ -751,8 +785,9 @@ Macs deploy — at wiring and once a launch (`wire::refresh_page`) — and only 
 `VERSION`, never down (D:B50, B53 a); naming's switch (`wire::set_ai`) puts the page up again
 with or without the AI binding and its schedule, and a refresh or a re-wiring keeps what the
 live page has (the ping says `"ai":true`). Members compare `iface` with `member::IFACE_MIN` (2)
-and show needs-update below it (DV #30). `VERSION` moves with every page change;
-`page-version.json` fingerprints each and a test enforces it (D:B61).
+and show needs-update below it (DV #30). A published `VERSION`'s page never changes;
+`page-version.json` fingerprints each, and a page change re-stamps an unpublished VERSION's
+row or takes the next VERSION once it's out (D:B61, B248).
 
 ---
 
@@ -780,7 +815,10 @@ already became it (D:B197's bake, `media.hls` null) they send none of the origin
 and only mark it live, then drained.
 
 Each S3 call retries in place (`with_retry`: 6 tries, 500 ms doubling to 15 s; 4xx but
-408/429 not retried). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
+408/429 not retried). A listing (`s3::Client::list`) follows its pages to the last or an
+empty token; a token it already followed, or past `LIST_PAGES_MAX` (10 000) pages, is an
+error. A download to disk (`get_to_file`) stops past the length the store said, else past
+`GET_TO_FILE_MAX` (64 GiB), and its `.tmp` goes (D:B274). A failed pass reports `Blocked`/`Idle`; the core owns the pass retry
 (5 s → 2 min); a rerun sends only what's missing. A fresh device credential refused on its
 first PUT is space-side (`StandingAnswer::SpaceSide`); an older one is re-minted; a token
 Mac's refusal is `Blocked::Space`. When the space stops minting for this Mac, takes holding a
@@ -791,7 +829,7 @@ relaunch (N9).
 
 R2's single PUT tops out at 4.995 GiB; `put_file` sends ≤ `SINGLE_PUT_MAX` (256 MiB) whole and
 multipart above in `PART_SIZE` (128 MiB) parts (D:B15, B70 b). R2 aborts stale multiparts
-after 7 d. The MP4 never gates "watchable"; Download appears once `media.mp4` exists.
+after 7 d. The MP4 never gates "watchable"; Download works once `media.mp4` exists (the owner page draws it greyed until then, D:B250).
 
 ### 9.3 Progress truth for the page
 
@@ -878,7 +916,9 @@ shroom.am is the `shroom-site` Worker (`site/worker.js`, deployed by `site.yml` 
 `main` touching `site/` or `installer/install.sh`); `/install` serves the script as plain
 text, never a redirect; `/agent` is the coding agents' page. `POST /report`
 (`site/report.js`, D:B180) is the one address that takes anything in: a report or feedback,
-checked (size, shape, rate, Turnstile from `/feedback`), its log cleaned (`site/clean.js`),
+checked (size, shape, rate, Turnstile from `/feedback`; the app's reports and the page's
+each count against their own rate limiters, and a door without them is off, D:B275), its log
+cleaned (`site/clean.js`),
 emailed through the `send_email` binding to the inbox in the secret `REPORT_TO`, and kept
 nowhere. `/feedback` is its form. `/download/v<version>/<file>` (D:B228) is a counted `302`
 to that release file on GitHub, `?via=install|update` saying what it was for; the site's
@@ -917,7 +957,11 @@ every 4 h against the same manifest, asked for as `update.txt` (`manifest.txt` o
 newest only, never past this Mac's macOS or arch. Preview reads `localhost:4600/releases`;
 dev only a loopback `--releases`. Download ≤ 30 min, verified as the installer does, staged
 in `updates/<version>/`, then `same_signer` against the installed app's designated
-requirement (D:B125 M2). Frost dot + "shroom 1.3.0 is ready." [ Update ] → `restore.json` →
+requirement (D:B125 M2), then the staged copy's own version, by its `Contents/Info.plist`
+(`CFBundleShortVersionString`, `shroom_update::check_staged`): exactly the version offered,
+newer than the one running, and on the official channel no early build — else it is
+discarded like a signature that doesn't match (D:B274; a dev build's stand-in may serve the
+tree's early version). Frost dot + "shroom 1.3.0 is ready." [ Update ] → `restore.json` →
 quit → detached `SWAP_SH` swaps and reopens with `--relaunched=update` (or `update-failed`,
 old copy back) → window restored → "Updated to 1.3.0 ✓" once. Never mid-take. A token Mac
 refreshes the page on its next launch (§8.3).
@@ -936,6 +980,19 @@ One file (§11.2), two readers: the installer's mid-take refusal (N9) and the dr
 BYO-agent skill that narrated setup from it (D:B81) is retired (D:B132, DV #50): a coding
 agent installs shroom from shroom.am/agent, and shroom's window does the rest. The file
 stays public, for a future doctor (D:B132).
+
+**The agent-driven setup** (spec N89, D:B278). A coding agent can drive the setup itself,
+with no window: installed with `--agent` (`--relaunched=agent`, `LaunchKind::Agent`), shroom
+opens as the mushroom only, and `shroom setup …` asks the running app over `control.sock`
+(§3.5) for one of the setup window's clicks or its paste at a time. The core runs the
+wizard's own states with its window open and never shown (`Door::headless`: the plan,
+the gate watches, wiring and the chapter as the window's; no slice in the Scene, so no
+Dock icon); an ask is made only where `onboarding::slice` offers it, and answered with
+`SetupReport` (the state's id and the facts its agent line carries). The words are the
+command's (`setup.rs`), each the state's `agent` line in the spec. A tray click shows the
+window at the current step (`headless` cleared); macOS's Quit & Reopen comes back unseen
+(`Restore.headless`). The token: the command reads stdin when piped, else the clipboard
+(`pbpaste`), and sends it once (`setup.token`, DV #59) into the stash.
 
 ### 11.2 The status seam, as built (v2)
 
@@ -1113,7 +1170,7 @@ Numbers are stable; code cites them.
 29. Transcription — decided: D:B168 — none in v1.
 30. Markers — decided: D:B49 e — `markers.json` → `meta.markers`.
 31. Card-gate code — decided: D:B26, DV #47 — 10042 seen on a fresh account; button opens the R2 page.
-32. Gate-email probe — decided: D:B26 — `shroom-probe` Worker.
+32. Gate-email probe — decided: D:B26 — `shroom-probe` Worker; written only when no Worker has the name, else under a fresh `shroom-probe-<8 hex>`, and removed without force (D:B274).
 33. `objects` grant — decided: probed.
 34. `~/.shroom` layout — decided: D:B22 — §3.4.
 35. Thresholds — decided: DV #8, D:B47 — §15.

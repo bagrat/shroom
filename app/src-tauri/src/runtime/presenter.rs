@@ -1,7 +1,7 @@
 //! The presenter: the only place the Scene becomes AppKit. The tray's face and menu, the
 //! popover's, the countdown's and the agent label's panels (`overlay.rs`; the popover key
-//! only when asked — law 5), the three windows (onboarding, Library, Settings — each
-//! excluded from capture at creation), the camera panels (`camera.rs`), and the Dock (law
+//! only when asked — law 5), the windows (onboarding, Library, Settings, Send feedback, the
+//! editors — each recorded like any app's, N85), the camera panels (`camera.rs`), and the Dock (law
 //! 6: the setup window's alone). Webviews get their slice as a `scene` event; they render,
 //! nothing more.
 
@@ -27,6 +27,8 @@ pub const POPOVER: &str = "popover";
 pub const COUNTDOWN: &str = "countdown";
 /// The agent label's page (N62, B216).
 pub const LABEL: &str = "label";
+/// The marker toast's page (N78).
+pub const TOAST: &str = "toast";
 pub const ONBOARDING: &str = "onboarding";
 pub const LIBRARY: &str = "library";
 pub const SETTINGS: &str = "settings";
@@ -70,8 +72,10 @@ struct WindowSpec {
 const ONBOARDING_WINDOW: WindowSpec = WindowSpec { url: "onboarding.html", width: 600.0, height: 680.0, resizable: false, min: None };
 /// The Library: a list that grows — resizable.
 const LIBRARY_WINDOW: WindowSpec = WindowSpec { url: "library.html", width: 680.0, height: 560.0, resizable: true, min: None };
-/// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview.
-const SETTINGS_WINDOW: WindowSpec = WindowSpec { url: "settings.html", width: 600.0, height: 620.0, resizable: false, min: None };
+/// A standard macOS settings window: fixed size, its toolbar tabs drawn by the webview. As tall
+/// as the editor (Bagrat, 2026-10-25; B247): every tab fits the 688 under the title bar, Space
+/// with the AI switch's parts included, and it fits a 1024×768 screen.
+const SETTINGS_WINDOW: WindowSpec = WindowSpec { url: "settings.html", width: 600.0, height: 720.0, resizable: false, min: None };
 
 /// Send feedback (N60): a small fixed window, the board's frame — room for the form with
 /// “See exactly what's sent” open under the title bar.
@@ -810,6 +814,32 @@ fn apply(app: &AppHandle, rt: &Runtime, prev: Option<&Scene>, s: &Scene, exclude
         }
     }
 
+    // The marker toast (N78): ⌥⌘M's answer, where the label sits — under it when it shows —
+    // taking no clicks, never the keyboard, and left out of every capture. As the label,
+    // only the panel made as shroom started; its page fades it in and out.
+    match &s.toast {
+        Some(t) => {
+            if let Some(panel) = overlay::get(Overlay::Toast) {
+                place_toast(&panel, t.display, t.under_label);
+                let _ = app.emit_to(TOAST, "scene", t);
+                if !panel.isVisible() {
+                    overlay::show(&panel, false);
+                    rt.log(&format!("toast: shown on display {}", t.display));
+                }
+            } else if prev.is_none_or(|p| p.toast.is_none()) {
+                rt.log("toast: no panel made at start, none shown");
+            }
+        }
+        None => {
+            if let Some(panel) = overlay::get(Overlay::Toast) {
+                if panel.isVisible() {
+                    rt.log("toast: gone");
+                }
+                overlay::hide(&panel);
+            }
+        }
+    }
+
     // The bubble (born at config, through the count and the take — N22) and Camera's
     // preview: native panels on the exact camera the Scene names (camera.rs).
     super::camera::present(rt, s.bubble.as_ref(), s.preview.as_ref());
@@ -926,9 +956,9 @@ pub fn bring_forward_kind(app: &AppHandle, kind: WindowKind) {
     });
 }
 
-/// One of shroom's windows, built hidden — and left out of every screen capture from the
-/// moment it exists (ARCHITECTURE §4.4: every shroom window but the bubble is excluded): a
-/// Settings window showing Members, or a link just born, never lands in a video.
+/// One of shroom's windows, built hidden. Each is recorded in a take like any app's window
+/// (law 4, N85: a bug report of shroom shows it) unless `WindowKind::recorded` says
+/// otherwise, and then it is left out of every capture from the moment it exists.
 fn build_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, excluded: &Arc<Mutex<Vec<u32>>>) -> Option<tauri::WebviewWindow> {
     let sp = spec(kind);
     let (width, height) = opening_size(sp, mushrooms_screen(app));
@@ -944,7 +974,9 @@ fn build_window(app: &AppHandle, rt: &Runtime, kind: WindowKind, excluded: &Arc<
         b = b.min_inner_size(w, h);
     }
     let w = b.build().ok()?;
-    remember_excluded(&w, excluded, true);
+    if !kind.recorded() {
+        remember_excluded(&w, excluded, true);
+    }
     let rt = rt.clone();
     w.on_window_event(move |event| match event {
         WindowEvent::CloseRequested { api, .. } => {
@@ -1032,15 +1064,45 @@ fn cover_display(panel: &objc2_app_kit::NSPanel, display: u32) {
 /// Places the agent label at the top right of the display with CoreGraphics id `display`,
 /// under its menu bar: the top of that screen's visible frame, where AppKit has it.
 pub fn place_label(panel: &objc2_app_kit::NSWindow, display: u32) {
-    use objc2_foundation::{NSPoint, NSRect, NSSize};
+    set_frame(panel, label_place(display));
+}
+
+/// The agent label's frame on display `display`, in AppKit's coordinates.
+fn label_place(display: u32) -> Frame {
     let b = probe::display_bounds(display);
     let screen = display_frame((b.x, b.y, b.w, b.h), probe::display_bounds(shroom_capture::main_display_id()).h);
     let top = objc2_foundation::MainThreadMarker::new()
         .and_then(|mtm| objc2_app_kit::NSScreen::screens(mtm).iter().find(|s| probe::screen_id(s) == Some(display)).map(|s| s.visibleFrame()))
         .map_or(screen.y + screen.h, |v| v.origin.y + v.size.height);
     let (w, h) = overlay::LABEL_SIZE;
-    let f = label_frame(screen, top, w, h);
+    label_frame(screen, top, w, h)
+}
+
+fn set_frame(panel: &objc2_app_kit::NSWindow, f: Frame) {
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
     panel.setFrame_display(NSRect::new(NSPoint::new(f.x, f.y), NSSize::new(f.w, f.h)), true);
+}
+
+/// Places the marker toast (N78) where the agent label goes on display `display` — or just
+/// under the label, when it shows there. One move, and none when it is already there.
+pub fn place_toast(panel: &objc2_app_kit::NSWindow, display: u32, under_label: bool) {
+    let f = toast_frame(label_place(display), under_label);
+    let at = panel.frame();
+    if (at.origin.x, at.origin.y, at.size.width, at.size.height) != (f.x, f.y, f.w, f.h) {
+        set_frame(panel, f);
+    }
+}
+
+/// The toast's panel from the label's (`label`, as `label_frame` gives it): its pill's top
+/// and right edge where the label's pill has them, or under the label's pill, 6 points below
+/// it — and the panel around the pill by its margin. The label's pill is 26 points of its 30,
+/// centred.
+pub fn toast_frame(label: Frame, under_label: bool) -> Frame {
+    let (w, h) = overlay::TOAST_SIZE;
+    let (right, above, _) = overlay::TOAST_MARGIN;
+    let (pill_right, pill_top, pill_bottom) = (label.x + label.w, label.y + label.h - 2.0, label.y + 2.0);
+    let top = if under_label { pill_bottom - 6.0 } else { pill_top } + above;
+    Frame { x: pill_right + right - w, y: top - h, w, h }
 }
 
 /// Where the agent label goes (AppKit's coordinates, y up): its right edge 12 points in
@@ -1051,8 +1113,8 @@ pub fn label_frame(screen: Frame, top: f64, w: f64, h: f64) -> Frame {
     Frame { x: screen.x + screen.w - w - MARGIN, y: top - GAP - h, w, h }
 }
 
-/// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the
-/// windows); `on: false` as a window goes for good (an editor's, N73), so its number,
+/// Keeps shroom's own UI out of every frame (the countdown scrim, the popover, the windows
+/// a take doesn't record); `on: false` as a window goes for good (an editor's, N73), so its number,
 /// should macOS give it again, keeps nothing else out.
 fn remember_excluded(w: &tauri::WebviewWindow, excluded: &Arc<Mutex<Vec<u32>>>, on: bool) {
     let Ok(ptr) = w.ns_window() else { return };
@@ -1124,12 +1186,26 @@ mod tests {
         let listed: Vec<&str> = cap["windows"].as_array().unwrap().iter().filter_map(|w| w.as_str()).collect();
         let covers = |page: &str| listed.iter().any(|l| *l == page || l.strip_suffix('*').is_some_and(|stem| page.starts_with(stem)));
         let kinds = [WindowKind::Onboarding, WindowKind::Library, WindowKind::Settings, WindowKind::Feedback, WindowKind::Editor(EditorId(1)), WindowKind::Editor(EditorId(27))];
-        let pages = kinds.map(label).into_iter().chain([Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()].map(Into::into));
+        let pages = kinds.map(label).into_iter().chain([Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label(), Overlay::Toast.label()].map(Into::into));
         for page in pages {
             assert!(covers(&page), "the {page} window is not in capabilities/default.json");
         }
         assert!(listed.contains(&"editor-*") && !listed.contains(&"editor"), "the editor windows, by their labels' pattern");
-        assert_eq!((POPOVER, COUNTDOWN, LABEL), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label()));
+        assert_eq!((POPOVER, COUNTDOWN, LABEL, TOAST), (Overlay::Popover.label(), Overlay::Countdown.label(), Overlay::Label.label(), Overlay::Toast.label()));
+    }
+
+    /// The pages may listen for their slice and stop listening (`app/src/lib/ipc.ts`), and
+    /// nothing more of Tauri's own: no default set, no emitting, no tray or menu — the app's
+    /// commands are its own. A debug build's devtools key is the one other (Tauri's hotkey).
+    #[test]
+    fn the_pages_may_only_listen() {
+        let cap: serde_json::Value = serde_json::from_str(include_str!("../../capabilities/default.json")).unwrap();
+        let granted: Vec<&str> = cap["permissions"].as_array().unwrap().iter().map(|p| p.as_str().expect("a permission by its name")).collect();
+        assert_eq!(granted, ["core:event:allow-listen", "core:event:allow-unlisten", "core:webview:allow-internal-toggle-devtools"]);
+        for p in &granted {
+            assert!(!p.ends_with(":default") && *p != "core:default", "a default set: {p}");
+            assert!(!p.contains("emit") && !p.contains("tray") && !p.contains("menu"), "{p}");
+        }
     }
 
     /// An editor window's label carries its number (N73): one made, one read back, and no
@@ -1227,7 +1303,7 @@ mod tests {
         assert_eq!(opening_size(&EDITOR_WINDOW, Some(small)), (1024.0, 720.0), "the hosted Mac's screen");
         assert_eq!(opening_size(&EDITOR_WINDOW, Some(tiny)), (900.0, 640.0), "never below its smallest");
         assert_eq!(opening_size(&EDITOR_WINDOW, None), (1100.0, 720.0), "no screen read: the spec's");
-        assert_eq!(opening_size(&SETTINGS_WINDOW, Some(tiny)), (600.0, 620.0), "a fixed window keeps its size");
+        assert_eq!(opening_size(&SETTINGS_WINDOW, Some(tiny)), (600.0, 720.0), "a fixed window keeps its size");
         assert_eq!(opening_size(&LIBRARY_WINDOW, Some(Frame { w: 600.0, h: 500.0, ..tiny })), (600.0, 500.0));
     }
 
@@ -1403,6 +1479,27 @@ mod tests {
         assert_eq!((f.x + f.w, f.y + f.h), (1440.0 + 1920.0 - 12.0, right.y + right.h - 24.0 - 8.0));
     }
 
+    /// The marker toast (N78) sits where the label does — its pill's top and right edge the
+    /// label pill's; with the label up, under it, the pills 6 points apart. Its panel stands
+    /// its margin off the pill.
+    #[test]
+    fn the_toast_sits_where_the_label_does_or_under_it() {
+        let main = display_frame((0.0, 0.0, 1440.0, 900.0), 900.0);
+        let label = label_frame(main, 876.0, 380.0, 30.0);
+        let (right, above, below) = overlay::TOAST_MARGIN;
+        let pill = |f: Frame| (f.x + f.w - right, f.y + f.h - above, f.y + f.h - above - overlay::TOAST_PILL_H);
+        let (label_right, label_top, label_bottom) = (label.x + label.w, label.y + label.h - 2.0, label.y + 2.0);
+        let at = toast_frame(label, false);
+        assert_eq!((pill(at).0, pill(at).1), (label_right, label_top));
+        assert_eq!((at.w, at.h), overlay::TOAST_SIZE);
+        assert!(pill(at).2 - at.y >= below, "room under the pill for its shadow");
+        let under = toast_frame(label, true);
+        assert_eq!(pill(under).0, label_right, "right edges lined up");
+        assert_eq!(label_bottom - pill(under).1, 6.0);
+        // On the main display, 1440 wide under a 24-point menu bar: the pill 12 in from the right.
+        assert_eq!(pill(at).0, 1440.0 - 12.0);
+    }
+
     #[test]
     fn the_library_settings_and_editors_close_for_good() {
         for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Editor(EditorId(1))] {
@@ -1454,6 +1551,7 @@ mod tests {
             length_ms: 0,
             markers: 0,
             marked_at_pause: false,
+            toast: None,
             mic: None,
             camera: None,
         });

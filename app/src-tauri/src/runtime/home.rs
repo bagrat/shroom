@@ -32,6 +32,9 @@ pub const FILES: &[&str] = &[
     "join.json",
     // The `shroom` command's socket (`control.rs`): made at launch, this user's only.
     "control.sock",
+    // The app's one pass at the `shroom` command's link is behind it (`cli_link.rs`); it
+    // outlives Disconnect, so a link the person removed stays removed.
+    "cli.json",
 ];
 
 #[derive(Debug, Clone)]

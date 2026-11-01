@@ -50,8 +50,9 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { webkit, chromium } from "playwright";
-import { readStrip, readStripGray, crc8, frameTruth, STALLS_COL } from "./strip.mjs";
+import { readStripGray, frameTruth, STALLS_COL } from "./strip.mjs";
 import { signatureOf, compare } from "./signature.mjs";
+import { frameSampler } from "./frames.mjs";
 import { avOffsets, avTruth, f32 } from "./av.mjs";
 import { COPY } from "../../worker/src/worker.js";
 import { refuseOffTestMachine } from "../test-machine.mjs";
@@ -248,34 +249,7 @@ try {
   for (const [engine, forceHlsJs] of [[webkit, false], [chromium, true]]) {
     const browser = await engine.launch();
     const page = await browser.newPage();
-    await page.addInitScript(`${crc8.toString()}\n${readStrip.toString()}
-      window.__samples = []; window.__errors = []; window.__unread = [];
-      ${forceHlsJs ? `const orig = HTMLMediaElement.prototype.canPlayType; HTMLMediaElement.prototype.canPlayType = function (t) { return /mpegurl/i.test(t) ? "" : orig.call(this, t); };` : ""}
-      document.addEventListener("DOMContentLoaded", () => {
-        const v = document.getElementById("v"); if (!v) return;
-        const c = document.createElement("canvas"); const ctx = c.getContext("2d", { willReadFrequently: true });
-        v.muted = true; v.addEventListener("error", () => __errors.push("media " + (v.error && v.error.code)));
-        v.addEventListener("ended", () => { window.__ended = true; });
-        const onFrame = (_, meta) => { const h = 270, w = Math.round(v.videoWidth / v.videoHeight * h) || 480;
-          c.width = w; c.height = h; ctx.drawImage(v, 0, 0, w, h);
-          const px = ctx.getImageData(0, 0, w, h).data, n = readStrip(px, w, h);
-          // An unreadable frame, described: was anything drawn at all (the canvas starts each
-          // frame transparent), how bright, and how ready the element said it was.
-          let drawn = true;
-          if (n === null) { let a = 0, l = 0; for (let i = 0; i < px.length; i += 4) { a += px[i + 3]; l += px[i] + px[i + 1] + px[i + 2]; }
-            drawn = a > 0;
-            if (__unread.length < 5) __unread.push({ at: __samples.length, drawn, luma: Math.round(l / (px.length / 4) / 3), readyState: v.readyState, presentedFrames: meta.presentedFrames, mediaTime: meta.mediaTime }); }
-          // WebKit's native player can call back for the first frame before it can be drawn:
-          // nothing lands on the canvas, and the next callback brings that same frame, readable
-          // (DECISIONS B128). That one call — the first, nothing drawn — is no frame seen; every
-          // other one counts.
-          if (n === null && !drawn && __samples.length === 0 && !window.__undrawnFirst) window.__undrawnFirst = true;
-          else __samples.push(n);
-          window.__t = meta.mediaTime; v.requestVideoFrameCallback(onFrame); };
-        v.requestVideoFrameCallback(onFrame);
-        const go = () => { v.playbackRate = 2; v.play().catch(e => __errors.push("play " + e.message)); };
-        if (v.readyState > 0) go(); else v.addEventListener("loadedmetadata", go, { once: true });
-      });`);
+    await page.addInitScript(frameSampler({ forceHlsJs }));
     await page.goto(pageUrl);
     const start = Date.now();
     let s = {};
@@ -294,7 +268,7 @@ try {
       if (s.ended || s.errors.length) break;
       await sleep(500);
     }
-    const [counters, unread, undrawnFirst] = await page.evaluate(() => [window.__samples, window.__unread, !!window.__undrawnFirst]);
+    const [counters, unread, undrawnFirst, rearmed] = await page.evaluate(() => [window.__samples, window.__unread, !!window.__undrawnFirst, window.__rearmed]);
     let backwards = 0, prev = null;
     for (const c of counters) { if (c === null) continue; if (prev !== null && c < prev) backwards++; prev = c; }
     // Sound, as the engine reports it — never nothing: WebKit's native player reports an
@@ -306,7 +280,7 @@ try {
     plays.push({ engine: engine.name(), player: s.hlsjs ? "hls.js" : "native", ended: s.ended, mediaTime: s.t, audioBytes: s.audioBytes, audioTracks: s.audioTracks, audioEnabled: s.audioEnabled, heard,
       presented: counters.length, readable: counters.filter((c) => c !== null).length, backwards, errors: s.errors,
       // Where a presented frame didn't read, and its neighbours' counters: what to look at.
-      unreadableAt: counters.flatMap((c, i) => (c === null ? [[i, counters[i - 1] ?? null, counters[i + 1] ?? null]] : [])).slice(0, 5), unread, undrawnFirst });
+      unreadableAt: counters.flatMap((c, i) => (c === null ? [[i, counters[i - 1] ?? null, counters[i + 1] ?? null]] : [])).slice(0, 5), unread, undrawnFirst, rearmed });
     await browser.close();
   }
   step("play", { plays });

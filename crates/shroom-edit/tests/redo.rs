@@ -99,11 +99,13 @@ fn kept(t: &Transcript) -> String {
 fn a_reworded_redo_after_a_broken_off_sentence_takes_the_sentence_with_the_cue() {
     let t = reworded("will");
     let list = plan(&t, Options::default());
-    assert_eq!(list.cuts.len(), 1, "{:?}", list.cuts);
-    let c = &list.cuts[0];
+    // With no judgment to say it was said again, it's the line before the cue, cut and
+    // asking to be checked (N65 (2), 2026-10-25).
+    assert_eq!(list.cuts.len(), 2, "{:?}", list.cuts);
+    let c = &list.cuts[1];
     assert_eq!(
         (c.kind, c.applied, c.id.as_str()),
-        (CutKind::Retake, true, "v1")
+        (CutKind::LineBeforeCue, true, "v2")
     );
     assert_eq!(c.removed, "Click on this link and you will shroom cut.");
     // Its edges sit in the quiet on either side.

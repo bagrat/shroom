@@ -520,14 +520,15 @@ fn a_removed_members_takes_with_a_minted_credential_still_finish() {
     r.tick_to(r.t + HOUR);
     assert!(!r.has(|e| *e == Effect::Uploader(UpCmd::Kick)));
 
-    // A credential with under an hour left counts as none (the uploader re-mints those).
+    // A credential with under a quarter of an hour left counts as none (the uploader
+    // re-mints those; a credential lives an hour).
     let mut w = ready();
     w.space.identity = Some(SpaceIdentity { role: Role::Member, member_id: "m_mher".into(), ..identity() });
     w.space.token = false;
     w.space.device_key = true;
     w.queue = vec![queued("q-old")];
     let mut r = Run::new(w);
-    r.send(Event::Upload(UploadNews::Credentials(vec![(TakeDir("q-old".into()), Wall(1_790_000_000_000 + 30 * 60_000))])));
+    r.send(Event::Upload(UploadNews::Credentials(vec![(TakeDir("q-old".into()), Wall(1_790_000_000_000 + 10 * 60_000))])));
     r.send(Event::Member(MemberNews::Standing(StandingAnswer::Revoked)));
     assert_eq!(shroom_core::derive::settings::stranded(&r.w).len(), 1);
     let _ = PopoverBody::Config;
@@ -563,6 +564,26 @@ fn a_take_minted_after_the_scan_still_finishes_once_the_mac_is_removed() {
     // A credential the space refused is dropped: that take waits, stranded.
     r.send(Event::Upload(UploadNews::Minted { dir: TakeDir("q-offline".into()), until: None }));
     assert_eq!(shroom_core::derive::settings::stranded(&r.w).len(), 1);
+}
+
+/// A credential lives an hour (re-minted while the upload runs): once this Mac is removed, a
+/// take still sends while its credential has more than a quarter of an hour left; past that
+/// it waits, stranded, as one with none does.
+#[test]
+fn once_removed_a_take_sends_only_while_its_credential_has_time_left() {
+    let mut w = ready();
+    w.space.identity = Some(SpaceIdentity { role: Role::Member, member_id: "m_mher".into(), ..identity() });
+    w.space.token = false;
+    w.space.device_key = true;
+    w.queue = vec![queued("q-left"), queued("q-near")];
+    let mut r = Run::new(w);
+    let now = r.w.wall.0;
+    r.send(Event::Upload(UploadNews::Minted { dir: TakeDir("q-left".into()), until: Some(Wall(now + 40 * 60_000)) }));
+    r.send(Event::Upload(UploadNews::Minted { dir: TakeDir("q-near".into()), until: Some(Wall(now + 10 * 60_000)) }));
+    r.send(Event::Member(MemberNews::Standing(StandingAnswer::Revoked)));
+    let stranded: Vec<String> = shroom_core::derive::settings::stranded(&r.w).iter().map(|q| q.dir.0.clone()).collect();
+    assert_eq!(stranded, ["q-near"], "forty minutes left still sends; ten doesn't");
+    assert_eq!(shroom_core::derive::members::CRED_LEFT_MS, 15 * 60_000);
 }
 
 // ── #1: a provisioned space's page is someone else's: never wired over ──

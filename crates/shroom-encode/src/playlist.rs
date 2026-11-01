@@ -155,6 +155,20 @@ mod tests {
         let b = assemble(&[take_segments(TAKE_0), take_segments(TAKE_1)]);
         assert_eq!(maps(&b.text), ["init.mp4"]);
         assert_eq!(b.text.matches("#EXT-X-MAP").count(), 1);
+        // Every init a joined playlist names is one the encoder writes.
+        assert!(a.inits.iter().all(|i| files::is_init(i)));
+    }
+
+    /// An init segment's name is the encoder's own — `init.mp4`, or a later take's
+    /// `init_<n>.mp4` — a bare file name, never a path or a dot file.
+    #[test]
+    fn an_init_is_named_as_the_encoder_names_it() {
+        for ok in ["init.mp4", "init_1.mp4", "init_27.mp4", &files::take_init(3)] {
+            assert!(files::is_init(ok), "{ok}");
+        }
+        for not in ["", "init", "init_0.mp4", "init_.mp4", "init_x.mp4", "../init.mp4", "sub/init.mp4", "/init.mp4", ".init.mp4", "init.mp4/", "init_1.mp4.json", "seg_00000.m4s", "stream.m3u8"] {
+            assert!(!files::is_init(not), "{not:?}");
+        }
     }
 
     #[test]

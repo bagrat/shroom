@@ -33,7 +33,7 @@ const url = `${server.origin}/onboarding.html`;
 // The page the setup window gives its webview: 600×680 less the title bar (the canvas's frame).
 const PAGE = windowPage("ONBOARDING", { width: 600, height: 680 });
 
-const TEXT = new Set(["text", "paragraphs", "label", "header", "line", "lines", "question", "error", "hint", "taken", "quiet", "miss", "prefix", "suffix", "note", "title", "door", "clock", "long"]);
+const TEXT = new Set(["text", "paragraphs", "label", "header", "line", "lines", "question", "error", "hint", "taken", "quiet", "miss", "prefix", "suffix", "note", "title", "space", "door", "clock", "long"]);
 const texts = (node) => said(node, TEXT);
 
 // ── the run ──

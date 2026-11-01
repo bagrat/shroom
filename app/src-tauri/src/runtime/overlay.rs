@@ -59,6 +59,9 @@ pub enum Overlay {
     /// The agent label (N62, B216): top right of the display a take the command started
     /// records. It takes no clicks: they go to whatever is under it.
     Label,
+    /// The marker toast (N78): where the label sits, under it when it shows. It takes no
+    /// clicks either.
+    Toast,
 }
 
 impl Overlay {
@@ -67,6 +70,7 @@ impl Overlay {
             Overlay::Popover => "popover",
             Overlay::Countdown => "countdown",
             Overlay::Label => "label",
+            Overlay::Toast => "toast",
         }
     }
     fn url(self) -> &'static str {
@@ -74,17 +78,20 @@ impl Overlay {
             Overlay::Popover => "popover.html",
             Overlay::Countdown => "countdown.html",
             Overlay::Label => "label.html",
+            Overlay::Toast => "toast.html",
         }
     }
-    /// Above other apps' windows: the countdown and the label at `NSFloatingWindowLevel`,
-    /// with the bubble; the popover one above them.
+    /// Above other apps' windows: the countdown, the label and the toast at
+    /// `NSFloatingWindowLevel`, with the bubble; the popover one above them.
     fn level(self) -> isize {
         match self {
             Overlay::Popover => 4,
-            Overlay::Countdown | Overlay::Label => 3,
+            Overlay::Countdown | Overlay::Label | Overlay::Toast => 3,
         }
     }
-    /// macOS's shadow, cast by what the page draws: the popover's card, the label's pill.
+    /// macOS's shadow, cast by what the page draws: the popover's card, the label's pill. The
+    /// toast's page draws its own, inside the panel's margin, so it fades with the pill —
+    /// macOS casts its shadow once, from what the panel held then (N78).
     fn shadow(self) -> bool {
         matches!(self, Overlay::Popover | Overlay::Label)
     }
@@ -93,6 +100,7 @@ impl Overlay {
             Overlay::Popover => NSSize::new(320.0, 360.0),
             Overlay::Countdown => NSSize::new(640.0, 400.0),
             Overlay::Label => NSSize::new(LABEL_SIZE.0, LABEL_SIZE.1),
+            Overlay::Toast => NSSize::new(TOAST_SIZE.0, TOAST_SIZE.1),
         }
     }
 }
@@ -121,11 +129,18 @@ define_class!(
 
 /// The label's panel, in points: room for its line, the pill drawn at its right edge.
 pub const LABEL_SIZE: (f64, f64) = (380.0, 30.0);
+/// The marker toast's panel, in points: its pill (`TOAST_PILL_H` tall) at the top right,
+/// inside a margin its own shadow fits in (`TOAST_MARGIN`: right, top, bottom), and room to
+/// its left for the longest words with their hint.
+pub const TOAST_SIZE: (f64, f64) = (470.0, 62.0);
+pub const TOAST_PILL_H: f64 = 30.0;
+pub const TOAST_MARGIN: (f64, f64, f64) = (16.0, 12.0, 20.0);
 
 thread_local! {
     static POPOVER: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
     static COUNTDOWN: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
     static LABEL: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
+    static TOAST: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
 }
 
 fn slot<T>(which: Overlay, f: impl FnOnce(&RefCell<Option<Retained<NSPanel>>>) -> T) -> T {
@@ -133,6 +148,7 @@ fn slot<T>(which: Overlay, f: impl FnOnce(&RefCell<Option<Retained<NSPanel>>>) -
         Overlay::Popover => POPOVER.with(f),
         Overlay::Countdown => COUNTDOWN.with(f),
         Overlay::Label => LABEL.with(f),
+        Overlay::Toast => TOAST.with(f),
     }
 }
 
@@ -160,7 +176,7 @@ pub fn prepare(app: &AppHandle, excluded: &Arc<Mutex<Vec<u32>>>) {
     if late_panels() {
         return;
     }
-    for which in [Overlay::Popover, Overlay::Countdown, Overlay::Label] {
+    for which in [Overlay::Popover, Overlay::Countdown, Overlay::Label, Overlay::Toast] {
         let _ = made(app, which, excluded, Born::AtStartUp);
     }
 }
@@ -259,8 +275,9 @@ fn build(app: &AppHandle, which: Overlay, mtm: MainThreadMarker, born: Born) -> 
     // as a grey square at each corner (0.1.15, CHECKPOINT §10). The count covers the
     // display and casts none.
     panel.setHasShadow(which.shadow());
-    // The label takes no clicks: they go to whatever is under it (N62, B216).
-    if which == Overlay::Label {
+    // The label and the toast take no clicks: they go to whatever is under them (N62, B216;
+    // N78).
+    if matches!(which, Overlay::Label | Overlay::Toast) {
         panel.setIgnoresMouseEvents(true);
     }
     // It stays when another app comes forward, and takes the keyboard when it's given.

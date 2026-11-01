@@ -225,6 +225,20 @@ fn autoclean_reads_the_setting_and_whats_next_and_never_changes_it() {
 }
 
 #[test]
+fn autoclean_at_a_year_says_a_year() {
+    // N77: the page's 365 reads as the landing says it; `days` stays the number.
+    let (base, _) = page(|_, _| (200, json!({"shroom": 1, "days": 365, "since": "2026-10-01T00:00:00.000Z", "going": [], "last": null})));
+    let dir = tempfile::tempdir().unwrap();
+    mac(dir.path(), "OwnerClass");
+    let (code, v) = shroom(dir.path(), &base, &["autoclean"]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!((v["days"].as_u64(), v["on"].as_bool()), (Some(365), Some(true)), "{v}");
+    let out = Command::new(env!("CARGO_BIN_EXE_shroom-cli")).arg("autoclean").env("SHROOM_HOME", dir.path()).env("SHROOM_SPACE_BASE", &base).output().unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(text.contains("Auto-cleanup: videos nobody watches for a year are deleted."), "{text}");
+}
+
+#[test]
 fn autoclean_off_or_on_a_page_without_it_says_off() {
     for answer in [(200, json!({"shroom": 1, "days": 0, "since": null, "going": [], "last": null})), (404, json!({"shroom": 1, "error": "not-found"}))] {
         let (base, _) = page(move |_, _| answer.clone());
