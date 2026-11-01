@@ -190,10 +190,10 @@ comments, commit messages, branch names and release notes.
   `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and nothing after it.
 - **Sample data is invented.** Emails in copy, tests and docs use `example.com` (or the
   role addresses on shroom.am); names are made up.
-- **The tripwire.** `tools/public-tripwire.sh` (CI's `public` job; `pr-text.yml` for the PR's title and body) fails on session
-  links, `Claude-Session:` trailers, personal email addresses and the names of the files
-  that moved private, in the tree, the PR's commit messages and its body. Run it before
-  you push.
+- **The tripwire.** `tools/public-tripwire.sh` (CI's `public` job, and `pr-text.yml` for
+  the PR's title and body) fails on session links, `Claude-Session:` trailers, personal
+  email addresses and the names of the files that moved private, in the tree, the PR's
+  commit messages and its body. Run it before you push.
 - **PR numbers restarted at #1** on 2026-10-16, when the repo was republished. The
   history up to then is in the private bagrat/shroom-archive: a `#N` or a PR link in a
   doc dated before that means shroom-archive's.
