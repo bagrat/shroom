@@ -302,6 +302,14 @@ jobs:
       - name: A late arrival never takes a click
         run: node app/test/late-click.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # The player's controls on a phone (an iPhone's WebKit, an Android's Chromium): a tap
+      # anywhere on a control reaches it, never the seek bar above them. Seconds.
+      - name: The player's controls take a phone's taps
+        run: |
+          npx playwright install --with-deps chromium
+          set -o pipefail
+          node worker/dev/phone-drive.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
   # The rest of the Rust workspace — the app, the recorder, the encoder, the uploader, the
   # updater, the CLI — and the media tests' real recordings, on a Mac.
   tests-mac:
