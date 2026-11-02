@@ -1650,7 +1650,7 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 .big svg{display:block;width:26px;height:26px;fill:var(--player-hi)}.player:hover .big{background:var(--player-hover)}.started .big{display:none}
 .ctl{position:relative;flex:none;padding-top:4px;background:var(--player-bar);transition:opacity .25s}
 .row{height:52px;padding:0 10px;display:flex;align-items:center;gap:4px;font-size:13px}
-.row button{flex:none;width:44px;height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--player-text);font:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}.row button[hidden]{display:none}
+.row button{position:relative;z-index:1;flex:none;width:44px;height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--player-text);font:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}.row button[hidden]{display:none}
 .row button:hover{background:var(--player-hover);color:var(--player-hi)}.row button:focus-visible{outline:2px solid var(--player-fill);outline-offset:-2px}
 .row svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.row .pp svg{fill:var(--player-hi);stroke:none}
 .pp .i-pause,.mu .i-off,.fs .i-exit,.playing .pp .i-play,.muted .mu .i-on,.full .fs .i-enter{display:none}
