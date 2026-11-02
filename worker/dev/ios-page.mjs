@@ -12,6 +12,16 @@
 //   ids.single   the single-file copy up (it plays video.mp4)
 //   ids.named    the stream, with chapters and captions (naming on)
 // `?probe` on a page's address also plays it muted three seconds in, with no tap.
+//
+// On a held hosted Mac (dev/mac/loop.sh run --hold <minutes> <any scenario>), as it was
+// driven to find why no control answered a finger (2026-11-02): encode a take with the
+// Mac's ffmpeg (h264_videotoolbox, AAC, fMP4 HLS, plus `-c copy` into video.mp4 and its
+// length in duration.txt); start this detached (nohup … </dev/null &, or ssh waits on it);
+// boot an iPhone (`xcrun simctl boot`, `open -a Simulator`) and give Safari's first launch
+// time — `simctl openurl` times out while it starts; open a page with `xcrun simctl openurl
+// <udid> http://127.0.0.1:<port>/<id>`; tap with `cliclick c:x,y` on Simulator's window,
+// placed by two taps whose page coordinates the log reports; and read the log's
+// "click" lines for where each tap landed. `xcrun simctl io <udid> screenshot` shows it.
 import fs from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
