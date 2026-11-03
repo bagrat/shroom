@@ -373,6 +373,32 @@ export default {
       for (const k of keys) { const o = await env.BUCKET.get(k); if (o) lines.push(`${k.slice(10)} ${await o.text()}`); }
       return new Response(lines.join("\n") + "\n", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
     }
+    // The same clip with one header set per variant (`/__probe/v/<variant>/<file>`, from the
+    // real /m/ answer), and a page that loads each, muted, and logs what it does.
+    const v = /^\/__probe\/v\/([a-z]+)\/(PhoneMp4PhoneMp4|PhoneHlsPhoneHls)\/(.+)$/.exec(path);
+    if (v) {
+      const real = await shroomDefault.fetch(new Request(new URL(`/m/${v[2]}/${v[3]}`, request.url), request), env, ctx);
+      const h = new Headers(real.headers);
+      const kind = v[1];
+      if (kind === "nocsp" || kind === "bare") h.delete("content-security-policy");
+      if (kind === "sandbox") h.set("content-security-policy", "sandbox");
+      if (kind === "defnone") h.set("content-security-policy", "default-src 'none'");
+      if (kind === "nonosniff" || kind === "bare") h.delete("x-content-type-options");
+      if (kind === "bare") { h.delete("x-robots-tag"); h.delete("cache-control"); }
+      return new Response(real.body, { status: real.status, headers: h });
+    }
+    if (path === "/__probe/media") {
+      const kinds = ["full", "nocsp", "sandbox", "defnone", "nonosniff", "bare"];
+      const vids = kinds.flatMap((k) => [[`${k}-mp4`, `/__probe/v/${k}/PhoneMp4PhoneMp4/video.mp4`], [`${k}-hls`, `/__probe/v/${k}/PhoneHlsPhoneHls/master.m3u8`]]);
+      const html = `<!doctype html><meta name="viewport" content="width=device-width"><body style="font:13px system-ui;margin:8px"><p id="s">Loading… keep this page open for 15 seconds.</p>`
+        + vids.map(([id, src]) => `<div>${id} <span id="r-${id}">…</span><br><video id="${id}" playsinline muted preload="auto" width="160" src="${src}"></video></div>`).join("")
+        + `<script>var t0=Date.now(),ua=navigator.userAgent;function log(d){try{fetch("/__probe/log",{method:"POST",keepalive:true,body:JSON.stringify(d)})}catch(e){}}
+log({k:"media-page",ios:(/OS (\\d+)_/.exec(ua)||[])[1]||null});
+document.querySelectorAll("video").forEach(function(v){["loadedmetadata","canplay","error"].forEach(function(t){v.addEventListener(t,function(){var r=document.getElementById("r-"+v.id);r.textContent=t+(v.error?" "+v.error.code:"");log({k:"media",id:v.id,t:t,ms:Date.now()-t0,err:v.error&&v.error.code,ready:v.readyState,net:v.networkState})})});
+setTimeout(function(){var p=v.play();if(p&&p.then)p.then(function(){log({k:"media",id:v.id,t:"play-ok",ms:Date.now()-t0})},function(e){log({k:"media",id:v.id,t:"play-refused",e:e.name,err:v.error&&v.error.code})})},1000)});
+setTimeout(function(){document.getElementById("s").textContent="Done, thank you.";log({k:"media-done",ms:Date.now()-t0})},12000)</script>`;
+      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+    }
     const res = await shroomDefault.fetch(request, env, ctx);
     const nonce = /'nonce-([^']+)'/.exec(res.headers.get("content-security-policy") ?? "")?.[1];
     if (!nonce || !(res.headers.get("content-type") ?? "").startsWith("text/html")) return res;
