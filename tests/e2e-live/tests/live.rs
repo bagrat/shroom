@@ -399,12 +399,27 @@ setTimeout(function(){var p=v.play();if(p&&p.then)p.then(function(){log({k:"medi
 setTimeout(function(){document.getElementById("s").textContent="Done, thank you.";log({k:"media-done",ms:Date.now()-t0})},12000)</script>`;
       return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
     }
-    const res = await shroomDefault.fetch(request, env, ctx);
+    // The real video page in four forms, framed side by side and loaded at once: as it is,
+    // without its captions track, without its own CSP, and without both — what each does is
+    // logged, no tap needed (the refusal comes as it loads).
+    if (path === "/__probe/pages") {
+      const forms = [["PhoneCapPhoneCap", ""], ["PhoneCapPhoneCap", "?notrack"], ["PhoneCapPhoneCap", "?nocsp"], ["PhoneCapPhoneCap", "?notrack&nocsp"], ["PhoneMp4PhoneMp4", ""], ["PhoneHlsPhoneHls", ""]];
+      const html = `<!doctype html><meta name="viewport" content="width=device-width"><body style="font:13px system-ui;margin:8px"><p id="s">Loading… keep this page open for 15 seconds.</p>`
+        + forms.map(([id, q]) => `<p>${id}${q}</p><iframe src="/${id}${q}" width="360" height="300" style="border:1px solid #888"></iframe>`).join("")
+        + `<script>fetch("/__probe/log",{method:"POST",body:JSON.stringify({k:"pages-open"})});setTimeout(function(){document.getElementById("s").textContent="Done, thank you.";fetch("/__probe/log",{method:"POST",body:JSON.stringify({k:"pages-done"})})},12000)</script>`;
+      return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+    }
+    const url = new URL(request.url);
+    const res = await shroomDefault.fetch(new Request(new URL(url.pathname, url), request), env, ctx);
     const nonce = /'nonce-([^']+)'/.exec(res.headers.get("content-security-policy") ?? "")?.[1];
     if (!nonce || !(res.headers.get("content-type") ?? "").startsWith("text/html")) return res;
-    const page = (await res.text()).replace("<head>", `<head><script nonce="${nonce}">${LOGGER}</script>`);
+    let page = (await res.text()).replace("<head>", `<head><script nonce="${nonce}">${LOGGER}</script>`);
+    if (url.searchParams.has("notrack")) page = page.replace(/<track [^>]*>/g, "");
     const headers = new Headers(res.headers);
     headers.delete("content-length");
+    const csp = headers.get("content-security-policy") ?? "";
+    if (url.searchParams.has("nocsp")) headers.delete("content-security-policy");
+    else headers.set("content-security-policy", csp.replace(/frame-ancestors [^;]*/, "frame-ancestors 'self'"));
     return new Response(page, { status: res.status, headers });
   },
   scheduled(controller, env, ctx) { return shroomDefault.scheduled(controller, env, ctx); },
