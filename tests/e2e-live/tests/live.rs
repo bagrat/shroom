@@ -179,40 +179,42 @@ fn the_ai_switch_parts_are_timed() {
 /// The video's bytes as an iPhone asks for them, from the real page on the real R2 (a
 /// phone played nothing while desktop Chrome played: Safari plays a file only from a server
 /// that answers its Range asks with 206 and the right `Content-Range`, and asks for two bytes
-/// first). The run's space is wired with the real worker.js behind a thin front that seeds
-/// one recording into the run's own bucket; then each range an iPhone asks is answered with
-/// 206, the span it names (clamped to the file), and that many bytes.
+/// first). The run's space is wired with the real worker.js and one live recording whose
+/// single-file copy is 1000 known bytes, put up as the app puts a take's files; each range an
+/// iPhone asks is then answered with 206, the span it names (clamped to the file), and that
+/// many bytes.
 #[test]
 fn the_video_answers_an_iphones_ranges() {
-    use shroom_cloud::member::{Ping, Space};
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
     let Some(run) = run() else { return eprintln!("skipped: set SHROOM_E2E=1") };
     if !named(&run) {
         return;
     }
     const MODULE: &str = include_str!("../../../worker/src/worker.js");
-    assert_eq!(MODULE.matches("\nexport default {").count(), 1);
-    let module = MODULE.replacen("\nexport default {", "\nconst shroomDefault = {", 1) + SEED_FRONT;
+    const ID: &str = "PhoneRangePhoneR";
+    const SIZE: u64 = 1000;
+    let video: Vec<u8> = (0..SIZE).map(|i| (i % 256) as u8).collect();
+    let meta = serde_json::json!({ "schema": 1, "id": ID, "state": "live", "createdAt": "2026-11-01T12:00:00Z", "title": "Ranges", "durationSec": 5,
+        "media": { "hls": format!("rec/{ID}/master.m3u8"), "mp4": format!("rec/{ID}/video.mp4"), "poster": null, "width": 1280, "height": 800 }, "owner": "m1" })
+    .to_string();
+    let (video_key, meta_key) = (format!("rec/{ID}/video.mp4"), format!("meta/{ID}.json"));
+    let assets: [(&str, &[u8], &str); 2] = [(&video_key, &video, "video/mp4"), (&meta_key, meta.as_bytes(), "application/json")];
     let (labels, bucket) = (run.space.labels(), run.space.bucket.as_str());
     let before = sweep::survey(&run.product, &run.account_id, &run.token_id, &labels, bucket).expect("survey");
     let label = before.label.expect("a fresh run's label is free");
-    let spec = WireSpec { account_id: &run.account_id, token_id: &run.token_id, label: &label, bucket, worker_module: &module, compatibility_date: "2026-09-01", assets: &[] };
+    let spec = WireSpec { account_id: &run.account_id, token_id: &run.token_id, label: &label, bucket, worker_module: MODULE, compatibility_date: "2026-09-01", assets: &assets };
     let wired = wire::wire(&run.product, &spec).expect("wiring");
-    let t = Instant::now();
-    while !matches!(Space::new(&wired.host).ping(), Ping::Shroom { .. }) {
-        assert!(t.elapsed() < Duration::from_secs(180), "the page never answered");
+    let agent: ureq::Agent = ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(60))).build().into();
+    let url = format!("https://{}/m/{ID}/video.mp4", wired.host);
+    // workers.dev may take a moment to route the new page.
+    let t = std::time::Instant::now();
+    while agent.get(&url).call().map(|r| r.status().as_u16()).unwrap_or(0) != 200 {
+        assert!(t.elapsed() < Duration::from_secs(180), "the video never answered");
         std::thread::sleep(Duration::from_millis(500));
     }
-    let agent: ureq::Agent = ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(60))).build().into();
-    let base = format!("https://{}", wired.host);
-    let seeded = agent.post(&format!("{base}/__probe/seed")).send_empty().expect("seed");
-    assert_eq!(seeded.status().as_u16(), 200);
-    let mut raw = agent.get(&format!("{base}/__probe/r2")).call().expect("r2 ranges");
-    eprintln!("iphone-ranges: R2's own answers {}", raw.body_mut().read_to_string().unwrap_or_default());
-    const SIZE: u64 = 1000;
     let mut wrong = Vec::new();
     for (ask, from, to) in [("bytes=0-1", 0, 1), ("bytes=0-", 0, 999), ("bytes=0-999", 0, 999), ("bytes=500-", 500, 999), ("bytes=990-1999", 990, 999), ("bytes=-100", 900, 999)] {
-        let mut res = agent.get(&format!("{base}/m/{SEED_ID}/video.mp4")).header("range", ask).header("accept-encoding", "identity").call().expect("a range");
+        let mut res = agent.get(&url).header("range", ask).header("accept-encoding", "identity").call().expect("a range");
         let status = res.status().as_u16();
         let head = |k: &str| res.headers().get(k).and_then(|v| v.to_str().ok()).unwrap_or("-").to_string();
         let (cr, cl, ce, te) = (head("content-range"), head("content-length"), head("content-encoding"), head("transfer-encoding"));
@@ -225,35 +227,3 @@ fn the_video_answers_an_iphones_ranges() {
     }
     assert!(wrong.is_empty(), "the video's ranges, as an iPhone asks them: {wrong:#?}");
 }
-
-const SEED_ID: &str = "PhoneRangePhoneR";
-
-/// The front of the_video_answers_an_iphones_ranges: seeds the run's own bucket with one
-/// live recording whose single-file copy is 1000 known bytes, and reports R2's own `range`
-/// for each ask; everything else is the real page.
-const SEED_FRONT: &str = r#"
-const SEED_ID = "PhoneRangePhoneR";
-const ASKS = ["bytes=0-1", "bytes=0-", "bytes=0-999", "bytes=500-", "bytes=990-1999", "bytes=-100"];
-export default {
-  async fetch(request, env, ctx) {
-    const path = new URL(request.url).pathname;
-    if (path === "/__probe/seed" && request.method === "POST") {
-      await env.BUCKET.put(`rec/${SEED_ID}/video.mp4`, new Uint8Array(1000).map((_, i) => i % 256), { httpMetadata: { contentType: "video/mp4" } });
-      await env.BUCKET.put(`meta/${SEED_ID}.json`, JSON.stringify({ schema: 1, id: SEED_ID, state: "live", createdAt: new Date(Date.now() - 3600000).toISOString(), title: "Ranges", durationSec: 5,
-        media: { hls: `rec/${SEED_ID}/master.m3u8`, mp4: `rec/${SEED_ID}/video.mp4`, poster: null, width: 1280, height: 800 }, owner: "m1" }));
-      return new Response("seeded");
-    }
-    if (path === "/__probe/r2") {
-      const out = [];
-      for (const r of ASKS) {
-        const o = await env.BUCKET.get(`rec/${SEED_ID}/video.mp4`, { range: new Headers({ range: r }) });
-        const b = o ? new Uint8Array(await o.arrayBuffer()) : null;
-        out.push({ ask: r, range: o ? o.range ?? null : "no object", size: o?.size, bytes: b?.length, first: b?.[0] });
-      }
-      return Response.json(out);
-    }
-    return shroomDefault.fetch(request, env, ctx);
-  },
-  scheduled(controller, env, ctx) { return shroomDefault.scheduled(controller, env, ctx); },
-};
-"#;
