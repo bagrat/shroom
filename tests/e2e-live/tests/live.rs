@@ -9,7 +9,7 @@
 use shroom_cloud::sweep::{self, Claim, Gates, Verdict};
 use shroom_cloud::wire::{self, WireSpec};
 use shroom_cloud::CloudError;
-use shroom_e2e_live::{MAIN_NAME, NAME, Run, config};
+use shroom_e2e_live::{MAIN_NAME, NAME, Run, close, config, open};
 
 fn run() -> Option<Run> {
     let cfg = config()?;
@@ -269,25 +269,41 @@ export default {
 
 /// A space kept up for a phone to open (the iPhone Simulator on a held Mac): the real page
 /// on the real R2, with two recordings of the same 5 s take — one that plays its single-file
-/// copy, one that plays the stream. Runs only while `fixtures/phone/HOLD` names the minutes.
+/// copy, one that plays the stream. Runs only while `fixtures/phone/HOLD` holds
+/// `<minutes> <run id>`: the run id is chosen ahead (a run id's shape, so the account's
+/// reaper knows it), so the space is at `v-<run>.shroom-e2e.workers.dev` before it exists.
 #[test]
 fn a_space_held_for_a_phone() {
     use shroom_cloud::member::{Ping, Space};
+    use shroom_cloud::{Cloud, Policy};
     use std::time::{Duration, Instant};
     let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/phone");
     let Ok(hold) = std::fs::read_to_string(dir.join("HOLD")) else { return eprintln!("skipped: no fixtures/phone/HOLD") };
-    let minutes: u64 = hold.trim().parse().expect("HOLD holds minutes");
-    let Some(run) = run() else { return eprintln!("skipped: set SHROOM_E2E=1") };
-    if !named(&run) {
-        return;
+    let mut words = hold.split_whitespace();
+    let minutes: u64 = words.next().and_then(|m| m.parse().ok()).expect("HOLD: <minutes> <run id>");
+    let run_id = words.next().expect("HOLD: <minutes> <run id>").to_string();
+    let Some(cfg) = config() else { return eprintln!("skipped: set SHROOM_E2E=1") };
+    let opened = open(&cfg, &run_id).unwrap_or_else(|e| panic!("the run didn't open: {e}"));
+    struct Closing<'a>(&'a shroom_e2e_live::Config, String);
+    impl Drop for Closing<'_> {
+        fn drop(&mut self) {
+            eprintln!("phone-hold: closed {:?}", close(self.0, Some(&self.1)));
+        }
+    }
+    let _closing = Closing(&cfg, run_id.clone());
+    let product = Cloud::new(&opened.value, Policy::Unfenced);
+    if product.subdomain(&cfg.account_id).expect("the workers.dev name").as_deref() != Some(NAME) {
+        return eprintln!("skipped: the account's workers.dev name isn't claimed yet");
     }
     const MODULE: &str = include_str!("../../../worker/src/worker.js");
     let module = MODULE.replacen("\nexport default {", "\nconst shroomDefault = {", 1) + PUT_FRONT;
-    let (labels, bucket) = (run.space.labels(), run.space.bucket.as_str());
-    let before = sweep::survey(&run.product, &run.account_id, &run.token_id, &labels, bucket).expect("survey");
-    let label = before.label.expect("a fresh run's label is free");
-    let spec = WireSpec { account_id: &run.account_id, token_id: &run.token_id, label: &label, bucket, worker_module: &module, compatibility_date: "2026-09-01", assets: &[] };
-    let wired = wire::wire(&run.product, &spec).expect("wiring");
+    let space = opened.space();
+    let (labels, bucket) = (space.labels(), space.bucket.as_str());
+    let before = sweep::survey(&product, &cfg.account_id, &opened.token_id, &labels, bucket).expect("survey");
+    let label = before.label.expect("the run's label is free");
+    let spec = WireSpec { account_id: &cfg.account_id, token_id: &opened.token_id, label: &label, bucket, worker_module: &module, compatibility_date: "2026-09-01", assets: &[] };
+    let wired = wire::wire(&product, &spec).expect("wiring");
+    eprintln!("phone-hold: wired {}", wired.host);
     let t = Instant::now();
     while !matches!(Space::new(&wired.host).ping(), Ping::Shroom { .. }) {
         assert!(t.elapsed() < Duration::from_secs(180), "the page never answered");
