@@ -296,7 +296,8 @@ fn a_space_held_for_a_phone() {
         return eprintln!("skipped: the account's workers.dev name isn't claimed yet");
     }
     const MODULE: &str = include_str!("../../../worker/src/worker.js");
-    let module = MODULE.replacen("\nexport default {", "\nconst shroomDefault = {", 1) + PUT_FRONT;
+    let logger = std::fs::read_to_string(dir.join("logger.js")).expect("the logger");
+    let module = MODULE.replacen("\nexport default {", "\nconst shroomDefault = {", 1) + &format!("\nconst LOGGER = {};\n", serde_json::to_string(&logger).unwrap()) + PUT_FRONT;
     let space = opened.space();
     let (labels, bucket) = (space.labels(), space.bucket.as_str());
     let before = sweep::survey(&product, &cfg.account_id, &opened.token_id, &labels, bucket).expect("survey");
@@ -323,13 +324,21 @@ fn a_space_held_for_a_phone() {
         }
     };
     let files = ["master.m3u8", "poster.jpg", "video.mp4", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s"];
-    for (id, mp4) in [("PhoneMp4PhoneMp4", true), ("PhoneHlsPhoneHls", false)] {
+    for (id, mp4) in [("PhoneMp4PhoneMp4", true), ("PhoneHlsPhoneHls", false), ("PhoneCapPhoneCap", true)] {
         for f in files {
             put(&format!("rec/{id}/{f}"), &std::fs::read(dir.join(f)).expect("a fixture"));
         }
         let meta = serde_json::json!({ "schema": 1, "id": id, "state": "live", "createdAt": "2026-11-01T12:00:00Z", "title": "A take for a phone", "durationSec": 5,
             "media": { "hls": format!("rec/{id}/master.m3u8"), "mp4": if mp4 { serde_json::json!(format!("rec/{id}/video.mp4")) } else { serde_json::Value::Null },
                 "poster": format!("rec/{id}/poster.jpg"), "width": 1280, "height": 800 }, "owner": "m1" });
+        let mut meta = meta;
+        if id == "PhoneCapPhoneCap" {
+            // Captions as a named take has them: the record says so and the transcript is done.
+            meta["captions"] = serde_json::json!({ "language": "en" });
+            let words = serde_json::json!([["Hello", 0.2, 0.6], ["there,", 0.7, 1.1], ["this", 1.3, 1.5], ["is", 1.5, 1.6], ["a", 1.6, 1.7], ["take.", 1.7, 2.2], ["Thanks", 3.0, 3.4], ["for", 3.4, 3.6], ["watching.", 3.6, 4.3]]);
+            let t = serde_json::json!({ "v": 1, "model": "test", "language": "en", "duration": 5, "heard_through": 5, "done": true, "windows": 1, "clock": null, "words": words });
+            put(&format!("rec/{id}/ai/transcript.json"), t.to_string().as_bytes());
+        }
         put(&format!("meta/{id}.json"), meta.to_string().as_bytes());
         eprintln!("phone-hold: {base}/{id}");
     }
@@ -338,7 +347,10 @@ fn a_space_held_for_a_phone() {
 }
 
 /// The front of a_space_held_for_a_phone: `PUT /__probe/put/<key>` stores its body in the
-/// run's own bucket; everything else is the real page.
+/// run's own bucket; every HTML page gets `fixtures/phone/logger.js` under the page's own
+/// nonce, whose lines `POST /__probe/log` keeps and `GET /__probe/logs` hands back (the
+/// session reads them during the hold; they never reach the run's log). Everything else is
+/// the real page.
 const PUT_FRONT: &str = r#"
 export default {
   async fetch(request, env, ctx) {
@@ -347,8 +359,29 @@ export default {
       await env.BUCKET.put(decodeURIComponent(path.slice("/__probe/put/".length)), await request.arrayBuffer());
       return new Response("stored");
     }
-    return shroomDefault.fetch(request, env, ctx);
+    if (path === "/__probe/log" && request.method === "POST") {
+      const line = (await request.text()).slice(0, 4000);
+      await env.BUCKET.put(`probe/log/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, line);
+      return new Response(null, { status: 204 });
+    }
+    if (path === "/__probe/logs") {
+      const keys = [];
+      let cursor;
+      do { const page = await env.BUCKET.list({ prefix: "probe/log/", cursor }); keys.push(...page.objects.map((o) => o.key)); cursor = page.truncated ? page.cursor : undefined; } while (cursor);
+      keys.sort();
+      const lines = [];
+      for (const k of keys) { const o = await env.BUCKET.get(k); if (o) lines.push(`${k.slice(10)} ${await o.text()}`); }
+      return new Response(lines.join("\n") + "\n", { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+    }
+    const res = await shroomDefault.fetch(request, env, ctx);
+    const nonce = /'nonce-([^']+)'/.exec(res.headers.get("content-security-policy") ?? "")?.[1];
+    if (!nonce || !(res.headers.get("content-type") ?? "").startsWith("text/html")) return res;
+    const page = (await res.text()).replace("<head>", `<head><script nonce="${nonce}">${LOGGER}</script>`);
+    const headers = new Headers(res.headers);
+    headers.delete("content-length");
+    return new Response(page, { status: res.status, headers });
   },
   scheduled(controller, env, ctx) { return shroomDefault.scheduled(controller, env, ctx); },
 };
 "#;
+
