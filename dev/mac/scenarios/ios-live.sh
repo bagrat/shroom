@@ -20,9 +20,11 @@ for i in $(seq 1 8); do xcrun simctl openurl "$udid" "about:blank" 2>/dev/null &
 tail -f /dev/null | node worker/dev/ios-live.mjs --live "$live" --mp4 PhoneMp4PhoneMp4 --hls PhoneHlsPhoneHls --log "$log" --port 8766 > "$MAC_OUT/server.out" 2>&1 &
 sleep 3
 for i in 1 2 3 4; do xcrun simctl openurl "$udid" "http://127.0.0.1:8766/" && break; sleep 15; done
-sleep 40
+sleep 45
 xcrun simctl io "$udid" screenshot "$MAC_OUT/compare.png" >/dev/null 2>&1
 xcrun simctl openurl "$udid" "$live/PhoneMp4PhoneMp4"; sleep 20
 xcrun simctl io "$udid" screenshot "$MAC_OUT/page.png" >/dev/null 2>&1
-echo "--- log"; cut -c1-300 "$log" | grep -v '"k":"http"' 
-grep -q '"live-mp4".*"play":"ok"\|"k":"live-mp4","d":{"play":"ok"' "$log"
+echo "--- log"; cut -c1-300 "$log" | grep -v '"k":"http"'
+# One line a video: how far it played by 6 s, and its error.
+node -e 'const L=require("fs").readFileSync(process.argv[1],"utf8").trim().split("\n").map((l)=>{try{return JSON.parse(l)}catch{return{}}});
+  let bad=0;for(const r of L.filter((x)=>x.d&&x.d.at6s)){const a=r.d.at6s;if(!(a.t>0))bad++;console.log(`${a.t>0?"plays  ":"STALLS "} ${r.k}: t=${a.t} ready=${a.ready} err=${a.err}`)}process.exit(bad?1:0)' "$log"
