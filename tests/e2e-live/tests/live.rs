@@ -266,3 +266,73 @@ export default {
   scheduled(controller, env, ctx) { return shroomDefault.scheduled(controller, env, ctx); },
 };
 "#;
+
+/// A space kept up for a phone to open (the iPhone Simulator on a held Mac): the real page
+/// on the real R2, with two recordings of the same 5 s take — one that plays its single-file
+/// copy, one that plays the stream. Runs only while `fixtures/phone/HOLD` names the minutes.
+#[test]
+fn a_space_held_for_a_phone() {
+    use shroom_cloud::member::{Ping, Space};
+    use std::time::{Duration, Instant};
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/phone");
+    let Ok(hold) = std::fs::read_to_string(dir.join("HOLD")) else { return eprintln!("skipped: no fixtures/phone/HOLD") };
+    let minutes: u64 = hold.trim().parse().expect("HOLD holds minutes");
+    let Some(run) = run() else { return eprintln!("skipped: set SHROOM_E2E=1") };
+    if !named(&run) {
+        return;
+    }
+    const MODULE: &str = include_str!("../../../worker/src/worker.js");
+    let module = MODULE.replacen("\nexport default {", "\nconst shroomDefault = {", 1) + PUT_FRONT;
+    let (labels, bucket) = (run.space.labels(), run.space.bucket.as_str());
+    let before = sweep::survey(&run.product, &run.account_id, &run.token_id, &labels, bucket).expect("survey");
+    let label = before.label.expect("a fresh run's label is free");
+    let spec = WireSpec { account_id: &run.account_id, token_id: &run.token_id, label: &label, bucket, worker_module: &module, compatibility_date: "2026-09-01", assets: &[] };
+    let wired = wire::wire(&run.product, &spec).expect("wiring");
+    let t = Instant::now();
+    while !matches!(Space::new(&wired.host).ping(), Ping::Shroom { .. }) {
+        assert!(t.elapsed() < Duration::from_secs(180), "the page never answered");
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    let agent: ureq::Agent = ureq::Agent::config_builder().http_status_as_error(false).timeout_global(Some(Duration::from_secs(60))).build().into();
+    let base = format!("https://{}", wired.host);
+    let put = |key: &str, bytes: &[u8]| {
+        let t = Instant::now();
+        loop {
+            let status = agent.put(&format!("{base}/__probe/put/{key}")).send(bytes).map(|r| r.status().as_u16()).unwrap_or(0);
+            if status == 200 {
+                return;
+            }
+            assert!(t.elapsed() < Duration::from_secs(180), "{key} never went up (last {status})");
+            std::thread::sleep(Duration::from_secs(1));
+        }
+    };
+    let files = ["master.m3u8", "poster.jpg", "video.mp4", "v0/stream.m3u8", "v0/init.mp4", "v0/seg_00000.m4s"];
+    for (id, mp4) in [("PhoneMp4PhoneMp4", true), ("PhoneHlsPhoneHls", false)] {
+        for f in files {
+            put(&format!("rec/{id}/{f}"), &std::fs::read(dir.join(f)).expect("a fixture"));
+        }
+        let meta = serde_json::json!({ "schema": 1, "id": id, "state": "live", "createdAt": "2026-11-01T12:00:00Z", "title": "A take for a phone", "durationSec": 5,
+            "media": { "hls": format!("rec/{id}/master.m3u8"), "mp4": if mp4 { serde_json::json!(format!("rec/{id}/video.mp4")) } else { serde_json::Value::Null },
+                "poster": format!("rec/{id}/poster.jpg"), "width": 1280, "height": 800 }, "owner": "m1" });
+        put(&format!("meta/{id}.json"), meta.to_string().as_bytes());
+        eprintln!("phone-hold: {base}/{id}");
+    }
+    eprintln!("phone-hold: up for {minutes} min from now");
+    std::thread::sleep(Duration::from_secs(minutes * 60));
+}
+
+/// The front of a_space_held_for_a_phone: `PUT /__probe/put/<key>` stores its body in the
+/// run's own bucket; everything else is the real page.
+const PUT_FRONT: &str = r#"
+export default {
+  async fetch(request, env, ctx) {
+    const path = new URL(request.url).pathname;
+    if (path.startsWith("/__probe/put/") && request.method === "PUT") {
+      await env.BUCKET.put(decodeURIComponent(path.slice("/__probe/put/".length)), await request.arrayBuffer());
+      return new Response("stored");
+    }
+    return shroomDefault.fetch(request, env, ctx);
+  },
+  scheduled(controller, env, ctx) { return shroomDefault.scheduled(controller, env, ctx); },
+};
+"#;
