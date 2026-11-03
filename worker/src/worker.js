@@ -181,7 +181,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.34";
+export const VERSION = "0.1.35";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -1650,7 +1650,7 @@ const PLAYER_STYLE = `.bar{display:block;width:100%;height:3px;border-radius:2px
 .big svg{display:block;width:26px;height:26px;fill:var(--player-hi)}.player:hover .big{background:var(--player-hover)}.started .big{display:none}
 .ctl{position:relative;flex:none;padding-top:4px;background:var(--player-bar);transition:opacity .25s}
 .row{height:52px;padding:0 10px;display:flex;align-items:center;gap:4px;font-size:13px}
-.row button{flex:none;width:44px;height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--player-text);font:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.row button{position:relative;z-index:1;flex:none;width:44px;height:44px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--player-text);font:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer}.row button[hidden]{display:none}
 .row button:hover{background:var(--player-hover);color:var(--player-hi)}.row button:focus-visible{outline:2px solid var(--player-fill);outline-offset:-2px}
 .row svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.row .pp svg{fill:var(--player-hi);stroke:none}
 .pp .i-pause,.mu .i-off,.fs .i-exit,.playing .pp .i-play,.muted .mu .i-on,.full .fs .i-enter{display:none}
@@ -1827,7 +1827,8 @@ export function playerHtml(id, meta, base = "") {
  * the custom controls: click or Space/K plays and pauses, the range and ←/→ (5 s),
  * Home/End scrub, M mutes, the speed button steps 1× → 1.25× → 1.5× → 2× and round, F or
  * double-click is fullscreen (the player itself, so its controls stay; a phone's own
- * fullscreen where elements can't go fullscreen). The seek bar shows what has played and
+ * fullscreen where elements can't go fullscreen, or where the player's own is refused or
+ * throws, as an app's in-app browser does; with no fullscreen at all the button hides). The seek bar shows what has played and
  * what is buffered ahead. The controls fade while playing and the pointer rests, never
  * while a control holds focus.
  *
@@ -1889,7 +1890,9 @@ function sound(){p.classList.toggle("muted",v.muted);mu.setAttribute("aria-label
 function hush(){v.muted=!v.muted}
 function full(){return document.fullscreenElement||document.webkitFullscreenElement||null}
 function fsToggle(){if(full()){var x=document.exitFullscreen||document.webkitExitFullscreen;if(x){var r=x.call(document);if(r&&r.catch)r.catch(function(){})}}
-else if(p.requestFullscreen){p.requestFullscreen().catch(function(){})}else if(p.webkitRequestFullscreen){p.webkitRequestFullscreen()}else if(v.webkitEnterFullscreen){v.webkitEnterFullscreen()}}
+else{var q=p.requestFullscreen||p.webkitRequestFullscreen;if(!q)return own();try{var r=q.call(p);if(r&&r.then)r.then(null,own)}catch(x){own()}}}
+function own(){if(v.webkitEnterFullscreen)try{v.webkitEnterFullscreen()}catch(x){}}
+if(!(p.requestFullscreen||p.webkitRequestFullscreen||v.webkitEnterFullscreen)||document.fullscreenEnabled===false&&!v.webkitEnterFullscreen)fs.hidden=true;
 function fsMode(){var on=full()===p;p.classList.toggle("full",on);fs.setAttribute("aria-label",on?L.exit:L.full)}
 function key(e){if(e.metaKey||e.ctrlKey||e.altKey)return;var k=e.key,b=e.target&&e.target.tagName==="BUTTON";if((k===" "||k==="Enter")&&b)return;
 if(k===" "||k==="k"||k==="K")toggle();else if(k==="ArrowLeft"||k==="ArrowRight")to(at()+(k==="ArrowLeft"?-5:5));
