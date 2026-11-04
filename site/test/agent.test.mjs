@@ -14,9 +14,9 @@ const landing = JSON.parse(readFileSync(`${ROOT}spec/machine.json`, "utf8")).sta
 
 // The landing's ratified lines that belong to the page itself, not to a browser: no Copy
 // button, no install tabs or "Read it first" link, no video, no links at its foot (N55, N59), none
-// of its words to the person about their agent, and not the price bar's short labels for a phone.
+// of its words to the person about their agent, and not the price box's controls (N86).
 // The system-requirements sentence is checked against the landing's own (filled-in) sentence instead.
-const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|\$0 \/ 3h video|\$1\.50 \/ 30h)$/;
+const PAGE_ONLY = /^(Copy|Send feedback|Send feedback · .*|Install in one line|Terminal|Homebrew|Coding agent|Read it first|Your agent asks you .*|What would it cost\?|Why shroom\?|Sponsor it|Video a month|Auto-cleanup after|30 days|60 days|a year|a month)$/;
 
 /** Every “…” on the page: a line the agent says to the person, or a word it quotes. */
 const said = [...flat.matchAll(/“([^”]+)”/g)].map((m) => m[1]);
@@ -25,6 +25,8 @@ describe("the agent page", () => {
   it("mirrors the landing's ratified lines", () => {
     for (const l of landing.said) {
       // The Homebrew road (N52) is the person's: the agent runs the install line it names.
+      // The company sign-in band (N88) is for a person weighing a paid tier, not an install.
+      if ((l.cites ?? []).includes("N88")) continue;
       if (PAGE_ONLY.test(l.text) || /^For macOS/.test(l.text) || (l.cites ?? []).includes("copy table") || (l.cites ?? []).includes("N52")) continue;
       assert.ok(flat.includes(l.text), `missing: ${l.text}`);
     }
@@ -95,8 +97,9 @@ describe("the agent page", () => {
 
   // The invite goes on the end the way the installer reads it: `--join <link>`, first.
   it("asks for the invite link and passes it as the installer expects", () => {
-    assert.match(flat, /On “I have an invite link”, ask “Paste your invite link here\.” and, when it comes, run the command once with the link on the end, unchanged:/);
-    assert.ok(md.includes("`curl -fsSL https://shroom.am/install | sh -s -- --join <their invite link>`"));
+    assert.match(flat, /On “I have an invite link”, ask “Paste your invite link here\.” When it comes, look at it first: an invite link looks like https:\/\/v\.<name>\.workers\.dev\/join\/<code>, and holds only letters, digits and \. - \/ : — if it holds anything else, run nothing and ask them to check the link\. Otherwise run the command once, with the link in single quotes, unchanged:/);
+    assert.ok(md.includes("`curl -fsSL https://shroom.am/install | sh -s -- --join '<their invite link>'`"));
+    assert.match(flat, /If they already gave you an invite link, show the command with it, checked and quoted as below,/);
     assert.match(installer, /if \[ "\$\{1:-\}" = "--join" \]; then join="\$\{2:-\}"; fi/);
   });
 

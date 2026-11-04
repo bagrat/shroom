@@ -904,6 +904,8 @@ pub fn remove_mac_line() -> String { "That Mac stops recording to your space. It
 
 // The join machine (N29–N31).
 pub fn invited_you(name: &str) -> String { format!("{name} invited you to record with shroom.") }
+/// The space an invite joins, under who invited you (member-welcome, join-switch-confirm).
+pub fn their_space(host: &str) -> String { format!("Their space: {host}") }
 pub fn member_truth(name: &str) -> String {
     format!("shroom records your screen and hands you a link to share. Your videos will live in {name}'s space, where {name} can see them too — nothing to sign up for, nothing to pay.")
 }
@@ -1514,6 +1516,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("member-remove-confirm-own-mac", remove_mac_line()),
         // ── the join machine ──
         ("member-welcome", invited_you("Bagrat")),
+        ("member-welcome", their_space("v.myshroom.workers.dev")),
         ("member-welcome", member_truth("Bagrat")),
         ("member-welcome", member_step()),
         ("member-welcome", login_box()),
@@ -1549,6 +1552,7 @@ pub fn registry() -> Vec<(&'static str, String)> {
         ("join-already-here", already_here_own()),
         ("join-already-here", close()),
         ("join-switch-confirm", invited_you("Bagrat")),
+        ("join-switch-confirm", their_space("v.myshroom.workers.dev")),
         ("join-switch-confirm", switch_line("v.mine.workers.dev", "Bagrat")),
         ("join-switch-confirm", switch_only_holder()),
         ("join-switch-confirm", switch_half_set_up("Bagrat")),

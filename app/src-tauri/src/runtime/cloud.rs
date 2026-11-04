@@ -26,7 +26,8 @@ use super::Runtime;
 const WORKER_MODULE: &str = include_str!("../../../../worker/src/worker.js");
 const HLS_JS: &[u8] = include_bytes!("../../../../worker/vendor/hls.min.js");
 const COMPATIBILITY_DATE: &str = "2026-09-01";
-/// The email gate's throwaway Worker (deployed and removed by the probe).
+/// The email gate's throwaway Worker (deployed and removed by the probe; under a fresh
+/// `shroom-probe-<8 hex>` when a Worker already has this name, which is left as it is).
 const PROBE_WORKER: &str = "shroom-probe";
 /// How long opening a stopped video's page waits for its record's claim to land (the
 /// uploader claims first, before any ffmpeg work): the owner page then finds its title

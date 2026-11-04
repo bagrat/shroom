@@ -15,6 +15,22 @@
   ["  9300 updater check: error sending request for url (https://github.com/bagrat/shroom/releases/latest/download/update.txt)", "  9300 updater check: error sending request for url (https://github.com/…)"],
   ["  9400 cloud: a key-shaped run Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA== in an error", "  9400 cloud: a key-shaped run <an id> in an error"],
   ["  9500 boot: launch login · shroom 0.1.18 · 2026-10-16T09:12:00Z", "  9500 boot: launch login · shroom 0.1.18 · 2026-10-16T09:12:00Z"],
-  ["  9600 boot: encoder videotoolbox", "  9600 boot: encoder videotoolbox"]
+  ["  9600 boot: encoder videotoolbox", "  9600 boot: encoder videotoolbox"],
+  ["  9700 member: code AbCdEfGhIjKlMnOp left", "  9700 member: code <an id> left"],
+  ["  9710 upload: recording Sx4kq9dLmNpQrStU sealed", "  9710 upload: recording <an id> sealed"],
+  ["  9720 cloud: a run AbCdEfGhIjKlMnOpQrStUvWxYzAbCdEfGhIjKlMnOpQ in an error", "  9720 cloud: a run <an id> in an error"],
+  ["  9730 cloud: a run KUzroSLSPCeqlhhEJhhDckcWJIRmFzyQ in an error", "  9730 cloud: a run <an id> in an error"],
+  ["  9740 member: v.example-owner.workers.dev/join/Qz8xKp2mWv4nRt7s accepted", "  9740 member: <your space>/join/<an id> accepted"],
+  ["  9750 member: join/abc", "  9750 member: join/abc"],
+  ["  9760 page: open /v/AbCd?k=ZyXwVuTsRqPoNmLkZyXwVuTsRqPoNmLkZyXwVuT ok", "  9760 page: open /v/AbCd?k=<an id> ok"],
+  ["  9770 page: open /v/AbCd?t=12&k=zyxw ok", "  9770 page: open /v/AbCd?t=12&k=<an id> ok"],
+  ["  9780 cloud: sent Bearer d_AbCdEfGhIjKlMnOp.wxyzABCDwxyzABCDwxyzABCD then", "  9780 cloud: sent Bearer <an id> then"],
+  ["  9790 member: sent ShroomParent 1790905072.c2lnbmF0dXJlLXNpZ25hdHVyZQ then", "  9790 member: sent ShroomParent <an id> then"],
+  ["  9800 capture: ScreenCaptureKit stopped the stream (NSURLErrorDomain -1001)", "  9800 capture: ScreenCaptureKit stopped the stream (NSURLErrorDomain -1001)"],
+  ["  9810 boot: encoder h264_videotoolbox", "  9810 boot: encoder h264_videotoolbox"],
+  ["  9820 takes: 20261002-120000-ab12 saved (/Users/jane/Applications/shroom.app/Contents/MacOS/shroom)", "  9820 takes: 20261002-120000-ab12 saved (~/Applications/shroom.app/Contents/MacOS/shroom)"],
+  ["  9830 namer: named by gemma-4-26b-a4b-it in 800 ms", "  9830 namer: named by gemma-4-26b-a4b-it in 800 ms"],
+  ["  9840 upload: x-amz-content-sha256 AWS4-HMAC-SHA256 kCGWindowOwnerPID PermissionDenied", "  9840 upload: x-amz-content-sha256 AWS4-HMAC-SHA256 kCGWindowOwnerPID PermissionDenied"],
+  ["  9850 core: ----------------", "  9850 core: ----------------"]
  ]
 }

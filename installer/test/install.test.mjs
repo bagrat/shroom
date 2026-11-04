@@ -254,6 +254,17 @@ describe("installing", () => {
     assert.match(invite.arrived, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   });
 
+  it("with --agent, opens shroom as the mushroom only, for the agent's shroom setup (N89)", async () => {
+    const r = await run({ args: ["--agent"] });
+    assert.equal(r.code, 0);
+    assert.deepEqual(r.out, ["Getting shroom…", "verified ✓", "Installed — opening shroom now."], "the same lines: Installed is the agent's cue");
+    assert.match(r.log, /^open .*\/Applications\/shroom\.app --args --relaunched=agent\n$/);
+    const both = await run({ args: ["--early", "--agent"], with: { early: true, earlyManifest: `version=1.3.0-early.1\nmacos=14\narm64=${v120.file} ${sha(v120.bytes)}\n` } });
+    assert.match(both.log, /--relaunched=agent\n$/, "either order with --early");
+    const invited = await run({ args: ["--agent", "--join", "https://v.myshroom.workers.dev/join/abc"] });
+    assert.match(invited.log, /--relaunched=install --invite\n$/, "an invite's window is the member lane's");
+  });
+
   it("opens shroom plainly for something that isn't a link's shape", async () => {
     const r = await run({ args: ["--join", 'x","evil":"1'] });
     assert.match(r.log, /^open .*shroom\.app --args --relaunched=install\n$/);
@@ -366,6 +377,13 @@ describe("updating", () => {
     const take = await run({ setup: (home) => { installOld(home, "am.shroom.dev"); recordingNow(home, ".shroom-dev"); } });
     assert.deepEqual(take.out, said("install-refused-midtake"));
     assert.equal(take.installed, "1.1.0");
+  });
+
+  it("a copy whose name isn't of shroom's shape is asked to quit as the release, am.shroom", async () => {
+    for (const odd of ['am.shroom" & x', "am.shroom/../x", "other.app"]) {
+      const r = await run({ setup: (home, running) => { installOld(home, odd); writeFileSync(running, ""); } });
+      assert.match(r.log, /^quit am\.shroom\n/, odd);
+    }
   });
 
   // The app's own rule (runtime::Flavor::of): `….dev` is a developer build whatever comes
@@ -1114,6 +1132,28 @@ describe("uninstalling", () => {
     gone(r, "am.shroom.dev", ".shroom-dev");
     assert.match(r.log, /tccutil reset All am\.shroom\.dev/);
     assert.ok(existsSync(join(r.home, ".shroom/token.json")), "another build's folder is not this one's to remove");
+  });
+
+  // Only a name of shroom's own shape (am.shroom, or am.shroom.<part>…) is taken from the
+  // copy in ~/Applications; any other is read as the release's, am.shroom.
+  it("goes by shroom's own name: a copy naming itself anything else is removed as the release, and the system's shared folders stay", async () => {
+    for (const odd of ["", "..", "am.shroom/../x", "am.shroom..x", 'am.shroom" & x', "other.app"]) {
+      const r = await run({
+        args: UN,
+        setup: (home) => {
+          installed(home);
+          execFileSync("plutil", ["-replace", "CFBundleIdentifier", "-string", odd, join(home, "Applications/shroom.app/Contents/Info.plist")]);
+          for (const d of ["Library/WebKit/someone.else", "Library/Caches/someone.else", "Library/HTTPStorages/someone.else"]) mkdirSync(join(home, d), { recursive: true });
+        },
+      });
+      assert.equal(r.code, 0, JSON.stringify(odd));
+      gone(r);
+      for (const d of ["Library/WebKit/someone.else", "Library/Caches/someone.else", "Library/HTTPStorages/someone.else"]) {
+        assert.ok(existsSync(join(r.home, d)), `${d} stays (${JSON.stringify(odd)})`);
+      }
+      assert.match(r.log, /^tccutil reset All am\.shroom$/m, JSON.stringify(odd));
+      assert.match(r.log, /^defaults delete am\.shroom$/m, JSON.stringify(odd));
+    }
   });
 
   it("refuses to run anywhere but a Mac, before touching anything", async () => {

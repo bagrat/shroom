@@ -8,8 +8,9 @@
 //!   until the recorder's watchdog finds the floor: it must end as `disk-full-stop`, whole
 //!   and unpublished, without ever meeting ENOSPC (law 2).
 //! - `--drive take <out> signals`: the bubble (a native panel that never takes the
-//!   keyboard, on the core's camera, dragged and remembered), every window excluded from
-//!   capture at creation, Camera as the source (its preview, the count on its display,
+//!   keyboard, on the core's camera, dragged and remembered), which windows a take leaves
+//!   out (the popover, from creation) and which it records (the Library, Settings and Send
+//!   feedback, N85), Camera as the source (its preview, the count on its display,
 //!   the preview staying through the take while the take still gets its frames,
 //!   `camera-lost` for the recorded camera — then Discard, so the room never outlives the
 //!   drive), then display takes interrupted by: the microphone leaving (`mic-lost`, Resume
@@ -56,6 +57,14 @@
 //!   pattern guard's). The same drive with the count taken off the list — and only the
 //!   count: a digit and a line of copy, nothing of the Mac's — so the take has it in its
 //!   picture, and the reader must be seen to find it there.
+//!
+//! - `--drive take <out> own-windows` (N85, DECISIONS B266): a first take, for an editor to
+//!   open on; then the Library, that editor, Settings and Send feedback open behind the pattern, and a take
+//!   in which each is lifted above it in turn, then the popover, the agent label and the
+//!   marker toast. A capture that leaves nothing out sees each one (the proof it was up), and
+//!   the report gives the pattern's counter just before each went up and just after it went:
+//!   `app/test/take-drive.mjs` finds that stretch in the take's own frames and reads the
+//!   middle of it (`tests/e2e/own-windows.mjs`) — the windows in the picture, the rest not.
 //!
 //! - `--drive take <out> camera-take` (DECISIONS B121): Camera as the source through the
 //!   real flow — `config`, Return, the count, five seconds, the pause, Stop — and the take
@@ -123,6 +132,10 @@ pub enum TakeDrive {
     LeftOut,
     /// The same with the count taken off the list: the take must have it in its picture.
     NotLeftOut,
+    /// A take with the Library, an editor, Settings and Send feedback shown over the pattern
+    /// in turn, then the popover, the label and the toast: the windows in its picture, the
+    /// rest not (N85).
+    OwnWindows,
     /// Camera as the source, a take kept — the hosted Mac's pattern camera only (B121).
     CameraTake,
     /// Camera only with its preview dragged first: the place kept through the count and the
@@ -148,6 +161,7 @@ impl TakeDrive {
             "surfaces" => TakeDrive::Surfaces,
             "left-out" => TakeDrive::LeftOut,
             "not-left-out" => TakeDrive::NotLeftOut,
+            "own-windows" => TakeDrive::OwnWindows,
             "camera-take" => TakeDrive::CameraTake,
             "camera-drag" => TakeDrive::CameraDrag,
             "show" => TakeDrive::Show,
@@ -172,6 +186,7 @@ impl TakeDrive {
             TakeDrive::Surfaces => "take surfaces",
             TakeDrive::LeftOut => "take left-out",
             TakeDrive::NotLeftOut => "take not-left-out",
+            TakeDrive::OwnWindows => "take own-windows",
             TakeDrive::CameraTake => "take camera-take",
             TakeDrive::CameraDrag => "take camera-drag",
             TakeDrive::Show => "take show",
@@ -315,6 +330,7 @@ pub fn drive(app: AppHandle, rt: Runtime, which: TakeDrive, out: PathBuf) {
         TakeDrive::Surfaces => surfaces::surfaces(&d),
         TakeDrive::LeftOut => left_out(&d, false),
         TakeDrive::NotLeftOut => left_out(&d, true),
+        TakeDrive::OwnWindows => own_windows(&d),
         TakeDrive::CameraTake => camera_take(&d),
         TakeDrive::CameraDrag => camera_drag(&d),
         TakeDrive::Show => show(&d),
@@ -949,7 +965,8 @@ fn signals(d: &D) -> Result<(), String> {
     let granted = probe::access(shroom_capture::camera_access()) == Access::Granted;
     let a_camera = cameras.iter().any(|c| !c.continuity);
 
-    // 1. Every shroom window but the bubble is excluded from capture, from creation.
+    // 1. The popover is left out of capture from creation; the Library, Settings and Send
+    // feedback are recorded like any app's (N85).
     windows_excluded(d)?;
 
     // 2. The bubble and Camera as the source (the camera only on this Mac's own grant).
@@ -990,21 +1007,25 @@ fn windows_excluded(d: &D) -> Result<(), String> {
     d.config()?;
     d.act(Action::OpenSettings);
     d.wait("Settings", 10, |s| s.settings.is_some())?;
+    d.config()?;
+    d.act(Action::OpenFeedback);
+    d.wait("Send feedback", 10, |s| s.feedback.is_some())?;
     std::thread::sleep(Duration::from_millis(300));
-    // Each window joins the list on the main thread as it's made: read after the windows
-    // themselves are (a loaded Mac can still be making one when the Scene shows it).
-    let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
+    // Each window is made on the main thread: read after the windows themselves are (a
+    // loaded Mac can still be making one when the Scene shows it).
+    let numbers: Vec<_> = [("library", "the Library"), ("settings", "Settings"), ("feedback", "Send feedback")].into_iter().map(|(label, name)| (name, crate::drives::poll(5, || window_number(&d.app, label)))).collect();
     let excluded = d.rt.excluded.lock().unwrap().clone();
     for (name, n) in numbers {
-        d.check(&format!("{name}'s window is excluded from capture"), n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
+        d.check(&format!("{name}'s window is recorded in a take (N85)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
     }
     // The popover's own panel — the window that shows — not the hidden host of its page.
     let app = d.app.clone();
     let n = d.on_main(move || crate::runtime::presenter::overlay_window(&app, crate::runtime::presenter::Overlay::Popover).map(|w| w.windowNumber() as u32)).flatten();
     d.check("the popover's window is excluded from capture", n.is_some_and(|n| excluded.contains(&n)), format!("{n:?} in {excluded:?}"));
-    d.rt.post(Event::WindowClosed(WindowKind::Library));
-    d.rt.post(Event::WindowClosed(WindowKind::Settings));
-    d.wait("windows closed", 5, |s| s.library.is_none() && s.settings.is_none())?;
+    for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Feedback] {
+        d.rt.post(Event::WindowClosed(kind));
+    }
+    d.wait("windows closed", 5, |s| s.library.is_none() && s.settings.is_none() && s.feedback.is_none())?;
     Ok(())
 }
 
@@ -1667,6 +1688,233 @@ fn left_out_take(d: &D, display: u32) -> Result<(), String> {
     d.fact("take", files);
     d.fact("take_dir", dir.display().to_string());
     d.fact("frames", frames);
+    Ok(())
+}
+
+// ── a take with shroom's own windows in it (N85) ──
+
+/// The least of the pattern's dark field one of shroom's windows lights when it is
+/// in a picture: each covers much of the hosted Mac's 1024 × 768 display, centred.
+const WINDOW_SEEN: f64 = 0.05;
+/// How long each stays up once a capture that leaves nothing out has seen it.
+const HELD_MS: u64 = 3000;
+
+/// The pattern's counter in one real captured frame of `display`, read until a frame shows
+/// it (the strip is clear of everything then). The reader finds the stretch something was up
+/// for by these, in the take's own frames: the take's clock and the drive's don't line up
+/// (the hosted Mac's take began some 3 s after the Scene said it records, 2026-10-25).
+fn counter(display: u32) -> Result<u32, String> {
+    let until = Instant::now() + Duration::from_secs(3);
+    loop {
+        let (gray, w, h) = crate::harness::grab(display)?;
+        if let Some(n) = shroom_testpattern::read_gray(&gray, w, h) {
+            return Ok(n);
+        }
+        if Instant::now() > until {
+            return Err("the pattern's counter couldn't be read".into());
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+/// Does `f` to one of shroom's windows' NSWindow on the main thread, by its label.
+fn with_window<T: Send + 'static>(d: &D, label: String, f: impl FnOnce(&objc2_app_kit::NSWindow) -> T + Send + 'static) -> Option<T> {
+    let app = d.app.clone();
+    d.on_main(move || {
+        let w = app.get_webview_window(&label)?;
+        let p = w.ns_window().ok()?;
+        // SAFETY: Tauri's window handle on macOS is its NSWindow, alive while the window is.
+        Some(f(unsafe { &*(p as *const objc2_app_kit::NSWindow) }))
+    })
+    .flatten()
+}
+
+fn own_windows(d: &D) -> Result<(), String> {
+    d.wait("ready", 20, |s| s.tray.click == Click::OpenPopover)?;
+    if !shroom_capture::has_permission() {
+        return Err("recording isn't allowed for shroom on this Mac".into());
+    }
+    if surfaces::locked() {
+        d.fact("skipped", serde_json::json!([["a take with shroom's own windows in it", "the screen is locked: nothing can be recorded"]]));
+        return Ok(());
+    }
+    d.fact("skipped", serde_json::json!([]));
+    let pattern = cover_with_pattern(&d.app)?;
+    let result = own_windows_opened(d);
+    for kind in [WindowKind::Library, WindowKind::Settings, WindowKind::Feedback] {
+        d.rt.post(Event::WindowClosed(kind));
+    }
+    if let Some(s) = snapshot(&d.rt) {
+        for id in s.editors.keys() {
+            d.rt.post(Event::WindowClosed(WindowKind::Editor(*id)));
+        }
+    }
+    let _ = pattern.close();
+    result
+}
+
+fn own_windows_opened(d: &D) -> Result<(), String> {
+    use presenter::Overlay;
+    // A first take, stopped: a video on this Mac for the editor (Edit… greys while a take is
+    // open, law 4, so the editor opens before the take that shows it).
+    d.config()?;
+    d.record()?;
+    std::thread::sleep(Duration::from_secs(3));
+    click(&d.app, &d.rt);
+    d.wait("paused", 10, |s| D::popover_id(s) == Some("paused"))?;
+    d.act(Action::Stop);
+    published_take(d, 30)?;
+    // The Library, Edit… on that take's row, and Settings — all behind the pattern for now.
+    d.config()?;
+    d.act(Action::OpenLibrary);
+    let editable = |s: &Scene| s.library.as_ref().and_then(|l| l.body.rows.iter().flat_map(|r| &r.menu).find(|b| b.enabled && matches!(b.action, Action::EditRow(_))).map(|b| b.action.clone()));
+    let s = d.wait("a row offering Edit…", 60, |s| editable(s).is_some())?;
+    d.rt.post(Event::Act { surface: Surface::Library, action: editable(&s).expect("a row"), rev: 0 });
+    let s = d.wait("the editor", 20, |s| !s.editors.is_empty())?;
+    let editor = presenter::label(WindowKind::Editor(*s.editors.keys().next_back().expect("an editor"))).into_owned();
+    d.config()?;
+    d.act(Action::OpenSettings);
+    d.wait("Settings", 10, |s| s.settings.is_some())?;
+    d.config()?;
+    d.act(Action::OpenFeedback);
+    d.wait("Send feedback", 10, |s| s.feedback.is_some())?;
+    if snapshot(&d.rt).is_some_and(|s| s.popover.is_some()) {
+        d.rt.post(Event::PopoverDismissed);
+        d.wait("the popover closed", 5, |s| s.popover.is_none())?;
+    }
+    // Their pages draw a moment after they show (a window's first paint takes seconds on a
+    // hosted Mac); behind the pattern they draw unseen.
+    std::thread::sleep(Duration::from_secs(4));
+    let windows = [(presenter::LIBRARY.to_string(), "the Library"), (editor, "the editor"), (presenter::SETTINGS.to_string(), "Settings"), (presenter::FEEDBACK.to_string(), "Send feedback")];
+    let excluded = d.rt.excluded.lock().unwrap().clone();
+    for (label, name) in &windows {
+        let n = with_window(d, label.clone(), |w| w.windowNumber() as u32);
+        d.check(&format!("{name}'s window is off the list of what a take leaves out (N85)"), n.is_some_and(|n| !excluded.contains(&n)), format!("{n:?} not in {excluded:?}"));
+    }
+
+    warp_pointer_away();
+    let display = shroom_capture::main_display_id();
+    with_panel(d, Overlay::Label, move |w| presenter::place_label(w, display));
+    {
+        use tauri::Emitter;
+        let _ = d.app.emit_to(presenter::LABEL, "scene", shroom_core::scene::AgentLabel { display, line: shroom_core::copy::agent_label_line() });
+    }
+    const PANELS: [Overlay; 3] = [Overlay::Popover, Overlay::Label, Overlay::Toast];
+    let levels: Vec<Option<isize>> = PANELS
+        .iter()
+        .map(|which| {
+            with_panel(d, *which, |w| {
+                let was = w.level();
+                w.setLevel(ABOVE_THE_PATTERN);
+                was
+            })
+        })
+        .collect();
+    let result = own_windows_take(d, display, &windows);
+    for (which, was) in PANELS.iter().zip(levels) {
+        if let Some(was) = was {
+            with_panel(d, *which, move |w| w.setLevel(was));
+        }
+    }
+    result
+}
+
+fn own_windows_take(d: &D, display: u32, windows: &[(String, &'static str)]) -> Result<(), String> {
+    use presenter::Overlay;
+    let alone = lit(display)?;
+    d.check("the pattern alone lights none of its dark field", alone < 0.002, pct(alone));
+    d.config()?;
+    d.record()?;
+    std::thread::sleep(Duration::from_millis(1500));
+    // Each stretch of the take something was up for, by the pattern's counter just before it
+    // went up and just after it went: (what, recorded?, before, after).
+    let mut stretches: Vec<(String, bool, u32, u32)> = Vec::new();
+
+    // The windows, each lifted above the pattern in turn and put back behind it.
+    for (label, name) in windows {
+        let before = counter(display)?;
+        let was = with_window(d, label.clone(), |w| {
+            let was = w.level();
+            w.setLevel(ABOVE_THE_PATTERN);
+            w.orderFrontRegardless();
+            was
+        });
+        let seen = lit_within(display, alone + WINDOW_SEEN, 5)?;
+        std::thread::sleep(Duration::from_millis(HELD_MS));
+        if let Some(was) = was {
+            with_window(d, label.clone(), move |w| w.setLevel(was));
+        }
+        std::thread::sleep(Duration::from_millis(300));
+        let after = counter(display)?;
+        d.check(&format!("a capture that leaves nothing out sees {name} over the pattern"), was.is_some() && seen - alone >= WINDOW_SEEN, pct_over(seen, alone));
+        stretches.push((name.to_string(), true, before, after));
+        std::thread::sleep(Duration::from_millis(600));
+    }
+
+    // The popover and the agent label, each put up by hand and held.
+    for (which, name, bar) in [(Overlay::Popover, "the popover", POPOVER_SEEN), (Overlay::Label, "the agent label", LABEL_SEEN)] {
+        if which == Overlay::Label {
+            // Its page draws the pill from the slice a take of the command's would give it,
+            // given again here: the take's own Scene turns may have cleared it (the hosted
+            // Mac saw the label's panel up with nothing drawn, 2026-10-25).
+            use tauri::Emitter;
+            with_panel(d, which, move |w| presenter::place_label(w, display));
+            let _ = d.app.emit_to(presenter::LABEL, "scene", shroom_core::scene::AgentLabel { display, line: shroom_core::copy::agent_label_line() });
+            std::thread::sleep(Duration::from_millis(500));
+        }
+        let before = counter(display)?;
+        // Held up until a capture that leaves nothing out has seen it (the Scene's next turn
+        // may put it away), as the left-out drive does.
+        let mut seen = 0.0;
+        for _ in 0..6 {
+            with_panel(d, which, |w| w.orderFrontRegardless());
+            seen = lit_within(display, alone + bar, 1)?;
+            if seen - alone >= bar {
+                break;
+            }
+        }
+        for _ in 0..HELD_MS / 250 {
+            with_panel(d, which, |w| w.orderFrontRegardless());
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        with_panel(d, which, |w| w.orderOut(None));
+        std::thread::sleep(Duration::from_millis(300));
+        let after = counter(display)?;
+        d.check(&format!("a capture that leaves nothing out sees {name} over the pattern"), seen - alone >= bar, pct_over(seen, alone));
+        stretches.push((name.to_string(), false, before, after));
+        std::thread::sleep(Duration::from_millis(600));
+    }
+
+    // ⌥⌘M, as the shortcut posts it (N78): the toast, for its own two seconds.
+    let root = d.rt.home.root.clone();
+    let Some(q) = d.on_main(move || objc2_foundation::MainThreadMarker::new().map(|mtm| probe::quick(mtm, &root).0)).flatten() else {
+        return Err("no quick probe for the shortcut".into());
+    };
+    let before = counter(display)?;
+    d.rt.post(Event::MarkerShortcut(q));
+    d.wait("the marker toast", 5, |s| s.toast.is_some())?;
+    let seen = lit_within(display, alone + TOAST_SEEN, 2)?;
+    d.check("a capture that leaves nothing out sees the marker toast over the pattern", seen - alone >= TOAST_SEEN, pct_over(seen, alone));
+    let _ = d.wait("the toast gone", 5, |s| s.toast.is_none());
+    let after = counter(display)?;
+    stretches.push(("the marker toast".into(), false, before, after));
+    std::thread::sleep(Duration::from_millis(600));
+
+    click(&d.app, &d.rt);
+    d.wait("paused", 10, |s| D::popover_id(s) == Some("paused"))?;
+    let s = d.after(200);
+    d.check("the take went on recording until the pause", D::popover_id(&s) == Some("paused"), s.state_ids().join(" | "));
+    d.act(Action::Stop);
+    let (dir, _) = published_take(d, 30)?;
+    let files = take_files(&dir);
+    d.check(
+        "the take is whole on this Mac, and decodes",
+        files["missing"].as_array().is_some_and(|m| m.is_empty()) && files["segments"].as_u64().unwrap_or(0) > 0 && files["decodes"] == true,
+        files.to_string(),
+    );
+    d.fact("stretches", stretches.iter().map(|(what, recorded, before, after)| serde_json::json!({ "what": what, "recorded": recorded, "before": before, "after": after })).collect::<Vec<_>>());
+    d.fact("take", files);
+    d.fact("take_dir", dir.display().to_string());
     Ok(())
 }
 

@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { cleanLine, cleanLog, LOG_LINES, LINE_CHARS } from "../clean.js";
-import { FEEDBACK_QUESTIONS, MAX_BYTES, handleReport, parseReport, subject } from "../report.js";
+import { FEEDBACK_QUESTIONS, LIMITERS, MAX_BYTES, handleReport, parseReport, subject } from "../report.js";
 import { build } from "../build.mjs";
 import worker from "../worker.js";
 
@@ -70,11 +70,29 @@ describe("a report's shape", () => {
   }
 });
 
+/** The site's rate limiters as site/wrangler.jsonc declares them, by binding name. */
+const RATELIMITS = Object.fromEntries(
+  JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8").replace(/^\s*\/\/.*$/gm, "")).ratelimits.map(
+    (/** @type {{ name: string, namespace_id: string, simple: { limit: number, period: number } }} */ r) => [r.name, r],
+  ),
+);
+
+/** A rate limiter that counts by key up to the limit the config gives its binding. @param {string} name */
+function limiter(name) {
+  /** @type {Map<string, number>} */
+  const seen = new Map();
+  return {
+    limit: async (/** @type {{ key: string }} */ { key }) => {
+      seen.set(key, (seen.get(key) ?? 0) + 1);
+      return { success: /** @type {number} */ (seen.get(key)) <= RATELIMITS[name].simple.limit };
+    },
+  };
+}
+
 /** What the inbox would get: the binding keeps each message. */
 function harness(/** @type {Record<string, unknown>} */ more = {}) {
   /** @type {{ from: string, to: string, raw: string }[]} */
   const sent = [];
-  const limits = { ip: 0, all: 0 };
   const env = {
     REPORT_TO: "inbox@example.com",
     TURNSTILE_SECRET: "secret",
@@ -84,8 +102,7 @@ function harness(/** @type {Record<string, unknown>} */ more = {}) {
         Object.assign(this, { from, to, raw });
       }
     },
-    REPORT_RATE: { limit: async () => ({ success: ++limits.ip <= 3 }) },
-    REPORT_CEILING: { limit: async () => ({ success: ++limits.all <= 30 }) },
+    ...Object.fromEntries(Object.keys(RATELIMITS).map((name) => [name, limiter(name)])),
     ...more,
   };
   /** @type {string[]} */
@@ -160,7 +177,7 @@ describe("POST /report", () => {
     assert.equal(subject(parseReport({ ...body, turnstile: "x" }) ?? good()), "[shroom] Feedback from Sam");
   });
 
-  it("refuses a body past 64 KB before reading what it says", async () => {
+  it("refuses a body past 512 KB before reading what it says", async () => {
     const { post, sent } = harness();
     const res = await post("x".repeat(MAX_BYTES + 1));
     assert.equal(res.status, 413);
@@ -188,13 +205,44 @@ describe("POST /report", () => {
     assert.equal((await post(good())).status, 200, "the app's report needs no Turnstile");
   });
 
+  const PAGE = { kind: "feedback", from: "page", answers: ["x"], turnstile: "person" };
+
   it("answers 429 past the rate, and sends nothing", async () => {
-    const { post, sent } = harness();
-    for (let i = 0; i < 3; i++) assert.equal((await post(good())).status, 200);
-    const res = await post(good());
-    assert.equal(res.status, 429);
-    assert.deepEqual(await res.json(), { error: "rate" });
-    assert.equal(sent.length, 3);
+    for (const [door, body] of /** @type {const} */ ([["app", good()], ["page", PAGE]])) {
+      const { post, sent } = harness();
+      const limit = RATELIMITS[LIMITERS[door].rate].simple.limit;
+      for (let i = 0; i < limit; i++) assert.equal((await post(body)).status, 200, door);
+      const res = await post(body);
+      assert.equal(res.status, 429, door);
+      assert.deepEqual(await res.json(), { error: "rate" });
+      assert.equal(sent.length, limit);
+    }
+  });
+
+  it("holds the app's reports to a tighter rate by address than the page's", () => {
+    assert.ok(RATELIMITS[LIMITERS.app.rate].simple.limit < RATELIMITS[LIMITERS.page.rate].simple.limit);
+  });
+
+  it("counts each door against its own ceiling, so one spent leaves the other open", async () => {
+    const { post } = harness();
+    const ceiling = RATELIMITS[LIMITERS.app.ceiling].simple.limit;
+    for (let i = 0; i < ceiling; i++) assert.equal((await post(good(), `198.51.100.${i + 1}`)).status, 200);
+    assert.equal((await post(good(), "203.0.113.1")).status, 429, "the app's ceiling is spent");
+    assert.equal((await post(PAGE, "203.0.113.2")).status, 200, "the page's is its own");
+    assert.equal((await post(PAGE, "198.51.100.1")).status, 200, "and so is its rate by address");
+  });
+
+  it("is off when a door's rate limiters aren't bound, and the other door still sends", async () => {
+    for (const [door, body, other, otherBody] of /** @type {const} */ ([["app", good(), "page", PAGE], ["page", PAGE, "app", good()]])) {
+      for (const name of Object.values(LIMITERS[door])) {
+        const { post, sent } = harness({ [name]: undefined });
+        const res = await post(body);
+        assert.equal(res.status, 503, `${door} without ${name}`);
+        assert.deepEqual(await res.json(), { error: "off" });
+        assert.equal(sent.length, 0);
+        assert.equal((await post(otherBody)).status, 200, `${other} without ${name}`);
+      }
+    }
   });
 
   it("says so when the binding refuses", async () => {
@@ -239,6 +287,12 @@ describe("the site's routes", () => {
     assert.ok(html.includes("5. Was anything on the site unclear"), "renumbered");
     assert.match(html, /import \{ cleanLog \} from "\/clean\.js"/);
     assert.equal(readFileSync(join(out, "clean.js"), "utf8"), readFileSync(new URL("../clean.js", import.meta.url), "utf8"));
+  });
+
+  it("binds every rate limiter the report's doors count against, each in its own namespace", () => {
+    for (const name of Object.values(LIMITERS).flatMap((l) => Object.values(l))) assert.ok(RATELIMITS[name], name);
+    const ids = Object.values(RATELIMITS).map((r) => r.namespace_id);
+    assert.equal(new Set(ids).size, ids.length);
   });
 
   it("names no inbox in the Worker's config", () => {

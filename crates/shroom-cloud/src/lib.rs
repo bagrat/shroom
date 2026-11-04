@@ -333,6 +333,13 @@ impl Cloud {
         self.call("DELETE", &format!("/accounts/{account_id}/workers/scripts/{name}?force=true"), None).map(|_| ())
     }
 
+    /// Deletes a Worker without force: for one this app just made, with nothing on it
+    /// (the email probe's) — Cloudflare refuses rather than take anything with it.
+    pub fn remove_worker(&self, account_id: &str, name: &str) -> Result<(), CloudError> {
+        self.fence("worker", name)?;
+        self.call("DELETE", &format!("/accounts/{account_id}/workers/scripts/{name}"), None).map(|_| ())
+    }
+
     /// Call 4 (read): the account's workers.dev name, or `None` if it has none yet (10007).
     pub fn subdomain(&self, account_id: &str) -> Result<Option<String>, CloudError> {
         match self.call("GET", &format!("/accounts/{account_id}/workers/subdomain"), None) {

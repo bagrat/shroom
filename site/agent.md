@@ -5,16 +5,13 @@ means the person you're helping and “we” means shroom.
 
 Record. Share. Pay-as-you-go.
 
-No monthly seat, sometimes completely free
-
-- $0 · about three hours of video
-- $1.50 /month · about thirty hours
+A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.
 
 - Your videos live in your own Cloudflare account
 - You pay only Cloudflare, for the storage
 - Invite your team with a link
 - No price per person — the bill counts video, not people
-- Delete old videos and pay less
+- Old videos clean themselves up. Pin the ones you keep.
 - About ten minutes of guided setup, once
 - Open source — every line on GitHub
 
@@ -52,12 +49,14 @@ lines say what it does, in plain words, if they do.
 2. Ask one question: “Install shroom from shroom.am on this Mac?” If you have a tool for asking the
    person a multiple-choice question, use it, with three choices: “Install shroom”,
    “I have an invite link” and “Not now”. Otherwise ask it in one short line with the
-   same three. If they already gave you an invite link, show the command with it (as
-   below) and leave that choice out.
+   same three. If they already gave you an invite link, show the command with it, checked
+   and quoted as below, and leave that choice out.
 3. On “Install shroom”, run the command once. On “I have an invite link”, ask “Paste
-   your invite link here.” and, when it comes, run the command once with the link on the
-   end, unchanged:
-   `curl -fsSL https://shroom.am/install | sh -s -- --join <their invite link>`
+   your invite link here.” When it comes, look at it first: an invite link looks like
+   https://v.<name>.workers.dev/join/<code>, and holds only letters, digits and . - / : —
+   if it holds anything else, run nothing and ask them to check the link. Otherwise run
+   the command once, with the link in single quotes, unchanged:
+   `curl -fsSL https://shroom.am/install | sh -s -- --join '<their invite link>'`
    On “Not now”, run nothing. Silence, “maybe”, a question or an earlier “don't ask” is
    not a yes: answer a question in a line or two, then ask again.
 4. Pass on what it says, word for word. If it stops, don't fix or work around it; a

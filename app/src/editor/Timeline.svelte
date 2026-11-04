@@ -696,6 +696,13 @@
   .holding * {
     cursor: grabbing !important;
   }
+  /* The hover's line and the time label follow the pointer on layers of their own: moved,
+     nothing under them is repainted, so they leave nothing behind (WebKit left traces of
+     them, 2026-10-25). */
+  .ghost,
+  .when {
+    will-change: transform;
+  }
   .ghost {
     position: absolute;
     top: 0;

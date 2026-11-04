@@ -9,13 +9,14 @@ import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import worker, { AI_HEAR_PRIME, AI_MODELS, COPY, aiCaptions, aiChapters, aiCleanChapters, aiKeep, aiPiece, aiRefusal, aiSentences, aiTick, aiTitle, aiToEdited, aiToSource, mp4Tracks } from "../src/worker.js";
+import worker, { AI_HEAR_PRIME, AI_MODELS, COPY, aiCaptions, aiChapters, aiCleanChapters, aiKeep, aiPiece, aiRefusal, aiSentences, aiTick, aiTitle, aiToEdited, aiToSource, editsOf, mp4Tracks } from "../src/worker.js";
 import { GONE_MAC, HOST, M1, MHER, MHER_MAC, NOW, OTHER_PARENT_SECRET, OWNER_AIR, OWNER_MAC, REC, SEC, bodyOf, call, cookieFor, goneKey, ledger, metaKey, metaOf, parentProof, space, textOf } from "./space-fixture.js";
 import { PIECE_SECS, adtsFrames, cat, chat, fakeAI, initMp4, pieceMp4, responseOf, script, takeObjects } from "./ai-take.js";
 
 const MIN = 60 * SEC;
 const API = "/_shroom/api/ai";
 const LATER = `.shroom/ai/later/${REC}`;
+const machine = JSON.parse(readFileSync(new URL("../../spec/machine.json", import.meta.url), "utf8"));
 const TRANSCRIPT = `rec/${REC}/ai/transcript.json`;
 const MIDNIGHT = Date.parse("2026-10-03T00:00:00Z"); // the first 00:00 UTC after NOW
 
@@ -707,6 +708,36 @@ describe("captions (B205 e, B208 b, B209 b)", () => {
     for (let i = 0; i < copy.length; i++) expect(copy[i][0]).toBeCloseTo(original[i][0] >= 40 ? original[i][0] - 10 : original[i][0], 2);
   });
 
+  it("follows the cuts the player plays when the edit names no length of its own, or another one", async () => {
+    const cut = SPOKEN.filter((w) => (w.s + w.e) / 2 >= 30 && (w.s + w.e) / 2 < 40).map((w) => w.w);
+    const said = SPOKEN.map((w) => w.w).filter((w) => !cut.includes(w));
+    // The record's own length (150 s) places the edit, as on the page: a list with no
+    // length, a zero one, or a shorter one with no out point still cuts what it cuts.
+    for (const over of [{ source_duration: 0 }, { source_duration: undefined }, { source_duration: 100, out: undefined }]) {
+      const env = await namedSpace({ edits: edits([[30, 40]], 2, over) });
+      const words = cuesOf((await vtt(env)).text).map((c) => c[2].replace(/\n/g, " ")).join(" ").split(" ");
+      expect(words, JSON.stringify(over)).toEqual(said);
+    }
+  });
+
+  it("has no words when the edit leaves nothing to play", async () => {
+    for (const over of [{}, { source_duration: 0 }]) {
+      const env = await namedSpace({ edits: edits([[0, 150]], 2, over) });
+      const { res, text } = await vtt(env);
+      expect(res.status).toBe(200);
+      expect(cuesOf(text), JSON.stringify(over)).toEqual([]);
+      expect(aiKeep(record(env)), JSON.stringify(over)).toEqual([]);
+    }
+  });
+
+  it("is kept only by the viewer's browser, never a shared cache", async () => {
+    const { res } = await vtt(await namedSpace());
+    const cache = res.headers.get("cache-control") ?? "";
+    expect(cache).toMatch(/^private\b/);
+    expect(cache).not.toMatch(/\bpublic\b/);
+    expect(Number(cache.match(/max-age=(\d+)/)?.[1])).toBeLessThanOrEqual(300);
+  });
+
   it("writes a cue's words as text, never markup", () => {
     const text = aiCaptions([["<b>bold</b>", 0, 0.5], ["&", 0.6, 0.8], ["-->", 0.9, 1]], null, false);
     expect(text).toContain("&lt;b&gt;bold&lt;/b&gt; &amp; →");
@@ -768,6 +799,15 @@ describe("edits (B208)", () => {
     expect(aiChapters(meta({ edits: { ...edits([[62, 110]]), source_duration: 180, out: 180 } }))).toEqual([[0, "A"], [72, "C"]]);
   });
 
+  it("places chapters on the cuts the player plays, by the record's own length", () => {
+    const meta = (e) => ({ durationSec: 180, named: { by: "ai", chapters: [[0, "A"], [60, "B"], [120, "C"]] }, edits: { ...edits([[50, 70]]), out: undefined, ...e } });
+    for (const e of [{ source_duration: 0 }, { source_duration: undefined }, { source_duration: 180 }, { source_duration: 120 }]) {
+      expect(aiChapters(meta(e)), JSON.stringify(e)).toEqual([[0, "A"], [50, "B"], [100, "C"]]);
+      expect(aiKeep(meta(e)), JSON.stringify(e)).toEqual(editsOf(meta(e))?.keep);
+    }
+    expect(aiChapters(meta({ cuts: [{ start: 0, end: 180, applied: true }] }))).toEqual([]);
+  });
+
   it("makes the name again after an edit that cuts a fifth of what was said, in the background, once", async () => {
     const env = await namedSpace();
     // Sentences 0–11 (96 of 312 words) go.
@@ -805,6 +845,15 @@ describe("edits (B208)", () => {
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), edits: edits([[42, 65.5]]) }));
     await call(env, "GET", `/${REC}`);
     expect(env.BUCKET.json(LATER)).toMatchObject({ rename: true });
+  });
+
+  it("weighs an edit by the space's own chapters: the owner's fewer ones never queue the naming again (N78)", async () => {
+    const env = await namedSpace();
+    const chapters = { by: "owner", at: new Date(NOW).toISOString(), clock: null, list: [[0, "Mine"], [50, "Also mine"]], off: false };
+    await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), chapters, edits: edits([[140, 150]], 3) }));
+    await call(env, "GET", `/${REC}`);
+    expect(env.BUCKET.json(LATER)).toBeNull();
+    expect(record(env).chapters).toEqual(chapters);
   });
 
   it("never renames over a typed title", async () => {
@@ -886,7 +935,7 @@ const NAMED_LINE = "Named from what you said.";
 async function reloadShows(env, cookie) {
   const html = await (await call(env, "GET", `/${REC}`, { headers: { cookie } })).text();
   const island = html.match(/shroomChapters\(p,(\[\[.*?\]\])\)/)?.[1];
-  const track = html.match(/<track kind="captions" src="([^"]*)"(?: srclang="([^"]*)")?/);
+  const track = html.match(/<video [^>]*?data-cc="([^"]*)"(?: data-cc-lang="([^"]*)")?/);
   return { chapters: island ? JSON.parse(island) : [], captions: track ? { src: track[1].replace(/&amp;/g, "&"), lang: track[2] ?? "" } : null };
 }
 
@@ -901,15 +950,15 @@ function fieldOf(html) {
  * next `/_shroom/named/` answer; `type(v)` is the owner typing; `click()` puts the
  * keyboard in the field. The field's own events are recorded, as a browser fires them. */
 function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(html).autofocus, live = true, playing = "/m/x/master.m3u8" } = {}) {
-  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
+  const script = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/named/"));
   expect(script, "the naming poll is on the page").toBeTruthy();
   // The page's player functions are its own script's, defined beside the poll's.
-  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script>\s*function shroomChapters\(/);
+  expect(html, "the player's chapters and captions can be wired after the page opened").toMatch(/<script[^>]*>\s*function shroomChapters\(/);
   const on = {};
   const named = [];
   /** A stand-in player: its video (playing on), its row with the speed button, what was wired. */
   const el = (tag, attrs = {}) => ({ tag, ...attrs, children: [], appendChild(c) { this.children.push(c); c.parentNode = this; return c; } });
-  const video = el("video", { src: playing, currentSrc: playing, paused: false, currentTime: 12.5 });
+  const video = el("video", { src: playing, currentSrc: playing, paused: false, currentTime: 12.5, attrs: {}, setAttribute(n, v) { this.attrs[n] = String(v); }, getAttribute(n) { return this.attrs[n] ?? null; } });
   const sp = el("button", { className: "sp" });
   const row = el("div", { insertBefore(c, at) { this.children.splice(this.children.indexOf(at), 0, c); c.parentNode = this; return c; } });
   row.children.push(sp); sp.parentNode = row;
@@ -920,7 +969,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   const shroomCaptions = () => { wired.captions++; };
   const docOn = {};
   const document = {
-    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : id === "ns" ? shim : null),
+    title: "", activeElement: null, getElementById: (id) => (id === "t" ? t : id === "ainote" ? note : null),
     addEventListener: (type, fn) => (docOn[type] ??= []).push(fn),
     querySelector: (q) => (q === ".player" && live ? player : null),
     createElement: (tag) => Object.defineProperty(el(tag), "innerHTML", {
@@ -929,6 +978,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   };
   const t = {
     value: value ?? "", placeholder: fieldOf(html).placeholder,
+    getAttribute: (n) => attrs[n] ?? null, hasAttribute: (n) => n in attrs, removeAttribute: (n) => { delete attrs[n]; },
     addEventListener: (type, fn) => (on[type] ??= []).push(fn),
     dispatchEvent: (e) => { if (e.type === "shroom:named") named.push(e.detail); for (const fn of on[e.type] ?? []) fn(e); return true; },
     blur: () => { if (document.activeElement !== t) return; document.activeElement = null; for (const fn of on.blur ?? []) fn({}); },
@@ -936,8 +986,8 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
     select: () => { t.selected = true; },
   };
   const note = { textContent: "", hidden: true };
-  /** The title's shimmer (N82), as the page draws it: there only while the name is on its way. */
-  const shim = /<span class="nameshim" id="ns"/.test(html) ? { hidden: true, style: {}, gone: false, remove() { this.gone = true; } } : null;
+  /** The field's own attributes, as the page draws them: the shimmer's (N84) among them. */
+  const attrs = Object.fromEntries([...(html.match(/<input class="title" id="t"[^>]*>/)?.[0] ?? "").matchAll(/\s([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2].replace(/&amp;/g, "&")]));
   if (focused) document.activeElement = t;
   const timers = [];
   let pending = null;
@@ -947,7 +997,9 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   new Function("document", "fetch", "setTimeout", "CustomEvent", "shroomChapters", "shroomCaptions", script)(document, fetch, (fn) => timers.push(fn), CustomEvent, shroomChapters, shroomCaptions);
   const settled = () => new Promise((ok) => setTimeout(ok, 0));
   return {
-    t, note, shim, document, named, player, timers,
+    t, note, document, named, player, timers,
+    /** Whether the title shimmers now (N84): the field still carries its naming line. */
+    get shimmering() { return "data-naming" in attrs; },
     /** The page's line ending (N82): the finishing line faded, for whatever reason. */
     finished() { for (const fn of docOn["shroom:finished"] ?? []) fn({}); },
     /** The status saying the name is in: whether this script took it, and when it's dressed. */
@@ -992,9 +1044,45 @@ describe("the page (B209)", () => {
   it("puts a Captions button in the player row, off until pressed, and the track it turns on", async () => {
     const env = await namedSpace();
     const html = await live(env);
-    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=0%3A0" srclang="en" label="${COPY.captions}">`));
+    // The track's address rides on the video; the track itself comes once the video has
+    // loaded (a <track> there as it loads makes iOS 27 refuse the video, 2026-11-03).
+    expect(html).toMatch(new RegExp(`<video [^>]* data-cc="/_shroom/cc/${REC}\\?r=0%3A0" data-cc-lang="en"></video>`));
+    expect(html).not.toContain("<track");
     expect(html).toContain(`<button type="button" class="cc" aria-label="${COPY.captions}" aria-pressed="false">`);
     expect(html).toContain("shroomCaptions(p)");
+  });
+
+  // On iOS 27 a <track> on the video as it loads makes the system player refuse the video
+  // itself ("not supported": Play, the big play mark and Fullscreen did nothing; Bagrat's
+  // iPhone, 2026-11-03). The page's own shroomCaptions adds the track only once the video has
+  // its metadata, and only once.
+  it("adds the captions' track only once the video has loaded, so a phone's player takes the video", async () => {
+    const env = await namedSpace();
+    const html = await live(env);
+    const fn = html.match(/function shroomCaptions\(p\)\{[\s\S]*?\}\);set\(on\)\}/)?.[0];
+    expect(fn, "shroomCaptions is on the page").toBeTruthy();
+    const attrs = Object.fromEntries([...html.match(/<video [^>]*>/)[0].matchAll(/\s([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2].replace(/&amp;/g, "&")]));
+    const run = (readyState) => {
+      const on = {};
+      const video = { readyState, children: [], textTracks: Object.assign([], { addEventListener() {} }),
+        getAttribute: (n) => attrs[n] ?? null, querySelector: (q) => (q === "track" ? video.children[0] ?? null : null),
+        appendChild(c) { this.children.push(c); return c; }, addEventListener: (t, f) => (on[t] ??= []).push(f) };
+      const button = { getAttribute: (n) => (n === "aria-label" ? COPY.captions : null), setAttribute() {}, addEventListener() {} };
+      const p = { querySelector: (q) => (q === "video" ? video : q === ".cc" ? button : null) };
+      const document = { createElement: (tag) => ({ tag }) };
+      new Function("document", "localStorage", `${fn};shroomCaptions(arguments[2])`)(document, { getItem: () => null, setItem() {} }, p);
+      return { video, loaded() { for (const f of on.loadedmetadata ?? []) f(); } };
+    };
+    const track = { tag: "track", kind: "captions", src: `/_shroom/cc/${REC}?r=0:0`.replace(":", "%3A"), srclang: "en", label: COPY.captions };
+    // Not yet loaded: no track until the video has its metadata, then exactly one.
+    const before = run(0);
+    expect(before.video.children).toEqual([]);
+    before.loaded();
+    expect(before.video.children).toEqual([track]);
+    before.loaded();
+    expect(before.video.children).toHaveLength(1);
+    // Already loaded (the owner's page dressing a player as it plays): at once.
+    expect(run(1).video.children).toEqual([track]);
   });
 
   it("looks exactly as it did for a video the space never named", async () => {
@@ -1063,7 +1151,7 @@ describe("the page (B209)", () => {
     const COPY = { rev: 2, file: "edit-2.mp4", duration: 140 };
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), edits: { ...edits([[30, 40]], 2), copy: COPY } }));
     let html = await live(env, cookie);
-    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=[^"&]*&amp;e=1"`));
+    expect(html).toMatch(new RegExp(`<video [^>]* data-cc="/_shroom/cc/${REC}\\?r=[^"&]*&amp;e=1"`));
     expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toMatchObject({ copy: `/m/${REC}/edit-2.mp4` });
     // Baked (B197): edit-3.mp4 is the recording now; a newer edit, its copy not up yet, plays
     // the file with its cuts skipped, on the file's own clock.
@@ -1071,8 +1159,8 @@ describe("the page (B209)", () => {
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), durationSec: 150, media: BAKED, bakedFrom: [{ at: "2026-10-03T10:00:00Z", rev: 3, keep: [[0, 150]] }], edits: edits([[30, 40]], 4) }));
     html = await live(env, cookie);
     expect(html).toContain(`/m/${REC}/edit-3.mp4`);
-    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=[^"]*"`));
-    expect(html).not.toMatch(/<track kind="captions" src="[^"]*e=1"/);
+    expect(html).toMatch(new RegExp(`<video [^>]* data-cc="/_shroom/cc/${REC}\\?r=[^"]*"`));
+    expect(html).not.toMatch(/data-cc="[^"]*e=1"/);
     expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toMatchObject({ copy: null });
   });
 
@@ -1145,8 +1233,10 @@ describe("the page (B209)", () => {
     await p.answer(full());
     // The bar cut into its chapters, once.
     expect(p.player.wired.chapters).toEqual([CHAPTERS]);
-    // The captions' track on the video, the Captions button before the speed, wired once.
-    expect(p.player.video.children).toEqual([expect.objectContaining({ tag: "track", kind: "captions", src: CAPTIONS.src, srclang: "en", label: COPY.captions })]);
+    // The captions' address on the video (shroomCaptions adds the track once it has loaded),
+    // the Captions button before the speed, wired once.
+    expect(p.player.video.attrs).toEqual({ "data-cc": CAPTIONS.src, "data-cc-lang": "en" });
+    expect(p.player.video.children).toEqual([]);
     expect(p.player.row.children.map((c) => c.className)).toEqual(["cc", "sp"]);
     expect(p.player.row.children[0]).toMatchObject({ label: COPY.captions, pressed: "false" });
     expect(p.player.wired.captions).toBe(1);
@@ -1160,14 +1250,14 @@ describe("the page (B209)", () => {
   it("the captions follow the clock of what plays: an edit's own copy takes the edited one", async () => {
     const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
     await p.answer(full({ copy: `/m/${REC}/edit-3.mp4` }));
-    expect(p.player.video.children[0].src).toBe(`${CAPTIONS.src}&e=1`);
+    expect(p.player.video.getAttribute("data-cc")).toBe(`${CAPTIONS.src}&e=1`);
   });
 
   it("a baked recording's own file plays on its own clock, whatever its name (review of B241)", async () => {
     // A baked video plays `edit-3.mp4` as the recording, a newer edit's cuts skipped as it plays.
     const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
     await p.answer(full({ copy: null }));
-    expect(p.player.video.children[0].src).toBe(CAPTIONS.src);
+    expect(p.player.video.getAttribute("data-cc")).toBe(CAPTIONS.src);
   });
 
   // Review of B241: a voice cut lands after the name (the Mac plans its cuts from the finished
@@ -1242,7 +1332,8 @@ describe("the page (B209)", () => {
 
 // Bagrat's re-check of 0.1.33-early.1, 2026-10-25: the chapters and captions came after the
 // finishing spinner had gone. N82: the line lasts until the name is in, and the empty title
-// shimmers while it's on its way; a typed title still takes the chapters and captions.
+// shimmers while it's on its way (N84: the whole title, borderless, with its line); a typed
+// title still takes the chapters and captions.
 describe("the name on its way (N82)", () => {
   const live = async (env, cookie) => { const res = await call(env, "GET", `/${REC}`, cookie ? { headers: { cookie } } : {}); expect(res.status).toBe(200); return res.text(); };
   /** A take that went live a minute ago in a space that listens, its cues planned (none), not yet named. */
@@ -1286,29 +1377,43 @@ describe("the name on its way (N82)", () => {
     expect(lineOf(await live(named, cookieFor(M1, OWNER_MAC)))).toMatch(/ hidden/);
   });
 
-  it("the empty title shimmers while the name is on its way, and the page doesn't open in the field", async () => {
+  /** The spec's lines for the title while the name is on its way (N84). */
+  const naming = (id) => { const l = machine.states.hearing.said.find((x) => x.id === `hearing.${id}`); expect(l, id).toBeTruthy(); return l.text; };
+  const tagOf = (html) => html.match(/<input class="title" id="t"[^>]*>/)?.[0] ?? "";
+
+  it("the empty title shimmers whole, borderless, with its line while the name is on its way, and the page doesn't open in it (N84)", async () => {
     const { html } = await freshPage();
-    expect(html).toContain('<span class="nameshim" id="ns" aria-hidden="true" hidden></span>');
-    expect(html).toContain(".nameshim{");
-    expect(fieldOf(html)).toMatchObject({ value: "", autofocus: false });
+    const tag = tagOf(html);
+    expect(fieldOf(html)).toMatchObject({ value: "", placeholder: naming("ai-is-naming"), autofocus: false });
+    expect(tag).toContain(` data-naming="${naming("naming")}"`);
+    expect(tag).toMatch(/ data-date="Untitled — Oct \d+"/);
+    // No border, no fill: the gradient slides across the whole title until it's clicked.
+    const css = html.match(/\.title\[data-naming\]:not\(:focus\)\{[^}]*\}/)?.[0] ?? "";
+    expect(css).toContain("border-color:transparent");
+    expect(css).toContain("animation:shroom-shim");
+    expect(html).not.toContain("nameshim");
     // Not on a typed title, an early one in the field, a named take, words waiting for the free day, or past its five minutes.
     for (const over of [{ titled: true, title: "Mine" }, { named: { by: "ai", early: true, title: "Spring", chapters: [] }, title: "Spring" }, { naming: { later: "daily", at: new Date(NOW).toISOString() } }, { publishedAt: new Date(NOW - 6 * MIN).toISOString() }]) {
-      expect((await freshPage(over)).html, JSON.stringify(over)).not.toContain('id="ns"');
+      const other = (await freshPage(over)).html;
+      expect(tagOf(other), JSON.stringify(over)).not.toContain("data-naming");
+      expect(other).not.toContain(naming("ai-is-naming"));
     }
-    expect(await live(await namedSpace(fresh()), cookieFor(M1, OWNER_MAC))).not.toContain('id="ns"');
+    expect(tagOf(await live(await namedSpace(fresh()), cookieFor(M1, OWNER_MAC)))).not.toContain("data-naming");
   });
 
   it("a viewer's page never shimmers nor waits", async () => {
     const { env } = await freshPage();
     const html = await live(env);
-    for (const s of ['id="ns"', ".nameshim{", "/_shroom/named/", 'id="ul"']) expect(html).not.toContain(s);
+    for (const s of ["data-naming", naming("ai-is-naming"), "/_shroom/named/", 'id="ul"']) expect(html).not.toContain(s);
   });
 
-  it("the shimmer shows once placed, and a click in the field drops it at once and takes typing", async () => {
+  it("a click in the title drops the shimmer and its line at once: the box takes typing, the date its placeholder (N84)", async () => {
     const p = namingScript((await freshPage()).html);
-    expect(p.shim.gone).toBe(false);
+    expect(p.shimmering).toBe(true);
+    const date = p.t.getAttribute("data-date");
     p.click();
-    expect(p.shim.gone).toBe(true);
+    expect(p.shimmering).toBe(false);
+    expect(p.t.placeholder).toBe(date);
     p.type("My own");
     await p.answer({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [], captions: null });
     expect(p.t.value).toBe("My own");
@@ -1316,11 +1421,14 @@ describe("the name on its way (N82)", () => {
 
   it("the shimmer stops with the line, whether a name came or not", async () => {
     const p = namingScript((await freshPage()).html);
+    const date = p.t.getAttribute("data-date");
     p.finished();
-    expect(p.shim.gone).toBe(true);
+    expect(p.shimmering).toBe(false);
+    expect(p.t.placeholder).toBe(date);
     const q = namingScript((await freshPage()).html);
     await q.answer({ named: "Planning the spring launch", titled: false, later: false, early: false, done: true, chapters: [], captions: null });
-    expect(q.shim.gone).toBe(true);
+    expect(q.shimmering).toBe(false);
+    expect(q.t.value).toBe("Planning the spring launch");
   });
 
   it("when the status says the name is in, the script asks at once and lets the line fade once the player is dressed", async () => {

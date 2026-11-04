@@ -4,7 +4,7 @@
 
 The machine: every state, edge, rule, said-line and law of shroom v1 — the spec (DECISIONS B133). Sessions edit it; MACHINE.md and the canvas's machine boards are generated from it.
 
-167 states · 354 edges · 26 rules · 779 said-lines · 16 laws · 93 ledger rows.
+168 states · 357 edges · 26 rules · 823 said-lines · 16 laws · 100 ledger rows.
 
 Status: **ratified** is Bagrat's; **provisional** is designed or built and awaits him (each cites its row: `#n` is a DEVIATIONS row of docs/DECISIONS.md, `Bn` a decision, `Nn`/`Un`/`Pn` a ledger row below). `SM:n` in older citations is a line of the retired spec text, kept in history/spec/UX-STATEMACHINE.md.
 
@@ -30,28 +30,33 @@ States are kebab-case, stable, scaffold-grade names; events are written in bold,
 
 ### `landing`
 
-web-page · web-page · **ratified** · board: Landing · cites P17, N6, N7, N11, U6, U3, B140, N55, N58, N59, N61, N70
+web-page · web-page · **ratified** · board: Landing · cites P17, N6, N7, N11, U6, U3, B140, N55, N58, N59, N61, N70, N86, N88
 
-shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. Two columns on a laptop (N59). Left: the shroom mark and wordmark, large; the headline on one line and its line under it; one thin price bar, 0 to 30 hours to scale, as wide as the headline, $0 for the first tenth and $1.50 a month at its end; then seven terms with green ticks. Right: one box, its top level with the wordmark's baseline and its bottom with the last term's: the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70), a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70), a cut, and Install under that (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). No header: the page's foot, at the bottom of the first screen under the left column, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks, terms before the video and install last: the brand, the headline and its line, the bar (its labels short: “$0 / 3h video”, “$1.50 / 30h”), the terms, the box (the hero, Setup walkthrough, then install), the foot, its links wrapping.
+shroom.am, a static page with one job: take a curious visitor to a pasted command, with no false notes. On a laptop one 12-column grid with one gutter (N59, N86). The masthead sits on the grid's edges: the shroom mark and wordmark, large, at the left; at the right the headline on one line, a little smaller, its middle on the wordmark's middle, with no line under it (Bagrat, 2026-10-25); a rule under them. Under it two stacks that end on one line. Left, seven columns: a tile with the hero, shroom recorded with shroom (“2 min”, shroom.am's own file, playing in place: a still of the editor after the take's cuts with a play button and the length, the video under it, no caption; N58, N61, N70) and a small Setup walkthrough button under it that opens “How to set up and use shroom” over the page (N70); under it Install in its own tile (Terminal, Homebrew and Coding agent tabs, Terminal first; each command with [ Copy ]; Read it first; the system-requirements line). Right, five columns: the price in its own box (what Cloudflare would charge a month, one slider and the cleanup choice, a busy team's month as its last line; N86), then the seven terms in a tile under a small-capitals title, each with its own icon on a blue chip, the last one ending in a link to sponsor shroom (N86). Whichever stack is shorter grows to meet the other: install's tile on the left, the terms' tile on the right; the video always shows whole, never cropped (Bagrat, 2026-10-25). Under both stacks, across the grid, a band for companies, coming soon (N88): “Company sign-in”, a lead and four points with icons in seven columns, and in five a box with the early price and a signup for one email when it's ready. No header: the page's foot, at the bottom of the first screen, holds Send feedback, GitHub, Questions and limits, Privacy and Terms, then the visits line. On a phone it stacks: the brand, the headline and its line, the hero and Setup walkthrough, the price box, install, the terms, the company sign-in band (the box under its words), the foot, its links wrapping.
 
 **Entry.** A visitor arrives at shroom.am through one of three entry arrows. (1) Direct: HN, README or word of mouth; a cold visitor who needs the pitch. (2) The recipient loop: they watched a shroom video and clicked the player page's mark (Region 4; whether the mark exists = U3); a warm visitor who already saw the product work. (3) An agent fetching the BYO-agent skill (Region 6's overlay). Also reached by going back from the source view.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Record. Share. Pay-as-you-go.” | title | ratified | Hero punchline, first line, bold. Bagrat's own wording (B140, 2026-10-14), replacing “Screen recordings without the monthly seat.” |
-| “No monthly seat, sometimes completely free” | line | ratified | Hero punchline, second line, with no closing period, as he wrote it (B140). |
-| “$0 · about three hours of video” | other | ratified | The price bar's left label on a laptop: one thin bar from 0 to 30 hours, true to scale, its first tenth lit (the free part). '$0' is bold, in frost. It replaces the first of the two price tiles, which read as two plans. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “$0 /month — about three hours of video” · N59 |
-| “$1.50 /month · about thirty hours” | other | ratified | The price bar's right label on a laptop, under its end. '$1.50 /month' is bold. Words, not numerals, on the landing; the welcome deliberately uses numerals (Law 16, N12). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “$1.50 /month — about thirty hours” · N59 |
-| “$0 / 3h video” | other | ratified | The price bar's left label on a phone. '$0' is bold, in frost. Numerals here, against Law 16's words-on-the-landing, by his own wording: it must fit on one line beside the right label. Bagrat's phone note, 2026-10-17 (N59): the long label wrapped at 390 wide. · N59 |
-| “$1.50 / 30h” | other | ratified | The price bar's right label on a phone. '$1.50' is bold ($1.50, not his “$1.5”, to match the laptop's label). Bagrat's phone note, 2026-10-17 (N59): the long label wrapped at 390 wide. · N59 |
-| “Your videos live in your own Cloudflare account” | line | ratified | Term 1 of 7, under the price bar; green tick. 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Your videos live in your own Cloudflare account — we never hold them.” · N59 |
+| “What would it cost?” | title | ratified | The price box's heading, small capitals, at the top of the right-hand stack, in place of the price bar under the headline; the price comes right under it (Bagrat, 2026-10-24). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · was “$0 · about three hours of video” · N86 |
+| “Video a month” | other | ratified | The slider's label, its amount at the right: 30 min, 1 hour, 2, 3, 5, 10, 20, 30, 50, 100 hours, opening at 1 hour (Bagrat, 2026-10-24: hours of video, since lengths vary). Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · N86 |
+| “Auto-cleanup after” | other | ratified | Bagrat's own words (2026-10-24), over three choices that take the box's width, “30 days”, “60 days” and “a year”, opening at 30 days, so the box opens at $0.00. 30 days counts as a month. This line goes live with the release that ships auto-cleanup. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · was “Keep videos” · N86 |
+| “30 days” | button | ratified | One of the three “Auto-cleanup after” choices, chosen when the page opens. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · N86 |
+| “60 days” | button | ratified | One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · N86 |
+| “a year” | button | ratified | One of the three “Auto-cleanup after” choices. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · N86 |
+| “a month” | other | ratified | Beside the price, a large figure in dollars, never cents (Bagrat, 2026-10-24: “93¢” can read as 93 dollars): “$0.00” in frost while inside Cloudflare's free 10 GB, else “$0.45”, “$11.85” and so on. The figure varies, so it isn't a said-line. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · N86 |
+| “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” | line | ratified | The price box's last line, in place of a note on Cloudflare's free 10 GB (Bagrat, 2026-10-24: he liked the box and asked for the team line there; earlier he chose a team row at an hour each). 20 hours a month is about 67 GB: $0.85 a month with 30-day cleanup; kept a year, 800 GB: $11.85. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · N86 |
+| “Why shroom?” | title | ratified | The terms' tile's title, in the price box's label style (small capitals), over the seven terms. Bagrat asked for a title there and chose “Why shroom?” (2026-10-25), over “What you get” and “How it works”: it pairs as a question with “What would it cost?” (N86). · N86 |
+| “Your videos live in your own Cloudflare account” | line | ratified | Term 1 of 7, in the terms' tile under the price box (N86); its icon a cloud with a lock (N86). 'your own Cloudflare account' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Your videos live in your own Cloudflare account — we never hold them.” · N59 |
 | “You pay only Cloudflare, for the storage” | line | ratified | Term 2 of 7. 'only Cloudflare' is bold. Drops “No account with us, no subscription.” from the page (the search description keeps it). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “You only ever pay Cloudflare. No account with us, no subscription.” · N59 |
 | “Invite your team with a link” | line | ratified | Term 3 of 7. 'Invite your team' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Your team just accepts an invite and records — no Cloudflare setup for them.” · N59 |
 | “No price per person — the bill counts video, not people” | line | ratified | Term 4 of 7, new: the bill doesn't grow with the team. 'No price per person' is bold. Draft (a) of three on the board; Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · N59 |
-| “Delete old videos and pay less” | line | ratified | Term 5 of 7. 'Delete old videos' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Delete old videos and pay less — storage is the whole bill.” · N59 |
+| “Old videos clean themselves up. Pin the ones you keep.” | line | ratified | Term 5 of 7. 'Old videos clean themselves up.' is bold. Auto-cleanup (off by default; 15, 30 or 60 days after last watched; pinned videos stay) is Bagrat's yes of 2026-10-24; this line goes live with the release that ships it. Approved by Bagrat with the board “Bento A, aligned” (2026-10-25). · was “Delete old videos and pay less” · N59, N86 |
 | “About ten minutes of guided setup, once” | line | ratified | Term 6 of 7. 'ten minutes' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “You set Cloudflare up once, in a guided setup — about ten minutes.” · N59 |
 | “Open source — every line on GitHub” | line | ratified | Term 7 of 7, moved from the trust strip, which is gone. 'Open source' is bold. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Open source — Every line on GitHub — the app, the installer, the player.” · N59 |
-| “Install in one line” | title | ratified | The install block's heading, bold, inside the box under the video, the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · N59 |
+| “Sponsor it” | text-link | ratified | At the end of term 7, after “ · ”, with a small heart before it: opens github.com/sponsors/bagrat in the same tab. Bagrat chose this place on 2026-10-25 (board “shroom.am — sponsoring, three places”, B, no tiers at first); it went live once his GitHub Sponsors page did, 2026-10-27. The agent page leaves it out: it's for a person, not an install (N86). · N86 |
+| “Install in one line” | title | ratified | The install block's heading, bold, in its own tile under the video's (N86), the three tabs at its right. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · N59 |
 | “Terminal” | button | ratified | The install block's first tab, chosen when the page opens: the install line with its Copy. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Or without it:” · N52, N59 |
 | “Homebrew” | button | ratified | The install block's second tab: the Homebrew line with its Copy (N52's line, now a tab). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “With Homebrew:” · N52, N59 |
 | “Coding agent” | button | ratified | The install block's third tab: the agent line with its Copy, then Read it first and the ask-first line. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Or ask your coding agent” · N59 |
@@ -61,8 +66,26 @@ shroom.am, a static page with one job: take a curious visitor to a pasted comman
 | “Read it first” | line | ratified | Under the install line (and the agent line): a link alone. It opens the same address as readable source (/install), or the page the agent reads (/agent). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Read it first — the same address opens as readable source.” · N59 |
 | “Your agent asks you before it runs anything.” | line | ratified | Beside Read it first under the agent line, in the Coding agent tab. The agent page's frame in a browser keeps its own line (landing.this-is-what-your). Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “Read it first — the same address shows what your agent will read. Your agent asks you before it runs anything.” · N59 |
 | “For macOS 14 or newer, Apple silicon.” | line | ratified | The sentence shape is ratified. The floor ('14') and the Intel stance are scaffold-time facts (SCK matrix): fill in the facts, don't reword. · was “For macOS 14 or newer, Apple silicon and Intel.” · B7, B44, copy table, B134 |
+| “For companies · coming soon” | label | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): its eyebrow, in small capitals over the heading. · N88 |
+| “Company sign-in” | heading | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): its heading. · N88 |
+| “Teams already work for free: you invite each person with a link, and remove them by hand when they leave. Company sign-in does both for you.” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the lead, under the heading. · N88 |
+| “No invites. Your team signs in with their Google Workspace account, and they’re in.” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 1, its first sentence bold; a door icon. · N88 |
+| “Leavers are out on their own. Remove someone’s Google account, and their shroom access ends with it.” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 2, its first sentence bold; a person crossed out. · N88 |
+| “Videos only your company can watch. Mark a video so it opens only for people signed in with your company’s Google account.” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 3, its first sentence bold; a lock. · N88 |
+| “Still your own Cloudflare. Your videos never pass through us.” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): point 4, its first sentence bold; a cloud. · N88 |
+| “$59 a month per space, any number of people” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the box's first line, “$59” large. An early price. · N88 |
+| “Early price. Nothing to pay until it’s ready.” | line | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): under the price. · N88 |
+| “Want it for your team?” | field-label | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the address field's label. · N88 |
+| “you@company.com” | placeholder | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the address field's placeholder. · N88 |
+| “Tell me when it’s ready” | button | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): sends the address to shroom.am/teams, once it looks like one. · N88 |
+| “One email when it’s ready, and nothing else.” | note | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): under the field; an error takes its place. · N88 |
+| “Sending…” | status | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): the button while the address goes, dimmed. · N88 |
+| “Thanks. We’ll write to <address> once, when it’s ready.” | status | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): sent: the signup gives way to this one line, a green tick before it; <address> is what was typed, bold. · N88 |
+| “That doesn’t look like an email address.” | status | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): in the note's place, checked in the page before anything is sent (or the site refused its shape); the field's edge turns red. · N88 |
+| “That didn’t go through. Try again, or write to hi@shroom.am.” | status | ratified | The company sign-in band (N88; Bagrat approved the boards LandingTeams, LandingTeamsPhone and LandingTeamsStates with their words, 2026-10-30): in the note's place when the site didn't take it (off, too many, or the email failed); hi@shroom.am is a mail link. · N88 |
+| “Want it for your team? Write to hi@shroom.am, and we’ll tell you when it’s ready.” | line | ratified | The box without script, in the signup's place (N88). Written in the build; approved by Bagrat as written, 2026-10-30. · N88 |
 | “Send feedback” | link | ratified | The first link of the page's foot (it was the header's, beside GitHub); it opens shroom.am/feedback (N53). Ratified by Bagrat, 2026-10-17 (N55); moved by N59. · N55, N59 |
-| “Send feedback · GitHub · Questions and limits · Privacy · Terms” | line | ratified | The page's foot: one row of links under the left column, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “shroom · Trouble, questions” · N55, N59 |
+| “Send feedback · GitHub · Questions and limits · Privacy · Terms” | line | ratified | The page's foot: one row of links under the tiles, at the bottom of the first screen (after the content when it runs longer); the visits line under it. The header is gone, so Send feedback and GitHub live here. “Trouble, questions” is gone: it opened /feedback, as Send feedback does. The other shroom.am pages keep their header and footer. Bagrat approved the board “shroom.am redesign — B8-box”, 2026-10-17 (N59). · was “shroom · Trouble, questions” · N55, N59 |
 | “shroom — Record. Share. Pay-as-you-go.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The landing's browser title and link-preview title · copy table |
 | “Screen recordings that live in your own Cloudflare account. No account with us, no subscription.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The landing's search description · copy table |
 | “This is what your coding agent reads when you ask it to install shroom — word for word.” | line | ratified | one case the spec didn't print, so it varies by case — the copy table: The landing's agent door (`landing`, Install block, below the install line) and the agent page's frame in a browser. **Ratified by Bagrat** (2026-10-14) · copy table |
@@ -76,6 +99,8 @@ shroom.am, a static page with one job: take a curious visitor to a pasted comman
 | Send feedback | text-link |  | `landing` | Opens shroom.am/feedback, the feedback page (N53), which the spec draws no state for. The page's foot, first (N55, moved by N59). |
 | watch the hero | other |  | `landing` | The hero plays in place on the landing: the still fades and the video plays under it; the page never navigates away (N58, N61, N70). |
 | Setup walkthrough | secondary |  | `landing` | Opens “How to set up and use shroom” over the page and plays it (the hero pauses); Esc, Close or a click outside it closes it. The page never navigates away (N70). |
+| Sponsor it | text-link |  | `landing` | Opens github.com/sponsors/bagrat, outside shroom. At the end of the open-source term (N86). |
+| Tell me when it’s ready | filled-default |  | `landing` | Checks the address in the page, then posts it to shroom.am/teams, which emails it once to the inbox that reads reports and keeps nothing. The box shows Sending…, then the sent line, or why it didn't go (N88). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -224,10 +249,11 @@ The installer's launch presents shroom as a normal macOS app, with a dock icon a
 |---|---|---|---|---|
 | `welcome` | flow | first launch only | ratified |  |
 | `member-welcome` | flow | the install command carried --join on a fresh Mac: the app opens at member-welcome instead of welcome (Region 6 member lane, N30, designed 2026-09-30, awaiting ratification) | provisional |  |
+| `idle-unprovisioned` | flow | --agent: no window | ratified | N89 |
 
 ### `welcome`
 
-state · window · **ratified** · board: Welcome · cites U1, U4, N12, N21, N30, N41, B159, B160
+state · window · **ratified** · board: Welcome · cites U1, U4, N12, N21, N30, N41, B159, B160, N89
 
 The centered welcome window (U1 + U4). It says what shroom is and what it costs, names the two steps ahead, shows the pre-checked login box, and offers [ Set up my space ] [ Later ]. It is the same ratified window on first launch and on any later day, from idle-unprovisioned's tray click. Set up my space morphs this same window into the wizard: one continuous onboarding surface, never a second window. Closing it ≡ Later, so there is no trap. There is no invite line (B159, which replaces N30's door): an invite link pasted anywhere in the window (⌘V) goes to member-welcome, a Cloudflare token goes to the wizard at `token`, and anything else does nothing. Quiet at its foot, where the line was, is Uninstall shroom… (B160): a Mac with no space has no Settings, so the welcome is where it uninstalls.
 
@@ -241,6 +267,8 @@ The centered welcome window (U1 + U4). It says what shroom is and what it costs,
 | “Set up my space” | button | ratified | The filled button (bold), placed first: the ratified welcome pair puts its filled action first (Law 8's exception). |
 | “Later” | button | ratified | Second button, not filled. |
 | “Uninstall shroom…” | link | ratified | Quiet text at the foot, left, where “Have an invite link?” was (B160; Bagrat, 2026-10-15). Opens uninstall-confirm over this window. |
+
+**The agent says** (`shroom setup`, N89) · ratified: “Your videos will live in your own Cloudflare account. Do you have one already?” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board). The welcome is passed by: the command's first ask is Set up my space, without the login item (N89), so the agent opens at account's line.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -360,7 +388,7 @@ The install line asked to uninstall, for a Mac whose shroom won't open: `curl -f
 
 ### `account`
 
-state · window · **ratified** · board: WizardAccount · cites U1, N13, N14, N17, N19, N45
+state · window · **ratified** · board: WizardAccount · cites U1, N13, N14, N17, N19, N45, N89
 
 The wizard's first screen: the plan panel (six rows, row one current) over a clean fork asking whether the user already has a Cloudflare account. The plan itself pre-warns both gates (box 1 = the sign-in gate, the card row = the card gate). The plan panel persists over every wizard state; its rows are recorded here, as the spec quotes them at this screen.
 
@@ -379,6 +407,8 @@ The wizard's first screen: the plan panel (six rows, row one current) over a cle
 | “Not yet — take me there” | button | ratified |  |
 | “I have one” | button | ratified | Filled default, rightmost per macOS. |
 
+**The agent says** (`shroom setup`, N89) · ratified: “Your videos will live in your own Cloudflare account. Do you have one already?” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
+
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Not yet — take me there | secondary |  | `account-signing-up` | Opens Cloudflare's signup in the browser. |
@@ -391,7 +421,7 @@ The wizard's first screen: the plan panel (six rows, row one current) over a cle
 
 ### `account-signing-up`
 
-state · window · **ratified** · cites N19, N14, N45
+state · window · **ratified** · cites N19, N14, N45, N89
 
 After 'Not yet' opens Cloudflare's signup, the account row's nest acknowledges the browser trip (reverses N13's no-morph). Account creation stays self-reported.
 
@@ -402,6 +432,8 @@ After 'Not yet' opens Cloudflare's signup, the account row's nest acknowledges t
 | “Cloudflare's signup is open in your browser. Finish there, then confirm your email from the message they send — they make no token until you do. I'll wait.” | line | ratified | N45 (replaces “…finish there, I'll wait.”). Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
 | “Take me there again” | button | ratified |  |
 | “I signed up” | button | ratified | Filled continue. |
+
+**The agent says** (`shroom setup`, N89) · ratified: “Cloudflare's sign-up is open in your browser. Finish there and confirm your email from their message, then tell me.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -415,7 +447,7 @@ After 'Not yet' opens Cloudflare's signup, the account row's nest acknowledges t
 
 ### `token`
 
-state · window · **ratified** · board: Wizard · cites N14, N18, N42, N45
+state · window · **ratified** · board: Wizard · cites N14, N18, N42, N45, N89
 
 Row two current. Instruction line, the filled Create token in Cloudflare button (the only browser trigger, serving first visit and every retry), then the paste field. Never auto-opens the browser. Paste validates the moment it lands — no Continue button. Pipeline: shape/prefix check → verify endpoint → probe by use. On pass the token is written to ~/.shroom/ (mode 600) before wiring begins.
 
@@ -427,6 +459,8 @@ Row two current. Instruction line, the filled Create token in Cloudflare button 
 | “Create token in Cloudflare” | button | ratified | Filled. |
 | “Paste your token” | placeholder | ratified | Paste field placeholder. |
 | “Cloudflare won't make it yet? Confirm your email first — their message is in your inbox.” | line | ratified | N45: quiet, under the paste field — only on the sign-up path (reached by I signed up), until a paste lands. Ratified by Bagrat, 2026-10-15 (on the canvas's setup-fixes boards). |
+
+**The agent says** (`shroom setup`, N89) · ratified: “Next, one access token for shroom. The page is pre-filled — two narrow permissions. Create it, press Copy, and tell me — not the token itself.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -445,7 +479,7 @@ Row two current. Instruction line, the filled Create token in Cloudflare button 
 
 ### `token-garbled`
 
-failure-state · window · **ratified** · cites N18, N14
+failure-state · window · **ratified** · cites N18, N14, N89
 
 Garbled or truncated paste caught by the pre-network shape/prefix check; rendered under the token row.
 
@@ -454,6 +488,8 @@ Garbled or truncated paste caught by the pre-network shape/prefix check; rendere
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Tokens sometimes lose characters in the copy — copy it once more.” | line | draft | Appears only in the failure-classification table, which carries no copy-ratified mark (see open notes). |
+
+**The agent says** (`shroom setup`, N89) · ratified: “That copy lost some characters — press Copy once more and tell me.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -466,7 +502,7 @@ Garbled or truncated paste caught by the pre-network shape/prefix check; rendere
 
 ### `token-wrong-powers`
 
-failure-state · window · **ratified** · cites N18, N14
+failure-state · window · **ratified** · cites N18, N14, N89
 
 A real token that lacks the needed powers, caught by probe-by-use (never by echo); the line points back at the create button already on screen.
 
@@ -475,6 +511,8 @@ A real token that lacks the needed powers, caught by probe-by-use (never by echo
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “This token can't manage your video space — create a fresh one and paste that.” | line | draft | Only in the failure-classification table; N14 says the wrong-powers line points back at the create button. See open notes on copy status. |
+
+**The agent says** (`shroom setup`, N89) · provisional: “This token can't manage your video space — create a fresh one on the same page, press Copy, and tell me.” — Not drawn on the board: the build's line for a step the board names only as “the window's own line” (provisional, N89). The window's line, with the agent's Copy.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -509,7 +547,7 @@ The token state as the repair mood renders it when the token was revoked or expi
 
 ### `token-pick-account`
 
-state · window · **provisional** · board: WizardPickAccount · cites N42
+state · window · **provisional** · board: WizardPickAccount · cites N42, N89
 
 Not a failure: the verified token reaches two or more Cloudflare accounts, so the nest asks which one holds the videos before anything is created. The choice is the space's, for good. One account → this never appears.
 
@@ -520,6 +558,8 @@ Not a failure: the verified token reaches two or more Cloudflare accounts, so th
 | “This token works for more than one Cloudflare account — which one should hold your videos?” | line | provisional | Soft-wrapped in spec; joined. |
 | “Use this account” | button | provisional | Filled. |
 | “✓ A Cloudflare account — Bagrat's Account” | status | provisional | Row one's fact after the choice; the account name varies. |
+
+**The agent says** (`shroom setup`, N89) · provisional: “This token works for more than one Cloudflare account — which one should hold your videos?” — The window's own line for this step, said by the agent (N89). Not drawn on the board. The command lists the accounts by name after it.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -554,7 +594,7 @@ Repair mood only: a pasted token belongs to a different Cloudflare account than 
 
 ### `card`
 
-state · window · **ratified** · board: WizardCard · cites N14, N74
+state · window · **ratified** · board: WizardCard · cites N14, N74, N89
 
 The visible gate step under the plan's card row. One probe pass runs at paste-validate (write-class probe, R2-enabled probe, subdomain GET); its gates surface here, email first then card. Existing-R2 accounts tick the row silently, seeing neither gate. Since N74 the check shows its four parts under the card row as they run — the token, the email gate, storage (the card gate), then the look for a link name and an earlier space — each ticking only when its own probe answers; the part underway carries its running clock (spinning rows only, never a done or a coming one). The same parts show when a relaunch re-runs the check.
 
@@ -573,6 +613,8 @@ The visible gate step under the plan's card row. One probe pass runs at paste-va
 | “Looking for your link name and any earlier space…” | line | provisional | N74: part 4 of the check, underway: its spinner, and its running clock once it has run a second. Not drawn on the board; the build's form of a drawn line (provisional, N74). |
 | “Looking for your link name and any earlier space” | line | ratified | N74: part 4 of the check, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
+**The agent says** (`shroom setup`, N89) · provisional: “One moment — shroom is checking your token and your Cloudflare account.” — Not drawn on the board: the build's line for a step the board names only as “the window's own line” (provisional, N89).
+
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `gate-email` | fail | 403 8000077 | ratified |  |
@@ -583,7 +625,7 @@ The visible gate step under the plan's card row. One probe pass runs at paste-va
 
 ### `gate-email`
 
-failure-state · window · **ratified** · cites N14, N18
+failure-state · window · **ratified** · cites N14, N18, N89
 
 Cloudflare's email-verification gate under the card row; auto-polls with a spinner (the only progress surface, no refresh affordance). Mostly greets fresh email signups.
 
@@ -593,6 +635,8 @@ Cloudflare's email-verification gate under the card row; auto-polls with a spinn
 |---|---|---|---|
 | “Cloudflare wants your email verified before it opens storage. Check your inbox for their message — I'll notice the moment it's done and carry on.” | line | ratified | Soft-wrapped in spec; joined. |
 
+**The agent says** (`shroom setup`, N89) · provisional: “Cloudflare wants your email verified before it opens storage. Check your inbox for their message, then tell me.” — Not drawn on the board: the build's line for a step the board names only as “the window's own line” (provisional, N89). The window's line, its watch said as the agent's.
+
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `card` | auto | auto-poll clears | ratified |  |
@@ -600,7 +644,7 @@ Cloudflare's email-verification gate under the card row; auto-polls with a spinn
 
 ### `gate-card`
 
-failure-state · window · **ratified** · cites N14, N18, N42, N45, N74
+failure-state · window · **ratified** · cites N14, N18, N42, N45, N74, N89
 
 The card gate under the card row. The button opens Cloudflare's own billing page (shroom never sees payment data); a spinner marks the auto-poll watch. Also the repair mood's state when the card is removed / storage switched off.
 
@@ -615,6 +659,8 @@ The card gate under the card row. The button opens Cloudflare's own billing page
 | “Waiting for Cloudflare to confirm your card is in place…” | line | ratified | N74: once Add credit card was clicked, under its quiet line: the watch, its spinner and its running clock from the click. Bagrat's words, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 | “A new card can take Cloudflare a minute or so to count. Once it's added, I'll move on — hang tight!” | line | ratified | N74: quiet, under the watch, from 45 s after the click. Its second sentence Bagrat's, in the window's one voice, 2026-10-25. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
+**The agent says** (`shroom setup`, N89) · ratified: “One step on Cloudflare's side: adding a card switches storage on. The free tier stays free — the card is their rule, not a charge.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
+
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Add credit card | filled-default | ↵ |  | Opens Cloudflare's billing page (card or PayPal); no transition — the spinner watches. return_default inferred from Law 8. |
@@ -626,7 +672,7 @@ The card gate under the card row. The button opens Cloudflare's own billing page
 
 ### `name`
 
-state · window · **ratified** · cites N15, U8, N18
+state · window · **ratified** · cites N15, U8, N18, N89
 
 Row four current. The row is the ask; the URL is the field — the name is typed in place inside https://v.___.workers.dev/…. Explicit claim only (filled, Enter-equivalent, disabled until the local charset check passes); no availability pre-check. The charset guard filters, never scolds (stateless). Both endings tick the row with the fact — the plan's only outcome-bearing tick.
 
@@ -642,6 +688,8 @@ Row four current. The row is the ask; the URL is the field — the name is typed
 | “✓ Your link name — v.myshroom.workers.dev” | status | ratified | Row fact after claim or on the skip path (pre-existing subdomain); shown on the plan from then on. The name varies; backticks in spec are monospace formatting. |
 | “→ Your link name (part of every link you share)” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The plan, the name row while current · copy table |
 
+**The agent says** (`shroom setup`, N89) · ratified: “What name should your links carry? It's part of every link: v.yourname.workers.dev.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
+
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | https://v.[ name ].workers.dev/… (name field) | field |  |  | Return in the focused field belongs to Claim this name (Law 8). |
@@ -655,7 +703,7 @@ Row four current. The row is the ask; the URL is the field — the name is typed
 
 ### `name-taken`
 
-failure-state · window · **ratified** · board: WizardName · cites N15, N18
+failure-state · window · **ratified** · board: WizardName · cites N15, N18, N89
 
 The claimed name is taken: field edges red, the value stays put for editing, inline retry.
 
@@ -664,6 +712,8 @@ The claimed name is taken: field edges red, the value stays put for editing, inl
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “That name's taken — try another.” | line | ratified |  |
+
+**The agent says** (`shroom setup`, N89) · ratified: “That name's taken — try another.” — The window's own line, ratified (N15), said by the agent (N89).
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -688,7 +738,7 @@ Not a state — a derived label. If the account already holds a Worker named v t
 
 ### `wiring`
 
-state · window · **ratified** · board: WizardWiring · cites N16, N18, N3, N4, N45, N74, R6
+state · window · **ratified** · board: WizardWiring · cites N16, N18, N3, N4, N45, N74, R6, N89
 
 The setup's last step since N45, reached only when the permissions chapter finished before wiring did: a spinner and one calm line while the ~6 idempotent REST calls (private bucket, the v Worker, the Worker secret, member #1 enrollment, the subdomain's propagation — minutes on a new name) and the silent self-check finish. Wiring itself starts the moment the link name ticks and runs under the chapter, out of sight. Closing the window mid-wire is safe. In the repair mood, wiring runs again when the page or its key is gone (the click was the consent). Since N74 the last step lists wiring's five parts under the calm line — your private storage, your video page, switching your name on, a last check, adding this Mac — each ticking only when its own calls answer; the part underway carries its running clock, which a retry never resets (parts already done stay ticked). From 3 min on switching your name on, one quiet line says new names can take longer and that closing the window is fine. And wiring no longer needs the window (Bagrat, 2026-10-19): while a token is saved, the name row has ticked and no space is set up, it keeps trying — window open or closed, and from the next launch after a quit, the login item's silent one included — and lands without opening anything.
 
@@ -714,6 +764,8 @@ The setup's last step since N45, reached only when the permissions chapter finis
 | “Adding this Mac to your space” | line | ratified | N74: part 5 of wiring, under the calm line, still to come: its dot. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 | “New names can take Cloudflare a while longer, sometimes ten minutes. It's fine to close this window — I'll finish by myself.” | line | ratified | N74: quiet, under the parts, once switching your name on has run 3 min. Bagrat, 2026-10-19: wiring finishes on its own with the window closed. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 
+**The agent says** (`shroom setup`, N89) · ratified: “Almost there — switching your name on takes a few minutes the first time, and only once.” — The window's own line, ratified (N45), said by the agent (N89).
+
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `gate-email` | fail | fallback classification — the email gate closes between the card step and wiring | ratified |  |
@@ -724,7 +776,7 @@ The setup's last step since N45, reached only when the permissions chapter finis
 
 ### `wizard-offline`
 
-failure-state · window · **ratified** · board: WizardOffline · cites N18, N16
+failure-state · window · **ratified** · board: WizardOffline · cites N18, N16, N89
 
 One offline state for the whole wizard, rendered under whichever row is current: the spinner rests, one amber line, auto-resume on reconnect. No retry affordance.
 
@@ -734,13 +786,15 @@ One offline state for the whole wizard, rendered under whichever row is current:
 |---|---|---|---|
 | “Everything so far is saved — I'll pick up right here when you're back online.” | line | ratified | Amber line. |
 
+**The agent says** (`shroom setup`, N89) · ratified: “Everything so far is saved — I'll pick up right here when you're back online.” — The window's own line, ratified (N18), said by the agent (N89).
+
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `wiring` | auto | auto-resume on reconnect | ratified |  |
 
 ### `wizard-unexpected`
 
-failure-state · window · **provisional** · cites #25
+failure-state · window · **provisional** · cites #25, N89
 
 The wizard's one face for a failure nothing else classifies: the call a wizard face waits on (the paste's check, the token's save, the probe pass, wiring; Settings · Space's repair mood the same) fails Refused, Unclassified, or panicked, and no answer has cleared it. The spinner rests under the current row with one amber line and Try again; the backoff keeps retrying meanwhile. Under the name row the line sits beneath the field and Claim stays live.
 
@@ -751,13 +805,15 @@ The wizard's one face for a failure nothing else classifies: the call a wizard f
 | “Something unexpected got in the way — everything so far is saved. I'll keep trying.” | line | provisional | amber, under the current row |
 | “Try again” | button | provisional |  |
 
+**The agent says** (`shroom setup`, N89) · provisional: “Something unexpected got in the way — everything so far is saved. I'll keep trying.” — The window's own line (#25), said by the agent (N89).
+
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Try again | secondary |  |  | every wizard call asked again now, the window re-probed |
 
 ### `space-found`
 
-state · window · **provisional** · cites N42, U10
+state · window · **provisional** · cites N42, U10, N89
 
 A pasted token's probes find a space already there (a Mac replaced, or the owner adding a token-holding Mac): rows three to five tick in order and the wiring row's nest says this instead of the calm line; then row six becomes current — permissions are per-Mac.
 
@@ -768,13 +824,15 @@ A pasted token's probes find a space already there (a Mac replaced, or the owner
 | “Found your space — v.myshroom.workers.dev, 14 videos. This Mac is joined.” | line | provisional | Link name and video count vary (count kept as figures per Law 16). |
 | “Found your space — v.myshroom.workers.dev, 1 video. This Mac is joined.” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: `space-found`, one video · copy table |
 
+**The agent says** (`shroom setup`, N89) · provisional: “Found your space — v.myshroom.workers.dev, 14 videos. This Mac is joined.” — The window's own line for this step, said by the agent (N89). Not drawn on the board. The link name and the count vary (one video: “1 video”).
+
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `done` | flow | row six becomes current | provisional |  |
 
 ### `done`
 
-state · window · **ratified** · board: WizardPerms · cites N17, N45, N74, U5
+state · window · **ratified** · board: WizardPerms · cites N17, N45, N74, U5, N89
 
 The resting beat that opens the permissions chapter: four ticks, the permissions row current (drawn fifth, N45), its nest previewing the choreography, and the wiring row beneath it working out of sight. Nothing auto-fires (no dialog to an empty chair). perm-preamble is fused in. Row six ticks only at the end of permissions; the menu-bar handoff lives at all-set.
 
@@ -796,6 +854,8 @@ The resting beat that opens the permissions chapter: four ticks, the permissions
 | “• Wiring it up (shroom is doing this part now · switching your name on)” | line | ratified | N74: the wiring row while wiring runs under the chapter, naming part 3 underway; its running clock follows the aside. Ratified by Bagrat as drawn, 2026-10-25 (on the canvas's setup-progress boards). |
 | “• Wiring it up (shroom is doing this part now · checking it all works)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 4 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
 | “• Wiring it up (shroom is doing this part now · adding this Mac to your space)” | line | provisional | N74: the wiring row while wiring runs under the chapter, naming part 5 underway; its running clock follows the aside. The board drew part 3; the others are its form (provisional, N74). |
+
+**The agent says** (`shroom setup`, N89) · provisional: “Now macOS needs to let shroom record: your microphone and your camera, one click each, then screen recording in System Settings.” — Not drawn on the board: the build's line for a step the board names only as “the window's own line” (provisional, N89). The window's line, said before the first permission is asked.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -984,7 +1044,7 @@ Re-entry after success: the all-ticked panel is the space's settings surface —
 
 ### `perm-mic`
 
-state · window · **ratified** · board: WizardPerms · cites U5, N17, N20, N43
+state · window · **ratified** · board: WizardPerms · cites U5, N17, N20, N43, N89
 
 The permissions chapter's first beat, in the onboarding window. macOS's microphone prompt appears and is answered inline. The mic resolves fully before anything else, so dialogs never stack (POC §4). The camera is asked next, in its own beat (N43). A denied mic never blocks.
 
@@ -995,6 +1055,8 @@ The permissions chapter's first beat, in the onboarding window. macOS's micropho
 | “shroom records your voice with your video.” | other | ratified | Info.plist microphone usage string, shown inside macOS's own mic prompt. N20 ratifies 'the mic usage string' by name. |
 | “shroom shows and records your camera only when you choose it.” | other | ratified | Info.plist camera usage string. Since N43 it appears in the chapter's `perm-camera` beat; the first camera pick asks only if setup didn't (a Mac set up before N43, or one that had no camera then). |
 | “→ Letting macOS allow recording (microphone, camera and screen — a one-time yes each)” | line | provisional | one case the spec didn't print, so it varies by case — the copy table: The plan, row six while current. N43: the camera joins the chapter. · copy table |
+
+**The agent says** (`shroom setup`, N89) · ratified: “macOS is asking for your microphone — click Allow.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1007,7 +1069,7 @@ The permissions chapter's first beat, in the onboarding window. macOS's micropho
 
 ### `perm-camera`
 
-state · window · **provisional** · board: WizardPerms · cites N43, U5, #43
+state · window · **provisional** · board: WizardPerms · cites N43, U5, #43, N89
 
 The chapter's second beat (N43): macOS's own camera prompt, answered inline, the moment the microphone's answer lands. Nothing of ours shows. A denied camera never blocks: the camera picker starts at Camera off and Camera as the source greys Start, as N39's Camera denied says (DEVIATIONS #43). Skipped on a Mac with no camera.
 
@@ -1016,6 +1078,8 @@ The chapter's second beat (N43): macOS's own camera prompt, answered inline, the
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “shroom shows and records your camera only when you choose it.” | other | ratified | Info.plist camera usage string, inside macOS's own camera prompt (N43 moves the prompt here). |
+
+**The agent says** (`shroom setup`, N89) · provisional: “macOS is asking for your camera — click Allow.” — Not drawn on the board: the build's line for a step the board names only as “the window's own line” (provisional, N89). perm-mic's line, for the camera.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1028,7 +1092,7 @@ The chapter's second beat (N43): macOS's own camera prompt, answered inline, the
 
 ### `perm-screen`
 
-state · window · **ratified** · board: WizardPerms · cites U5, N18, N20, N42, N43
+state · window · **ratified** · board: WizardPerms · cites U5, N18, N20, N42, N43, N89
 
 One surface at a time (N43). shroom asks macOS for screen recording. On the first ask macOS raises its own alert, whose Open System Settings opens the exact pane: shroom opens nothing itself and its line points at that alert, with a quiet door to the pane for when the alert was closed. When macOS doesn't ask (every later ask), shroom opens the exact pane itself and the ratified line holds. The switch takes effect on next launch, through macOS's own quit-and-reopen offer (the `relaunching` beat). Onboarding resumes at this chapter from derived state, with no stored counter. N42 adds a quiet 'Reopen shroom' door underneath, for when macOS's offer was declined or never came.
 
@@ -1043,6 +1107,8 @@ One surface at a time (N43). shroom asks macOS for screen recording. On the firs
 | “Closed macOS's window?” | line | ratified | N43, quiet, under the alert face's line only Ratified by Bagrat, 2026-10-14, on the canvas. |
 | “Open System Settings” | button | ratified | N43, quiet: opens the exact pane; the face becomes the pane's (the ratified line) Ratified by Bagrat, 2026-10-14, on the canvas. |
 
+**The agent says** (`shroom setup`, N89) · ratified: “System Settings is open at Screen Recording: flip the switch next to shroom, then choose Quit & Reopen.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board).
+
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
 | Reopen shroom | secondary |  | `relaunching` | Quiet, beneath the main line (N42). shroom relaunches itself into `relaunching`. The spec names no filled action and no Return default on this surface. |
@@ -1056,11 +1122,13 @@ One surface at a time (N43). shroom asks macOS for screen recording. On the firs
 
 ### `relaunching`
 
-state · window · **ratified** · cites N18, N20, N42
+state · window · **ratified** · cites N18, N20, N42, N89
 
 A named beat (N18 spirit, named by N20): shroom quits and reopens so the screen grant takes effect. Onboarding then resumes at the permissions chapter from derived state. The region gives this beat no render and no said-line.
 
 **Entry.** The screen-recording switch was flipped and the user accepted macOS's quit-and-reopen offer, or the user clicked Reopen shroom (N42).
+
+**The agent says** (`shroom setup`, N89) · provisional: “shroom is reopening — one moment.” — Not drawn on the board: the build's line for a step the board names only as “the window's own line” (provisional, N89).
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -1068,7 +1136,7 @@ A named beat (N18 spirit, named by N20): shroom quits and reopens so the screen 
 
 ### `perm-priming`
 
-state · window · **ratified** · board: WizardPerms · cites U5, N20, N38, N45
+state · window · **ratified** · board: WizardPerms · cites U5, N20, N38, N45, N89
 
 An invisible warm-up of about 1 s, the moment the screen grant is live. Apple's second (~30-day) consent fires now, at setup, never mid-recording (POC §4; probe: the dialog is real on Tahoe and non-fatal). Since N38 (provisional), the same warm-up also runs when `config` opens and Apple's periodic re-confirm is due. macOS then asks over the popover, never inside a take. The popover may close as the dialog takes focus, and the next click finds it again.
 
@@ -1078,6 +1146,8 @@ An invisible warm-up of about 1 s, the moment the screen grant is live. Apple's 
 |---|---|---|---|
 | “If macOS double-checks about recording, approve it — that's the last one for a good while.” | line | ratified | N20 ratifies 'priming's double-check line' by name |
 
+**The agent says** (`shroom setup`, N89) · ratified: “If macOS double-checks about recording, approve it — that's the last one for a good while.” — The window's own line, ratified, said by the agent (N89).
+
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `all-set` | flow | warm-up clean — row six ticks | ratified |  |
@@ -1086,7 +1156,7 @@ An invisible warm-up of about 1 s, the moment the screen grant is live. Apple's 
 
 ### `all-set`
 
-state · window · **ratified** · board: AllSet · cites N20, N12, N21, N42, N45
+state · window · **ratified** · board: AllSet · cites N20, N12, N21, N42, N45, N89
 
 The onboarding window's final face, a resting state with three doors (N20; it replaces the passive handoff). All six plan rows are green, with a closing block below the plan. Record now closes the window and opens `config` as a tray popover, so the eye lands on the menu bar. Invite someone morphs this same window into Region 6's members surface. Close, and ✕ (exactly the same as Close), is the retreat: the window closes, the dock icon goes away, and tray-only life begins.
 
@@ -1100,6 +1170,8 @@ The onboarding window's final face, a resting state with three doors (N20; it re
 | “Invite someone” | button | ratified | N20: 'Invite someone', not 'someone else' |
 | “Record now” | button | ratified | filled |
 | “✓ Letting macOS allow recording — microphone off for now” | status | provisional | N42: row six's tick fact when the mic was denied. The spec writes it in the denied-mic bullet with the ✓ glyph included. |
+
+**The agent says** (`shroom setup`, N89) · ratified: “You're set: v.myshroom.workers.dev. Click the mushroom in the menu bar to record.” — Ratified by Bagrat as drawn, 2026-10-30 (on the canvas's Agent setup board). The link name varies.
 
 | Action | Kind | Return | Goes to | Note |
 |---|---|---|---|---|
@@ -1264,9 +1336,9 @@ The arm-time guard made visible (N38). The grant probe runs when `config` opens,
 
 ### `bubble`
 
-overlay · overlay · **ratified** · cites N22, N39, #43
+overlay · overlay · **ratified** · cites N22, N39, #43, N85
 
-The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours ever in a take. Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.
+The corner bubble, born at `config`, not at the count (N22). Live from the moment the popover opens, so you see and place yourself before Start. It stays through the count and the take, and Camera off in the camera picker hides it live (DEVIATIONS #43). Draggable, not resizable. It uses the un-excluded preview-window trick with zero compositing. It never takes focus, and it is the only thing of ours shroom puts into a take (shroom's windows are recorded too while the person has them open, like any app's — N85). Discard takes it away. If the bubble's camera disappears, the take is never interrupted; the bubble simply goes.
 
 **Entry.** A camera is picked in the camera picker (not Camera off) and the source is a display (with Camera only as the source there is no bubble), from config's opening through countdown, recording and paused.
 
@@ -1840,6 +1912,7 @@ The real shareable page, opened in the browser at stop. It is never a preview or
 | `editor` | side | Edit in shroom | ratified | N69, N73 |
 | `editor-getting` | side | Edit in shroom | ratified | N69, N73 |
 | `config` | side | Edit in shroom | ratified | N69 |
+| `owner-page-chapters` | flow | Edit chapters — the panel opens under the player | ratified | N87 |
 
 ### `uploading`
 
@@ -2145,21 +2218,63 @@ The voice-cut hint (N65): in a space that listens, the owner page of a take with
 
 ### `hearing`
 
-face · web-page · **provisional** · a face of `owner-page` · board: PageAiPendingC · cites N65, N66, N82, N40
+face · web-page · **provisional** · a face of `owner-page` · board: PageAiPendingC · cites N65, N66, N82, N84, N40
 
-While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title field shimmers, a soft gradient sliding beside its placeholder; the page doesn't open in the field, a click or the keyboard in it drops the shimmer and takes typing, and the shimmer stops with the line. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC). Owner-mode as the title has it (N40); viewers never see it.
+While the take is heard and named (N65 (7), N66, N82): in a space that listens, once the upload has drained, the owner page's one line stays: the same words, its spinner turning, until the take's voice cuts are planned and its name is in (the full name with its chapters and captions, or the naming ended with none), then fades as they appear; or five minutes have passed since the take went live, by the page's own count. A strip whose cuts land first shows under the player, the line under it. While the name is on its way the empty title shows no field (N84): no border, a soft gradient sliding across the whole title, with a line where the title goes saying a click names it, shorter on a narrow window; the page doesn't open in the field. A click or the keyboard in it brings up the bordered box, the shimmer and the line gone, the date as its placeholder, ready for typing; the shimmer stops with the line under the player. It never speaks of cuts or names. Edit wakes on the title row as the upload drains, beside it (OwnerPageFinishing, OwnerPageFinishingEnds, PageAiPendingC, PageAiPendingWholeBox). Owner-mode as the title has it (N40); viewers never see it.
 
 **Entry.** The browser is in owner-mode for this video, the space listens (N66), the upload has drained, the take went live less than five minutes ago, its words don't wait for the next free day, and the Mac hasn't been through them yet or the space hasn't named it yet: the status says the voice cuts or the name are coming.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Finishing your video — the link already works, share it anytime.” | status | ratified | The upload's line (uploading), kept after the upload while the take is heard, its spinner turning. Bagrat, 2026-10-18 (relayed by the orchestrator): one indicator on the owner page, from the upload until the voice cuts land, “Finishing” his pick of its first word. |
+| “AI is naming your video, click to name manually” | placeholder | ratified | The title's placeholder while the name is on its way, on a wide window (N84). Bagrat's own line, 2026-10-26 (relayed by the orchestrator); he picked no other. |
+| “Naming…” | placeholder | ratified | The same on a narrow window, a phone, where the longer line is cut (N84). Bagrat approved the phone board, 2026-10-26 (relayed by the orchestrator). |
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
 | `owner-page-cuts` | auto | the take's voice cuts are in and so is its name — the line fades, the strip stays | provisional | N65, N82 |
 | `owner-page-cue-hint` | auto | nothing to cut and the name in, or five minutes pass, and the hint is due — the hint takes the line's place | provisional | N65, N82 |
 | `fully-live` | auto | nothing to cut and the name in, or five minutes pass — the line fades | provisional | N65, N82 |
+
+### `owner-page-chapters`
+
+face · web-page · **ratified** · a face of `owner-page` · board: OwnerPageChaptersOpen · cites N87, N67, N66, N40, N63, B21
+
+The owner edits the video's chapters (N87), in a panel the Edit chapters icon opens in place under the player, above the voice cuts. A heading, the switch Show in the seek bar, and Done; then a row a chapter: its start, its name as a field, an arrow that starts it at the playhead (not on the first, always at 0:00) and ✕. Add a chapter at the playhead under the rows. Every change saves at once and the bar above follows. A removed chapter's row says so with Undo; a chapter an edit cut out whole is set aside, its row saying so, and comes back with the cut. Switched off, a line says viewers see the bar without chapters, and the rows wait, dimmed. A time too close to a neighbour or outside the video saves nothing and says why; a change that didn't save puts the row back and says so (OwnerPageChapterRows). Owner-mode as the title has it (N40); viewers never see the panel or the icon, only the bar.
+
+**Entry.** The owner clicks Edit chapters among the title's icons, once the video plays.
+
+| Said | Role | Copy | Note |
+|---|---|---|---|
+| “Chapters” | heading | ratified | The panel's heading. OK'd as written, Bagrat 2026-10-25. |
+| “Edit chapters” | tooltip | ratified | The icon's name and tooltip, among the title's icons before the scissors. OK'd as written, Bagrat 2026-10-25. |
+| “Show in the seek bar” | label | ratified | The switch's label; on a phone, “In the seek bar”. OK'd as written, Bagrat 2026-10-25. |
+| “Done” | button | ratified | Shuts the panel. OK'd as written, Bagrat 2026-10-25. |
+| “Add a chapter at 1:20” | button | ratified | Under the rows; the time is the playhead's and varies. OK'd as written, Bagrat 2026-10-25. |
+| “Add the first chapter” | button | ratified | On a video with no chapters, under “No chapters yet.”: a row at 0:00 with its name open. OK'd as written, Bagrat 2026-10-25. |
+| “No chapters yet.” | note | ratified | A video with no chapters. OK'd as written, Bagrat 2026-10-25. |
+| “Name this chapter” | placeholder | ratified | A new row's name field. OK'd as written, Bagrat 2026-10-25. |
+| “Start this chapter at 1:20” | tooltip | ratified | The arrow's name; the time is the playhead's. OK'd as written, Bagrat 2026-10-25. |
+| “Remove this chapter” | tooltip | ratified | The ✕'s name. OK'd as written, Bagrat 2026-10-25. |
+| “Removed “Trial results and metrics”.” | status | ratified | A removed chapter's row, with Undo; the name varies. OK'd as written, Bagrat 2026-10-25. |
+| “Undo” | button | ratified | Puts the removed chapter back. OK'd as written, Bagrat 2026-10-25. |
+| “A chapter needs at least 5 seconds.” | status | ratified | Amber, under the rows: a time too close to a neighbour; nothing saves and the field stays open. OK'd as written, Bagrat 2026-10-25. |
+| “That time isn't in the video.” | status | ratified | Amber, under the rows: a time past the end; nothing saves. OK'd as written, Bagrat 2026-10-25. |
+| “Off: viewers see the seek bar without chapters.” | note | ratified | Under the heading while the switch is off. OK'd as written, Bagrat 2026-10-25. |
+| “Cut from the video. It comes back if you put the cut back.” | note | ratified | Under the name of a chapter an edit cut out whole (or left under 5 s). OK'd as written, Bagrat 2026-10-25. |
+| “Couldn't save that. Check your connection, then try again.” | status | ratified | Amber, under the rows, after a change that didn't save; the cut strip's line. OK'd as written, Bagrat 2026-10-25. |
+
+| Action | Kind | Return | Goes to | Note |
+|---|---|---|---|---|
+| Done | secondary |  | `owner-page` | Shuts the panel; the Edit chapters icon does the same. |
+| Add a chapter at 1:20 | secondary |  | `owner-page-chapters` | A row at the playhead, its name field open; a name typed and Enter (or leaving the field) saves it, nothing typed takes it away again. The time varies. |
+| Remove this chapter | secondary |  | `owner-page-chapters` | The ✕ on a row: saves at once; the row becomes Removed “…”. with Undo, until the page is left. |
+| Start this chapter at 1:20 | secondary |  | `owner-page-chapters` | The arrow on a row: the chapter starts at the playhead; the rows re-sort. |
+| Show in the seek bar | switch |  | `owner-page-chapters` | Off hides the chapters from the bar for everyone and keeps them here. |
+
+| → | Kind | Label | Status | Cites |
+|---|---|---|---|---|
+| `owner-page` | flow | Done — the panel shuts | ratified | N87 |
 
 #### Region 4's amendments
 
@@ -2372,11 +2487,11 @@ Member-revoked or space-gone: the list this Mac remembers, and only Copy link an
 
 ### `editor`
 
-state · window · **ratified** · board: EditorCuts · cites N63, B195, B197, B199, N69, N71, N73
+state · window · **ratified** · board: EditorCuts · cites N63, B195, B197, B199, N69, N71, N73, N85
 
 The editor (N63): a window of its own for each video (N73), titled “Edit — <the video's title>”. Top to bottom: the video, playing the edit (cuts skipped, held to the trim); the play button and the time, edited position / edited length, with “was <the recording's length>” once the edit changes it; on the right the hint and Undo · Redo; then the timeline: the ruler, where a click or the playhead's circle dragged seeks (Bagrat, 2026-10-25), and the whole recording's sound as a waveform with the playhead: two yellow ends that drag to trim, a drag across the sound that selects a part with Cut <its length> under it (one that reaches a yellow end moves that end there, a trim), every cut red and hatched (clicking one offers Put back <its length>), every suggestion not yet taken dashed amber (clicking one offers Cut <its length>, as a selection does); either edge of a cut or a suggestion drags to move it, the pointer ↔ over it, its length shown live under it and the picture at the edge as it goes, stopping at the next cut or suggestion, the trim's end, a tenth of a second from its other edge, or where a second would be all that's left, one step for Undo (B195 (g)), and every marker (N64) a flag at its time, its pole the continuation of its dashed line through the sound. The footer: the line that the link stays the same, Revert to original and Done. The waveform fills in once the sound is read; until then the timeline is empty and the ends wait. Every change can be undone, Put back and Revert included; the changes stay in the window until Done saves them. While an earlier edit's original is still kept, the time it has left sits by Revert to original; once it is gone, Revert to original only undoes what changed since the window opened. While one is open, no edit becomes a video behind it on this Mac: the upkeep, and on the Mac holding the token the cleanup sweep, wait until every editor window has closed (B199). The owner page's Edit in shroom (N69) opens it as Edit… does. Either, on a video whose window is open, brings that window forward as it is; on another video, a window of its own opens for it, in front, and every other window stays as it is (N73). Each window is its own: its steps, its Done, its final video and its questions never touch another's. ✕ with changes not saved asks before the window closes (N71).
 
-**Entry.** Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One window per video (N73): Edit… on a video whose window is open brings that window forward, as it is; on another video, a window of its own opens for it. A take started while editor windows are open leaves them open (law 4 covers only what shroom would newly show). The dock icon shows while one is open.
+**Entry.** Edit… on a live row in the Library (N63), when the video is on this Mac: its take was recorded here and is still here, or it came from the space before. One window per video (N73): Edit… on a video whose window is open brings that window forward, as it is; on another video, a window of its own opens for it. A take started while editor windows are open leaves them open (law 4 covers only what shroom would newly show), and records it like any app's (N85). The dock icon shows while one is open.
 
 | Said | Role | Copy | Note |
 |---|---|---|---|
@@ -3704,7 +3819,7 @@ The page a join link opens, served by the space's own Worker with no shroom.am d
 | “shroom records your screen and hands you a link to share. Nothing to sign up for — Bagrat set up a space for you.” | line | provisional | The inviter's name varies (macOS short form, N29). |
 | “Get shroom” | other | provisional | Block heading. |
 | “Paste this into Terminal (⌘ space, type “Terminal”) and press Return — it installs shroom and opens it, already knowing it's you.” | line | provisional | The Terminal hand-hold (flag 2, kept). The inner quotes are curly in the spec. |
-| “curl -fsSL https://shroom.am/install \| sh -s -- --join v.myshroom.workers.dev/join/7xk2pm” | other | provisional | The install command with the join link built in. The link varies. |
+| “curl -fsSL https://shroom.am/install \| sh -s -- --join 'v.myshroom.workers.dev/join/7xk2pm'” | other | ratified | The install command with the join link built in, the link in single quotes so a pasted command keeps it whole, as the agent page writes it. The link varies. Bagrat, 2026-10-25, relayed by the orchestrator: the link quoted here as on the agent page. |
 | “Copy” | button | provisional |  |
 | “Read it first — the same address opens as readable source.” | line | ratified | The landing's ratified line, verbatim (N6). |
 | “For macOS 14 or newer, Apple silicon.” | line | ratified | The landing's ratified line, verbatim. Only the sentence's shape is ratified: the OS floor and Intel stance are scaffold-time facts, to fill in without rewording (line 214). · was “For macOS 14 or newer, Apple silicon and Intel.” · B7, B44, copy table, B134 |
@@ -3797,7 +3912,7 @@ face · terminal · **provisional** · a face of `installing` · cites N3, N29, 
 
 Region 1's install script verbatim, run with --join <link>; it passes the link to the app at launch. The join link rides argv and shell history once. This is the conscious scoped exception: one-time use + a 7-day TTL (one hour for own-Mac links). The admin token never gets this exception.
 
-**Entry.** The user runs the join page's install command (curl … | sh -s -- --join <link>).
+**Entry.** The user runs the join page's install command (curl … | sh -s -- --join '<link>').
 
 | → | Kind | Label | Status | Cites |
 |---|---|---|---|---|
@@ -3818,6 +3933,7 @@ The welcome window's twin, which already knows it's an invite. It shows the hero
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Bagrat invited you to record with shroom.” | title | provisional | The inviter's name varies: the inviting Mac account's name in macOS's short, locale-aware form (N29). |
+| “Their space: v.myshroom.workers.dev” | line | ratified | The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”. |
 | “shroom records your screen and hands you a link to share. Your videos will live in Bagrat's space, where Bagrat can see them too — nothing to sign up for, nothing to pay.” | line | provisional | The N5 truth mirrored for the invitee, said once. The inviter's name varies. |
 | “One step before your first video: let macOS allow recording. About a minute, once.” | line | provisional |  |
 | “Start shroom when you log in” | field-label | ratified | The welcome's ratified U4 checkbox label, reused. Pre-checked. |
@@ -4128,6 +4244,7 @@ The invite window asks before anything moves. There is one space per Mac, so joi
 | Said | Role | Copy | Note |
 |---|---|---|---|
 | “Bagrat invited you to record with shroom.” | title | provisional | The inviter's name varies. |
+| “Their space: v.myshroom.workers.dev” | line | ratified | The space's address the invite link points at, a quiet line under the title; the address varies. Bagrat, 2026-10-25, relayed by the orchestrator: approved the board “Joining — welcome and switch spaces?: “Their space: <address>” under who invited you” as drawn, with “Their space:”. |
 | “This Mac records to v.mine.workers.dev now. Joining moves it to Bagrat's space — your videos in v.mine.workers.dev stay right where they are.” | line | provisional | The current space's address varies (example v.mine.workers.dev). The inviter's name varies. |
 | “You can come back to your own space anytime by setting it up again with a fresh token — everything will be there.” | line | provisional | One more line, shown only when this Mac is its space's only token-holder. |
 | “You've started setting up your own space. Joining Bagrat's instead sets that aside — your Cloudflare stays as it is.” | line | provisional | The one different line for a half-set-up space (the invite arrives mid-wizard). |
@@ -4403,8 +4520,9 @@ A move that holds for a whole group of states, written once (B133). The tests ex
    - A link/page id comes into being only on Stop or Get link events; crash recovery, disk-full-stop, and every auto-pause (display-lost, mic-lost, camera-lost, mac-away, permission-lost) create no link and open no page.
    - disk-full-stop and a lost screen grant finalize and ask; neither transitions to a page-open or upload-published state without a user Stop/Get link.
    - No surface says “Your link opens right away.”: Bagrat took the quiet line off the paused popover's stop, now “Finish & Share” (B143), so it reads like the rows beside it.
-4. **The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.
+4. **The quiet-take law** *(N41)* — while a take is open (recording *or* paused), shroom puts nothing new on screen: invites, deep links, windows, the deferred page of an offline stop, update banners — all wait for the take to end. Of what shroom puts on screen mid-take, only the bubble and macOS's own indicator can ever appear in a take (the agent label and the marker toast show to the person only, left out of the recording — N62, N78). shroom's windows (the Library, an editor, Settings, Send feedback, setup), when the person has them open, are recorded like any other app's; shroom never opens one mid-take by itself (N85); the paused popover exists only after the pause is confirmed (POC §8). **And nothing that would end, move or replace the app runs mid-take** — Update, Disconnect, Leave, joining another space, Quit (⌘Q or the Dock, reachable when a window was already open) — their buttons grey with “You can do this once your recording is finished.”; a Quit request is declined silently while recording and opens the paused popover (its “no Quit while a take is open” note) while paused.
    - Let take_open = state ∈ {recording, paused, and paused's morphs/auto-pause faces}. While take_open, no window, banner, invite, deep-link handling, deferred offline-stop page, or update banner becomes newly visible; the only shroom surfaces that may newly appear are the bubble overlay, the paused popover (only after the pause is confirmed) and its morphs (discard-confirm), and the auto-pause popovers (display-lost, mic-lost, camera-lost, mac-away, permission-lost, disk-full-stop); and, left out of every capture, the agent label (N62) and the marker toast for two seconds after ⌥⌘M (N78).
+   - What every capture holds of shroom's (N85): the bubble, and every shroom window while it is on screen (the Library, every editor, Settings, Send feedback, onboarding), like any other app's windows. Left out of every capture, from the moment each exists: the popover in every face (config, paused and its morphs, the auto-pause faces), the countdown, the agent label and the marker toast.
    - Items that arrive while take_open (invite deep link, offline-stop page, update banner, windows) are queued and surface only after the take ends.
    - While take_open, Update, Disconnect, Leave, join-another-space and Quit controls are disabled and show “You can do this once your recording is finished.”
    - A Quit request (⌘Q or Dock) while recording causes no state change and no visible surface; while paused it opens/keeps the paused popover showing its “no Quit while a take is open” note; the process keeps running in both.
@@ -4566,15 +4684,22 @@ A move that holds for a whole group of states, written once (B133). The tests ex
 | N80 | Turning AI on or off shows its parts as they happen | **Bagrat's hand test of 0.1.30-early.1, 2026-10-25**: turning AI on or off took long enough to worry, with little shown while it ran — the anxiety a tester named in the setup (N74). **Bagrat, 2026-10-25** (relayed by the orchestrator, on the boards “Settings — Space: the AI switch while it works…” and “Popover — AI features are turned on: Turn off while it works…”, with the plainer words): (1) **The switch moves at once** to where it's going, greyed while the page is re-wired. (2) **Three parts list under its cost line**, each ticking only when its own calls answer, the one underway spinning with its running clock from its first second, as N74's do: “Checking your space…” → “Your space is ready”; “Connecting AI to your space…” → “AI connected” (off: “Disconnecting AI…” → “AI disconnected”); “Switching AI on for new videos…” → “AI is on for new videos” (off: “Switching AI off for new videos…” → “AI is off for new videos”). (3) **Done is when the page itself says so** (its ping answers with the AI on, or without it); the last part ticks in bold and the list stays until the window closes or the tab changes. (4) **Didn't go through** (law 12): the switch reads as the page has it and is live again; the part that stopped carries a cross in its plain words, with “Couldn't change that just now — try again in a moment.” under the list. (5) **Running long**: from 20 s on one part, one quiet line, “Cloudflare is slower than usual just now — hang tight.”; the clock keeps going until the re-wiring's 3 min deadline, which is a didn't-go-through. (6) **The banner's Turn off** shows the same parts under its ratified “Turning off — a few seconds.”; its off and didn't-go-through faces are as they were. The banner's own turn-on (N76) still says only “AI features are turned on.” while it runs (Bagrat, 2026-10-25: no preference; left as it is). Measured on the test account (2026-10-25, six turns, the real page): checking your space ~1 s; connecting or disconnecting AI 0.8–1 s, 6.5 s the first time; switching it for new videos (the schedule, then the page saying so) under 0.5 s. Nothing is stored (law 1). | ratified | 2026-10-25 |
 | N81 | Upload credentials live an hour; the Remove sheet says so | **Bagrat, 2026-10-25** (relayed by the orchestrator; he approved the wording as drafted the same day): a recording's upload credential lives **one hour**, not seven days (still within N4's ≤7 days), and the Mac mints the same recording's again as it nears its end, so a long upload goes on and a removed Mac's upload ends within the hour (its re-mint is refused). The Remove sheet's member face now says “Mher won't be able to record to your space anymore — a video already on its way has up to an hour to finish. Mher's videos stay; you'll find them in your Library.” (ratified), and shroom.am's FAQ says the same of removing someone. | ratified | 2026-10-25 |
 | N82 | The finishing line lasts until the name, chapters and captions land; the title shimmers while the name is on its way | **Bagrat's re-check of 0.1.33-early.1, 2026-10-25**: the chapters and captions dropped in without a reload, but seconds after the finishing spinner had gone, so the page looked done with no name or chapters coming. **Bagrat, 2026-10-25** (relayed by the orchestrator; his pick on the boards “The page — after go-live… A / B / C”: C, with B's title placeholder): (1) **The one line lasts.** In a space that listens (N66), the owner page's line, “Finishing your video — the link already works, share it anytime.”, its spinner turning, stays after the upload until the take's voice cuts are planned **and** its name is in (the full name, with its chapters and captions, or the naming ended with none: too few words, or it gave up), then fades as they appear: the title, the bar's chapters and the Captions button come in with the fade. Five minutes after the go-live at most, by the page's own count, as before; a name that comes later still drops in. A strip whose cuts land first shows under the player with the line still under it. It never says a name is coming, and no new words are added. Words waiting for the next free day don't keep it (the note under the title says the rest comes later). (2) **The title shimmers while the name is on its way**: a soft gradient slides in the empty title field beside its placeholder, for as long as the line lasts. The page doesn't open in the field then; a click or the keyboard in it drops the shimmer at once and takes typing, and a name that lands later never overwrites what was typed. It stops with the line, whether a name came or not. (3) **A typed title doesn't end the wait**: the chapters and captions that come with the naming still drop into the player, on a page whose title was typed before it opened as on one typed while it was open. Viewers' pages are unchanged. Nothing is stored (law 1). | ratified | 2026-10-25 |
+| N83 | A click on a control that something late just moved does nothing | **Bagrat's re-check of 0.1.30-early.1, 2026-10-25**: he opened the popover to change the camera, the update finished downloading a second later, and its ready banner went in above the picker rows; everything under it dropped, a click meant for the rows landed on Update, and shroom quit and came back updated — it looked like a crash. **Bagrat, 2026-10-25** (relayed by the orchestrator, on the board “Popover — a banner that lands late never takes a click…”, picking A): nothing changes in the look. In the popover and in Settings, for **half a second** after something lands and moves a control or puts a new one in its place — a banner, an Update button, a line under a picker — a pointer click on that control does nothing, and the next click works. What the person's own click or key just changed (a menu they opened, a tab they picked, a pick that adds its line) is theirs and isn't held back; the keyboard is never held back (its focus doesn't move with the layout). Not a state and no words: the click is simply not taken. B and C (the offer below Start; the offer waiting for the next open) were not picked. | ratified | 2026-10-25 |
+| N84 | While the name is on its way, the title itself shimmers, borderless, saying a click names it | **Bagrat's check of 0.1.33-early.2, 2026-10-26** (relayed by the orchestrator): the shimmer was a strip after “Untitled” where he expected the whole title to shimmer, with a line like “AI is naming your video, click to name manually”; then, on the board “The page — the title shimmers, borderless…”: no border while it shimmers, only a click brings up the editable box, which comes with the border; and the phone's line approved as drawn. He picked no line between the two drawn for wide windows, so his own stands. (1) **While the name is on its way** (N82's wait), the empty title shows no field: no border, no fill, a soft gradient sliding across the whole title, and in it, where the title goes, “AI is naming your video, click to name manually”, or on a narrow window (a phone) “Naming…”. The line is the field's placeholder: never typed, saved or taken as the title. (2) **A click** (or the keyboard) in it brings up the editable box with its border, the shimmer and the line gone at once, the date as its placeholder, ready for typing; a name that lands later never overwrites what was typed. (3) **The name lands**: plain text, as a named title always shows. (4) **No name comes**: the shimmer and the line stop with the finishing line, and the field is the empty one with the date. Viewers' pages are unchanged. | ratified | 2026-10-26 |
+| N85 | shroom's windows show in a take | **Bagrat, 2026-10-25** (relayed by the orchestrator): the Library, the editor and Settings should show up in a recording, so a bug report of shroom itself shows what went wrong; **and, 2026-10-26** (relayed by the orchestrator, answering whether Send feedback stays out): anything that can appear during a take and would help such a report is recorded. Until now every shroom window was left out of every capture. (1) **Recorded like any app's:** every shroom window — the Library, every editor, Settings, Send feedback, onboarding — sheets included, whenever it is on screen during a take: open before it, or opened by the person mid-take. (2) **Left out, as before:** the countdown and the marker toast (both tell the person they stay out of the video: the count lifts the instant capture starts, N7; the toast says so in its hint, N78); the agent label (it would sit in every video an agent records, N62); and the popover in every face — it shows only once a pause has stopped the picture, so it never helps a report, and leaving it out keeps it from the take's last frame (POC §8). (3) **The bubble** stays as it is: recorded. (4) **Law 4 still holds:** shroom opens nothing new mid-take by itself; a window the person opens is theirs to record. (5) **One behavior for everyone**, no setting. Members' invite pill draws its code as a mask and the code never reaches the window (law 13), so a take of Settings can't show a usable link. Built: DECISIONS B266. | ratified | 2026-10-25 |
+| N86 | shroom.am: the price as a slider in its own box | **A tester read the landing's price bar as a loading bar (2026-10-19)**; Bagrat asked for a more professional page with a price calculator in its place and was shown five whole-page directions, then five slider kinds, on the canvas (relayed by the orchestrator). **The same day he chose** direction 1, “Quiet split” (the page as built, the price wrapped in its own box), **one slider, at most with an AI switch** (the switch was later dropped, below), and a large example **apart from the slider**. (1) **The bar and its four labels go.** In their place, under the headline's line and as wide as the headline, a box (as redrawn to Bagrat's answers, 2026-10-24): “What would it cost?”, then **the price first**, in dollars, never cents (“$0.00”, “$0.45”: “93¢” can read as 93 dollars), then the slider “Video a month” (**hours of video**, not a count: lengths vary; 30 min to 100 hours, opening at 1 hour), then “Auto-cleanup after” (Bagrat's words, 2026-10-24; 30 days · 60 days · a year, opening at 30 days, so the box opens at $0.00) and, as its last line, the team's month (3) No assumption line, no gigabytes (his ask: super simple). (2) **The model:** about 10 GB holds three hours at Normal (the FAQ); Cloudflare charges $0.015 a GB-month past its free 10 GB (B212); 30 days counts as a month. AI is about 3,660 neurons a video hour against 10,000 free a day (B205, B207): AI never adds money. (3) **The box's last line:** “A team of 20, an hour each a month: $0.85 with 30-day cleanup, $11.85 kept a year.” (the team row he chose, an hour each; it took the place of a note on the free 10 GB, 2026-10-24). Nothing sits under the box. (4) **The layout (Bagrat, 2026-10-24/25):** after six whole-page layouts and five Bento variations on the canvas, he chose “Bento A, aligned”: one 12-column grid with one gutter, the masthead on the grid's edges (wordmark left, headline right; first the headline's line on the wordmark's baseline, then, at Bagrat's word on the built page, 2026-10-25, the headline's top on the top of the wordmark's “m”), then the video over install beside the price box over the terms, the two stacks ending on one line (eight columns and four as drawn; seven and five once the video showed whole, which keeps the stacks nearest level). The terms sit in one column in their own tile, and term 5 becomes “Old videos clean themselves up. Pin the ones you keep.” (5) **Timing:** the box promises auto-cleanup, so this goes live the day the release that ships auto-cleanup does (Bagrat, 2026-10-24; first planned for 0.1.28, now the official 0.1.30). (6) **No AI switch** (Bagrat, 2026-10-25, on the built page): AI never changes the price, so the box doesn't offer it; that settles what the switch would show. The video always shows whole at every width. The new words are approved with the board (Bagrat, 2026-10-25). Board: “Bento A, aligned” (LandingV3aAligned). (7) **Icons in place of the ticks** (Bagrat, 2026-10-25, after two rounds on the canvas: “the terms' icons” and its round 2): each term gets its own icon, Lucide shapes at stroke 2 on a chip, in the page's frost blue (green was tried on the whole page and dropped, Bagrat, 2026-10-25): a cloud with a lock (three scoops, the lock a badge at its foot), a receipt, two people, an armchair crossed out, a broom with sparkles, a checklist, and code brackets. (8) **The masthead, simpler** (Bagrat, 2026-10-25, on the built page): the line under the headline (“No monthly seat, sometimes completely free”, B140) leaves the page and the link-preview card; the headline is a little smaller (38 px on a laptop) and its middle sits on the wordmark's middle (the middles of their x-heights), in place of the capitals' top on the m's top. The terms' tile gets a title in the price box's label style; he chose “Why shroom?” over “What you get” and “How it works”. (9) **Sponsoring** (Bagrat, 2026-10-25, board “shroom.am — sponsoring, three places”, B, no tiers at first): the open-source term ends “ · ♡ Sponsor it”, the heart small and red, the words a link to github.com/sponsors/bagrat. It went live once his GitHub Sponsors page did (2026-10-27). | provisional | 2026-10-19 |
+| N87 | The owner edits the chapters on the video's page | **Bagrat, 2026-10-25**, during his hand test of 0.1.30-early.1: there was no way to change a chapter. He OK'd the boards (OwnerPageChapters, OwnerPageChaptersOpen, OwnerPageChapterRows, OwnerPageChaptersPhone) the same day, after asking that nothing for chapters show until it's asked for: page only, the Mac editor gets nothing for now. (1) **Edit chapters** is a quiet icon among the title's, before the scissors, on the owner's page only (owner-mode as the title has it, N40), with its name as a tooltip. It is there from the page's first paint and greyed until the video plays; then every video has it, with chapters or none. (2) **The panel** opens in place, under the player and above the voice cuts (never a sheet or pop-over: it works with the playhead); the icon stays lit while it is open, and it or Done shuts it. It opens shut on every visit. A row a chapter: its start, its name (a field, plain until clicked, as the title is), an arrow that starts it at the playhead and ✕ to remove it; the first chapter always starts at 0:00 and has no arrow. A start is moved by clicking it and typing a time (1:15, or 1:02:15); Enter saves, Esc puts it back. Add a chapter at the playhead adds a row there with its name open; a video with none says so and adds the first at 0:00. A chapter lasts at least 5 s and starts inside the video; a time that breaks either saves nothing and says why. A removed chapter's row says so, with Undo, until the page is left. Show in the seek bar turns the chapters off for everyone and keeps them in the panel. Every change saves at once (under If-Match, B21) and the bar above follows; a viewer sees it on their next visit. A change that didn't save puts the row back and says so on one line. (3) **Yours for good**: once the owner changes anything, the chapters are the owner's, and the space never writes them again, not when it names the video again after an edit, not when its naming runs late; the title keeps its own rule (a typed title wins). (4) **Edits move them, never lose them**: the owner's chapters are kept on the recording's clock, so a trim or a cut moves a start inside it to where it ends, and a chapter cut out whole, or left under 5 s, is set aside (its row says so) and comes back when the cut is put back. A permanent copy the editor makes (B197) carries them over as it does the space's. (5) Turning AI off keeps them. The bar shows the owner's chapters on a video of any length, as long as two or more play. Built: DECISIONS B267. | ratified | 2026-10-25 |
+| N88 | shroom.am: company sign-in, coming soon | **Bagrat, 2026-10-30**, approving the canvas boards LandingTeams (laptop), LandingTeamsPhone (phone) and LandingTeamsStates (the signup box's states, and the email that arrives), their words with them. Teams already work for free: an owner invites each person with a link and removes them by hand when they leave. The coming paid tier, **company sign-in**, is about two things: no invites (people sign in with their company's Google Workspace account) and leavers losing access on their own when their Google account is removed; plus videos only the company can watch. Its videos stay in the owner's own Cloudflare account. (1) **A band** across the landing's grid, under the two stacks and above the foot: “For companies · coming soon” in small capitals, the heading “Company sign-in”, a lead line, and four points, each with its own icon on a blue chip (as the terms'): a door, a person crossed out, a lock, a cloud. On a laptop the words take seven columns and the box five; on a phone the band comes last, the box under the words behind a rule. (2) **The box**: the early price, “$59” “a month per space, any number of people”, then “Early price. Nothing to pay until it's ready.”, then the signup: “Want it for your team?”, an address field (“you@company.com”), “Tell me when it's ready”, and “One email when it's ready, and nothing else.” (3) **Its states**: Sending (the button reads “Sending…”, dimmed); Sent (the signup gives way to one line with a green tick, “Thanks. We'll write to <address> once, when it's ready.”); not an address, checked in the page before anything is sent (the field's edge turns red and the note reads “That doesn't look like an email address.”); and failed (“That didn't go through. Try again, or write to hi@shroom.am.”). Without script the signup is hidden and the box says “Want it for your team? Write to hi@shroom.am, and we'll tell you when it's ready.” (the build's words, approved by Bagrat as written the same day, with the privacy page's line). (4) **What it sends**: the address only, once, by email to the inbox that reads reports (POST shroom.am/teams), so that person can be told when it is ready; nothing keeps it on the site, and the privacy page says so. No cookie and no one else's script come with it. Built: DECISIONS B277. | ratified | 2026-10-30 |
+| N89 | The setup, driven by a coding agent, with no window | **Bagrat, 2026-10-30** (an interview, four rulings, then the proposal and the canvas's Agent setup board, approved the same day): besides the wizard, which stays for people without an agent, a coding agent can drive the same setup with no window. (1) **No window.** Installed with `--agent`, or opened by the `shroom` command for its setup, shroom opens as the mushroom only; the setup's states are the wizard's own, run with its window shut, and a click on the mushroom opens the normal window at the current step. (2) **The commands.** The whole setup is `shroom setup …` commands an agent can run anytime, to start or resume: `shroom setup` says where it stands; `account new\|have`, `token open`, `token`, `account pick <id>`, `card open`, `name '<name>'`, `permissions`, `wait`. Each answers `{at, say, do, next}`: `at` the state's id, `say` the state's agent line (below, the window's one voice), `do` what the person does, `next` the command to run after. (3) **The token by the clipboard, read by the command.** `shroom setup token` reads the clipboard in its own process, the way `pbpaste` does, or the token on stdin (`pbpaste \| shroom setup token`); never in argv, never in output; it hands it to the app once over the control socket and clears the clipboard if it still holds it (DEVIATIONS #59, ratified the same day: Law 13's “files only” bends for this one hand-off). (4) **Permissions one per run**, in the wizard's order: each run asks the next or says which prompt is up; a denied microphone or camera never blocks. (5) **The page is short; the words are the command's**: shroom.am/agent gets a “set it up too” part. The login item is not registered by an agent's setup (the welcome's box was never shown, so it is never set silently); Settings · General has it. A Settings repair (space-degraded) stays the window's for now. Built: DECISIONS B278. | ratified | 2026-10-30 |
 
 ## Surfaces
 
 - **The tray mushroom** — Lives: always | Opens: — | Rules: five faces (N38); the click is the door (N21); right-click → Quit shroom (idle only — mid-take it's a click, N39)  [UX-STATEMACHINE.md L1715]
 - **The popover** — Lives: under the mushroom, on its display, however it opened (N57) | Opens: on a click, a launch you did, all-set's Record now, or a pause or stop you didn't make (without the keyboard) | Rules: `config` · `paused` · the confirms that morph from them; one banner + one status line (N38); never brings the dock icon  [UX-STATEMACHINE.md L1716]
-- **The window** — Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip  [UX-STATEMACHINE.md L1717]
+- **The window** — Lives: centered on the mushroom's display (N57), one at a time per kind, the editor's one per video (N73) | Opens: the editor (Edit…, N63), onboarding, Library, Settings, Send feedback (N60) | Rules: the dock icon while open; ✕ ≡ the retreat (N12); survives a browser round-trip; every window is recorded in a take like any app's (N85)  [UX-STATEMACHINE.md L1717]
 - **The page** — Lives: the space's own address | Opens: Stop, Get link, Open page, a shared link, an invite | Rules: owner-mode by cookie, per member (N40); `noindex`; the mark bottom-right  [UX-STATEMACHINE.md L1718]
 - **Terminal** — Lives: the user's own | Opens: the install command | Rules: the readable script; refuses mid-take; the update path forever  [UX-STATEMACHINE.md L1719]
-- **The overlays** — Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62); the marker toast for two seconds after ⌥⌘M (N78) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only thing of ours ever in a take (the label and the marker toast, like the countdown, are left out of it)  [UX-STATEMACHINE.md L1720]
+- **The overlays** — Lives: the chosen display | Opens: the countdown scrim; the bubble from `config` through the take; the agent label while a take the shroom command started records (N62); the marker toast for two seconds after ⌥⌘M (N78) | Rules: never windows, never the dock icon; the bubble never takes focus, while the countdown does — you just started it, and its Esc must work without any extra macOS permission; the bubble is the only overlay of ours ever in a take (the label and the marker toast, like the countdown, are left out of it)  [UX-STATEMACHINE.md L1720]
 - **The command line** — Lives: the person's terminal, or their coding agent's | Opens: — (a link in the browser when asked); its recording refusal carries a link that opens Settings at General's switch, for the person to click | Rules: the space's own page under this Mac's device key, never the token; nothing undoable without --yes; waits while a take is open (law 4); recording only through the running app, and only with General's switch on (N62)
 
 ## Absent from v1
@@ -4635,6 +4760,7 @@ The map's notes: lines about a state that aren't a state.
 - **invite-row-faces** (Region 6, about `invite-born`): row faces — not states (N18 nuance) “invited just now” → “invited Aug 21 · 5 days left” → expired: the row offers New link — nothing is blocked, so no transition happens.
 - **join-owner-view** (Region 6, about `join-landing`): owner view — the owner's cookie rides along “This is the page Ani will see — opening it here doesn't use it up.” one quiet note on top of the same page — the owner who clicks their own link to check it never wonders if they spent it.
 - **save-movies** (Region 6, about `member-revoked`): Save to Movies — the stranded-take rescue (N34) The take's single-file copy lands in ~/Movies under its title and Finder shows it. The take keeps waiting — it still uploads if the space returns — until discarded. Several: “Save three to Movies”. After saving, the banner reads “Saved to Movies ✓” with a quiet Discard…. No take is ever lost to a space that went away.
+- **late-click** (Region 3, about `config`, `settings-general`): Late-arrival guard — not a state (N83): in the popover and in Settings, a pointer click on a control that something arriving by itself moved or put there in the last half-second does nothing; the next click works. What the person's own click or key changed, and the keyboard, are never held back.
 
 ## Events
 

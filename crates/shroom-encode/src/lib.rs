@@ -57,6 +57,13 @@ pub mod files {
         digits.parse().ok().filter(|n| *n > 0)
     }
 
+    /// Whether `name` is an init segment's as the encoder names them: [`INIT_SEGMENT`], or a
+    /// later take's own (`init_<n>.mp4`, [`take_init`]) — a bare file name, never a path or
+    /// a dot file.
+    pub fn is_init(name: &str) -> bool {
+        name == INIT_SEGMENT || init_take(name).is_some()
+    }
+
     pub fn take_preview(take: u32) -> String {
         format!("preview_{take}.mp4")
     }

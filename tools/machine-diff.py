@@ -4,6 +4,7 @@ the machine carries (B133, machine-json phase 5), for Bagrat to read instead of 
 
     python3 tools/machine-diff.py [base] [head]   # default: origin/main, the working tree
     python3 tools/machine-diff.py --regions ...   # also: the regions it touches, one a line
+    python3 tools/machine-diff.py --touched ...   # only the parts it touches (states.<id>, ledger…), one a line
 
 base and head are git revisions; "-" (or no head) is the working tree. Prints Markdown:
 states, said-lines, actions, edges, rules and groups added, removed or changed, each with
@@ -144,10 +145,22 @@ def diff(a, b):
     return out, sorted(regions)
 
 
+def touched(a, b):
+    """What a change touches, as parts: `states.<id>` for each state added, removed or
+    changed, and the name of every other top-level part that differs (`ledger`, `edges`,
+    `laws`…). The CI router reads it (tools/ci-route.py, DEVIATIONS #58)."""
+    parts = {f"states.{sid}" for sid in set(a["states"]) | set(b["states"]) if a["states"].get(sid) != b["states"].get(sid)}
+    parts |= {key for key in set(a) | set(b) if key != "states" and a.get(key) != b.get(key)}
+    return parts
+
+
 def main():
     args = [x for x in sys.argv[1:] if not x.startswith("--")]
     base = args[0] if args else "origin/main"
     head = args[1] if len(args) > 1 else "-"
+    if "--touched" in sys.argv:
+        print("\n".join(sorted(touched(load(base), load(head)))))
+        return
     lines, regions = diff(load(base), load(head))
     print(f"### What this changes in the machine ({base} → {'the working tree' if head == '-' else head})")
     print()

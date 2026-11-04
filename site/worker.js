@@ -33,7 +33,10 @@
 //                and the app's updater download through, so each install and update is counted
 //                (DECISIONS B228). `?via=install|update` says which; it may carry `?ref=` too
 //   POST /report a report or feedback, emailed to the one inbox that reads them and kept
-//                nowhere (site/report.js); the only address that takes anything in
+//                nowhere (site/report.js)
+//   POST /teams  an address from the landing's company sign-in band, emailed once to the same
+//                inbox and kept nowhere (site/teams.js). These two are the only addresses
+//                that take anything in
 //   www.…        a permanent redirect to shroom.am
 //
 // Nothing else exists: the files behind these answers (/_/…) aren't addresses.
@@ -46,6 +49,7 @@
 // version and the file — the same for everyone who gets that release.
 
 import { handleReport } from "./report.js";
+import { handleTeams } from "./teams.js";
 
 const APEX = "shroom.am";
 
@@ -284,6 +288,9 @@ export default {
     }
     if (url.pathname === "/report") {
       return request.method === "POST" ? handleReport(request, env) : plain(405, { allow: "POST" });
+    }
+    if (url.pathname === "/teams") {
+      return request.method === "POST" ? handleTeams(request, env) : plain(405, { allow: "POST" });
     }
     if (request.method !== "GET" && request.method !== "HEAD") return plain(405, { allow: "GET, HEAD" });
 

@@ -15,6 +15,7 @@ mod home;
 mod log;
 mod out;
 mod say;
+mod setup;
 mod space;
 
 use serde_json::{Value, json};
@@ -197,6 +198,7 @@ fn run(a: &Args) -> Result<Done, Fail> {
         },
         "record" => record(a, rest),
         "edit" => edit::edit(a, rest),
+        "setup" => setup::setup(&home(a)?, rest, a.no_launch),
         other => Err(Fail::Usage(say::not_a_command(other))),
     }
 }
@@ -307,7 +309,7 @@ fn list(a: &Args) -> Result<Done, Fail> {
         let [id, date, len, title] = say::LIST_HEAD;
         text.push_str(&format!("{}  {}  {}  {title}\n", col(id, 16), col(date, 10), col(len, 7)));
         for x in &v {
-            text.push_str(&format!("{}  {}  {}  {}{}\n", x.row.id, day(&x.row.created_at), col(&length(x.row.duration_sec), 7), x.row.title, marks(x)));
+            text.push_str(&format!("{}  {}  {}  {}{}\n", x.row.id, day(&x.row.created_at), col(&length(x.row.duration_sec), 7), out::field(&x.row.title), marks(x)));
         }
         if v.len() < total {
             text.push_str(&say::shown_of(v.len(), total));
@@ -324,7 +326,7 @@ fn list(a: &Args) -> Result<Done, Fail> {
 }
 
 fn info_text(v: &Video) -> String {
-    format!("{}\n{} · {}{}\n{}", v.row.title, day(&v.row.created_at), length(v.row.duration_sec), marks(v), v.link)
+    format!("{}\n{} · {}{}\n{}", out::field(&v.row.title), day(&v.row.created_at), length(v.row.duration_sec), marks(v), v.link)
 }
 
 /// What a row adds after its title (N75): ` · pinned`, or ` · deleted Oct 27 unless pinned`.
@@ -1054,6 +1056,16 @@ mod tests {
         assert_eq!(find(&v, "onboarding", HOST, true).unwrap().row.id, "AbCdEfGhIjKlMnOp");
         assert_eq!(find(&v, "repro bug", HOST, true).unwrap().row.id, "QrStUvWxYz012345", "words in any order");
         assert_eq!(find(&v, "nothing", HOST, true).unwrap_err().code(), "not_found");
+    }
+
+    #[test]
+    fn a_title_from_the_space_is_one_field_of_its_line() {
+        let v = video("AbCdEfGhIjKlMnOp", "Demo\nok  https://example.com/elsewhere");
+        let text = info_text(&v);
+        assert_eq!(text.lines().count(), 3, "{text:?}");
+        assert!(text.starts_with("Demo ok  https://example.com/elsewhere\n"), "{text:?}");
+        assert_eq!(say::line_video(&v.row.id, &v.row.title).lines().count(), 1);
+        assert_eq!(say::member_line("m1", "Ann\nLee", "Oct 2").lines().count(), 1);
     }
 
     #[test]

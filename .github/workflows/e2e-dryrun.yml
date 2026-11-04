@@ -1,0 +1,186 @@
+# The launch dry run on a clean Mac (dev/mac/scenarios/wave1-dryrun.sh), the way a person
+# meets shroom, on a GitHub-hosted Mac that never had it and the dedicated Cloudflare test
+# account (TESTING-PLAN D3) with the product's space cleared first: the landing's install
+# line as it is written, the release's own wizard, a take whose link plays, Send feedback
+# from the popover, the popover at 2×, a teammate joined by invite, and the Homebrew line. It
+# builds nothing of the app: what runs is what users run.
+#
+# A release sets its space up under the product's own names (`v` over `shroom-space`), as the
+# AI-migration lane's does: the two share one concurrency group, and this run deletes that
+# space before and after (`e2e-run product-close`). The run's token — the product's two
+# powers, two hours — is minted and deleted as e2e-full's is.
+#
+# A session asks through a commit to dev/e2e/dryrun-request on its own branch (never main);
+# its `expect=` line is the version both install lines must give. The verdict is the job's
+# colour; the evidence — every window whole, the checks, a video of the screen, the app's
+# logs — is kept three days and can be read by anyone signed in to GitHub: it shows only the
+# runner's screen and the test account's throwaway space.
+#
+# Every action is pinned to a full commit SHA, as in ci.yml.
+name: E2E launch dry run (install line → setup → link → member → brew)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/**']
+    paths: ['dev/e2e/dryrun-request']
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+  # The installer's downloads go through shroom.am's counter: tagged as our own (B228).
+  SHROOM_REF: ci
+
+jobs:
+  # A push starts this only when the branch's own commits changed dev/e2e/dryrun-request,
+  # never because a merge of main brought another PR's request in (tools/e2e-asked.py).
+  # Seconds, on Linux, so a merge of main never waits for a Mac to say no. Run workflow
+  # always runs.
+  asked:
+    name: Did the branch ask?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      asked: ${{ steps.asked.outputs.asked }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: The branch's own commits, past main
+        id: asked
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            python3 tools/e2e-asked.py dev/e2e/dryrun-request "$BEFORE" HEAD | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "asked=true" | tee -a "$GITHUB_OUTPUT"
+          fi
+
+  dryrun:
+    name: A clean Mac, the install line to a teammate, and brew
+    needs: asked
+    if: needs.asked.outputs.asked == 'true'
+    # One run at a time takes the product's space (the group e2e-migration.yml's job shares). The group is the job's, not the
+    # workflow's: GitHub keeps one pending run per group, so a merge's run that asks nothing
+    # must never stand in line and cancel a real request waiting there.
+    concurrency:
+      group: e2e-migration
+      cancel-in-progress: false
+    runs-on: macos-26
+    timeout-minutes: 90
+    environment: cf-e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: A quieter Mac
+        run: sudo mdutil -a -i off || true
+
+      - name: Rust toolchain (the workspace's rust-version), and the Xcode in use
+        id: toolchain
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' Cargo.toml)
+          rustup toolchain install "$version" --profile minimal --no-self-update
+          rustup default "$version"
+          echo "xcode=$(xcodebuild -version | awk 'NR==1{v=$2} NR==2{b=$3} END{print v "-" b}')" >>"$GITHUB_OUTPUT"
+
+      # mac.yml's cache, read only.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          shared-key: mac-macos-26-xcode${{ steps.toolchain.outputs.xcode }}
+          save-if: false
+
+      # Built before any secret is written: no build script runs beside one. Cold (no cache
+      # for this key yet), cargo's own git fetch of the capture crates' big repository hung
+      # for an hour (run 40173006374): git's own fetch, and a limit.
+      - name: The run's two ends
+        timeout-minutes: 25
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+        run: cargo build --locked -p shroom-e2e-live --bin e2e-run
+
+      - name: The recorder, the pointer
+        run: brew install ffmpeg cliclick
+
+      # `printf` is bash's own: neither value is ever a process argument.
+      - name: The test account, to files only this job reads
+        env:
+          SHROOM_E2E_TOKEN: ${{ secrets.SHROOM_E2E_TOKEN }}
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          [ -n "$SHROOM_E2E_TOKEN" ] && [ -n "$SHROOM_E2E_ACCOUNT_ID" ] || { echo "::error title=No secrets::cf-e2e needs SHROOM_E2E_TOKEN and SHROOM_E2E_ACCOUNT_ID"; exit 1; }
+          umask 077
+          mkdir -p "$RUNNER_TEMP/e2e"
+          printf '%s' "$SHROOM_E2E_TOKEN" >"$RUNNER_TEMP/e2e/account-token"
+
+      - name: The run opens (pinned, its token), the release's space cleared
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          export SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/account-token"
+          target/debug/e2e-run open "$RUNNER_TEMP/e2e/run-token" "$RUNNER_TEMP/e2e/space-id"
+          target/debug/e2e-run product-close
+
+      # Nothing of shroom's on this Mac before the line runs — said, then the line as the
+      # landing writes it (only its tag added), which must open what it placed.
+      - name: A clean Mac, then the install line
+        run: |
+          mkdir -p "$RUNNER_TEMP/mac/install-line"
+          cd "$RUNNER_TEMP/mac/install-line"
+          { ls -d ~/Applications/shroom.app /Applications/shroom.app ~/.shroom ~/.local/bin/shroom 2>&1; brew list --cask 2>&1 | grep -x shroom || echo "brew: no shroom cask"; } | tee clean.txt
+          ! ls -d ~/Applications/shroom.app /Applications/shroom.app ~/.shroom >/dev/null 2>&1 || { echo "::error::this Mac already had shroom"; exit 1; }
+          curl -fsSL "https://shroom.am/install?ref=ci" | sh 2>&1 | tr '\r' '\n' | grep -v '^#' | tee install.txt
+          sleep 8
+          screencapture -x opened.png
+          pgrep -f "$HOME/Applications/shroom.app/Contents/MacOS/" >/dev/null && echo "opened: it runs" | tee -a install.txt || { echo "::error::the install line didn't open shroom"; exit 1; }
+          got=$(plutil -extract CFBundleShortVersionString raw -o - "$HOME/Applications/shroom.app/Contents/Info.plist")
+          want=$(sed -n 's/^expect=//p' "$GITHUB_WORKSPACE/dev/e2e/dryrun-request")
+          echo "version: $got (expected ${want:-the latest})" | tee -a install.txt
+          [ -z "$want" ] || [ "$got" = "$want" ] || { echo "::error::the install line gave $got, not $want"; exit 1; }
+          pkill -f "$HOME/Applications/shroom.app/Contents/MacOS/" || true
+          sleep 2
+
+      - name: The release, granted
+        run: dev/mac/mac.sh prepare "$HOME/Applications/shroom.app"
+
+      - name: Setup, a take and its link, feedback, 2×, a teammate, brew — recorded
+        run: E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/run-token" MAC_LIMIT=3000 dev/mac/mac.sh run wave1-dryrun
+
+      - name: The run closes (the release's space, the run's token)
+        if: always()
+        env:
+          SHROOM_E2E: '1'
+          SHROOM_E2E_ACCOUNT_ID: ${{ secrets.SHROOM_E2E_ACCOUNT_ID }}
+        run: |
+          if [ -s "$RUNNER_TEMP/e2e/account-token" ]; then
+            export SHROOM_E2E_TOKEN_FILE="$RUNNER_TEMP/e2e/account-token"
+            target/debug/e2e-run product-close || true
+            target/debug/e2e-run close "$RUNNER_TEMP/e2e/space-id"
+          fi
+          rm -f "$RUNNER_TEMP/e2e/account-token" "$RUNNER_TEMP/e2e/run-token"
+
+      - name: The verdict
+        if: always()
+        run: |
+          dev/mac/mac.sh summary
+          cat "$RUNNER_TEMP/mac/wave1-dryrun/checks.tsv" "$RUNNER_TEMP/mac/wave1-dryrun/times.txt" 2>/dev/null || true
+          ! grep -q '^fail' "$RUNNER_TEMP/mac/results.tsv"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: e2e-dryrun-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mac
+          if-no-files-found: warn
+          retention-days: 3

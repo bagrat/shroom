@@ -460,7 +460,7 @@ describe("the questions, privacy and terms pages", () => {
   it("puts every coming-soon line's pill on its own line's end", () => {
     const faq = file("site/pages/faq.html");
     const soon = faq.match(/<li class="soon">[\s\S]*?<\/li>/g) ?? [];
-    assert.equal(soon.length, 4, "editing, captions and chapters, view counts, deleting from the page");
+    assert.equal(soon.length, 2, "view counts, deleting from the page (editing, captions and chapters shipped in 0.1.33)");
     for (const li of soon) assert.match(li, /^<li class="soon"><span>[^<]+<\/span><em class="pill">Coming soon<\/em><\/li>$/);
     const lists = [...faq.matchAll(/<ul class="points limits">([\s\S]*?)<\/ul>/g)].map((m) => m[1]);
     assert.ok(lists[0]?.trim().startsWith('<li class="soon">'), "what's coming sits at the top");

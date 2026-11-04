@@ -22,10 +22,8 @@ name: CI
 on:
   push:
     branches: [main]
+  # A PR's title and body are checked by pr-text.yml, which an edit re-runs alone.
   pull_request:
-    # `edited` re-runs the tripwire when a PR's title or body changes: a fixed body would
-    # otherwise stay red until the next push.
-    types: [opened, synchronize, reopened, edited]
   # "Run workflow" on `main` warms the caches before a tag, when nothing ran for a week.
   workflow_dispatch:
 
@@ -53,8 +51,9 @@ env:
 jobs:
   # ── Public tripwire ─────────────────────────────────────────────────────────────────
   # This repo is public: no session links, `Claude-Session:` trailers, personal email
-  # addresses or names of the files that moved private, in the tree, the commits this
-  # run brings or the PR's title and body (CLAUDE.md, "Public and private"). Seconds.
+  # addresses or names of the files that moved private, in the tree or the commits this
+  # run brings (CLAUDE.md, "Public and private"); pr-text.yml holds the PR's title and
+  # body. Seconds.
   public:
     name: Public tripwire
     runs-on: ubuntu-latest
@@ -67,9 +66,6 @@ jobs:
       - name: Tripwire
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          PR_TEXT: |-
-            ${{ github.event.pull_request.title }}
-            ${{ github.event.pull_request.body }}
         run: |
           if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             bash tools/public-tripwire.sh "$BASE" HEAD
@@ -135,7 +131,7 @@ jobs:
   #   app/test/*-drive.mjs, *-gallery.mjs, update-drive.sh
   #       drive the dev app's own windows (the `shroom-dev` keychain identity, a session
   #       with a screen). The galleries' Settings height check runs here on its own, cheap,
-  #       as app/test/settings-fit.mjs (the tests-fit lane).
+  #       as app/test/settings-fit.mjs (the tests-fit lane), with app/test/late-click.mjs.
   #   tests/l5/*
   #       a Tart VM cloned from a 30 GB golden image, and the `shroom-dev` identity.
   #   tests/l6/two-macs.mjs
@@ -215,9 +211,12 @@ jobs:
           node --test tools/test/release-notes.test.mjs
           node tools/release-notes.mjs check --all
 
+      - name: Only a branch's own request starts an e2e run (tools/e2e-asked.py)
+        run: node --test tools/test/e2e-asked.test.mjs
+
       - name: The landing page, the media readers
         run: |
-          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs
+          node --test site/test/landing.test.mjs site/test/agent.test.mjs site/test/cli.test.mjs site/test/worker.test.mjs site/test/og.test.mjs site/test/report.test.mjs site/test/teams.test.mjs
           node --test tests/e2e/av.test.mjs tests/e2e/tone.test.mjs tests/e2e/field.test.mjs
 
   # The crates with no platform in them (rust-tests.sh's LINUX_CRATES): the state machine's
@@ -297,6 +296,19 @@ jobs:
 
       - name: Settings fits its window
         run: node app/test/settings-fit.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # A click on a control that something late just moved does nothing (N83): the popover
+      # and Settings, each handed a Scene that lands under the pointer. Seconds.
+      - name: A late arrival never takes a click
+        run: node app/test/late-click.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # The player's controls on a phone (an iPhone's WebKit, an Android's Chromium): a tap
+      # anywhere on a control reaches it, never the seek bar above them. Seconds.
+      - name: The player's controls take a phone's taps
+        run: |
+          npx playwright install --with-deps chromium
+          set -o pipefail
+          node worker/dev/phone-drive.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
   # The rest of the Rust workspace — the app, the recorder, the encoder, the uploader, the
   # updater, the CLI — and the media tests' real recordings, on a Mac.
@@ -698,6 +710,9 @@ jobs:
 
       - name: The node packages
         run: npm audit --audit-level=high
+
+      - name: shroom.am's deploy tool (site/deploy's lockfile)
+        run: npm audit --prefix site/deploy --audit-level=high
 
   signing:
     name: Signing rehearsal

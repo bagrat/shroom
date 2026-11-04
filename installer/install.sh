@@ -31,6 +31,10 @@
 # --early (DECISIONS B220) takes the early channel: shroom's pre-releases, signed like every
 # release, and the official release once it's newer. It leaves ~/.shroom/channel saying
 # so, and the app's own updater keeps to that channel; remove the file to leave it.
+#
+# --agent (spec N89) is for a coding agent that sets shroom up for you: shroom opens as the
+# mushroom in the menu bar, with no window, and the agent walks you through the setup with
+# the `shroom setup` command. Click the mushroom to see shroom's own window instead.
 
 set -u
 
@@ -73,8 +77,18 @@ say() { printf '%s\n' "$*"; }
 fail() { for line in "$@"; do say "$line"; done; exit 1; }
 
 # The shroom already in ~/Applications names itself, and keeps its own folder:
-# ~/.shroom (a developer build keeps ~/.shroom-dev).
-bundle_id() { plutil -extract CFBundleIdentifier raw -o - "$APP/Contents/Info.plist" 2>/dev/null || echo am.shroom; }
+# ~/.shroom (a developer build keeps ~/.shroom-dev). Only a name of shroom's own shape —
+# am.shroom, or am.shroom.<part>… in lowercase letters, digits and '-' — is taken, since it
+# goes into the uninstall's paths and the AppleScript; any other reads as am.shroom.
+bundle_id() {
+  bid=$(plutil -extract CFBundleIdentifier raw -o - "$APP/Contents/Info.plist" 2>/dev/null) || bid=""
+  case "$bid" in
+    *[!a-z0-9.-]* | *..* | *.) bid=am.shroom ;;
+    am.shroom | am.shroom.*) ;;
+    *) bid=am.shroom ;;
+  esac
+  echo "$bid"
+}
 state_dir() {
   case "$(bundle_id)" in
     *.dev) echo "$HOME/.shroom-dev" ;;
@@ -256,7 +270,14 @@ main() {
   join=""
   was_running=""
   early=""
-  if [ "${1:-}" = "--early" ]; then early=1; shift; fi
+  agent=""
+  while :; do
+    case "${1:-}" in
+      --early) early=1; shift ;;
+      --agent) agent=1; shift ;;
+      *) break ;;
+    esac
+  done
   if [ "${1:-}" = "--join" ]; then join="${2:-}"; fi
 
   # This Mac, before anything is fetched. A machine that isn't a Mac (a server, a Linux
@@ -401,6 +422,9 @@ launch() {
       printf '{"v":1,"link":"%s","arrived":"%s"}\n' "$join" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$dir/invite.tmp" &&
       mv -f "$dir/invite.tmp" "$dir/invite" ) 2>/dev/null && invite=--invite
   fi
+  # --agent (N89): a fresh install opens as the mushroom only — the agent's `shroom setup`
+  # drives it. An invite's window is the member lane's, and an update reopens as it does.
+  if [ -n "$agent" ] && [ -z "$invite" ] && [ "$how" = install ]; then how=agent; fi
   link_cli
   # If macOS won't open it, the copy stays placed and the line says where it is — never
   # the system's own error text.

@@ -542,6 +542,10 @@ fn account(s: &mut State, r: &Request, rest: &[&str]) -> Reply {
             ok(json!({"name": secret, "type": "secret_text"}))
         }
         ("DELETE", ["workers", "scripts", name]) => {
+            // A forced delete takes what hangs on the Worker with it: the log says so.
+            if r.query.contains_key("force") {
+                s.calls.push(format!("FORCED {name}"));
+            }
             s.scripts.remove(*name);
             s.routes.remove(*name);
             s.schedules.remove(*name);

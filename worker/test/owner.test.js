@@ -327,7 +327,7 @@ function footOf(body) {
  * back after them — where headless Chromium does it, between DOMContentLoaded and load.
  * `loading` stops before the arrival; `arrive()` plays it later. */
 function markScript(body, { restored, back, loading = false } = {}) {
-  const script = [...body.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/mark"));
+  const script = [...body.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]).find((s) => s.includes("/_shroom/mark"));
   expect(script, "the mark's script is on the page").toBeTruthy();
   const rendered = footOf(body);
   const logoTag = body.match(/<div class="foot">[\s\S]*?(<a class="mark"[^>]*>)/)?.[1] ?? "";

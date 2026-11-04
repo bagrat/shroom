@@ -14,10 +14,17 @@
   import Door from "./Door.svelte";
 
   let { b, send, activates }: { b: InviteBody; send: (a: Action) => void; activates: boolean } = $props();
+  // “Their space: v.x.workers.dev”: the words before the address quiet, the address as text.
+  const space = $derived.by(() => {
+    if (!b.space) return null;
+    const at = b.space.indexOf(": ");
+    return at < 0 ? { label: "", host: b.space } : { label: b.space.slice(0, at + 2), host: b.space.slice(at + 2) };
+  });
 </script>
 
 <section class="invite" class:hero={!!b.title}>
   {#if b.title}<h1>{b.title}</h1>{/if}
+  {#if space}<p class="space">{space.label}<span>{space.host}</span></p>{/if}
   <div class="say">
     <div class="lines" class:wait={b.spinner}>
       {#if b.spinner}<Spinner rest />{/if}

@@ -55,3 +55,22 @@ fn a_named_init_missing_is_incomplete() {
     std::fs::remove_file(dir.path().join("init_1.mp4")).unwrap();
     assert!(matches!(Local::read(dir.path()), Err(UploadError::Incomplete(_))));
 }
+
+/// Only an init named as the encoder names them (`init.mp4`, `init_<n>.mp4`) is read and
+/// sent: a playlist naming any other file — a path, a dot file — is refused whole.
+#[test]
+fn a_playlist_naming_any_other_init_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    recording(dir.path());
+    std::fs::write(dir.path().join(".hidden.mp4"), b"x").unwrap();
+    std::fs::create_dir_all(dir.path().join("sub")).unwrap();
+    std::fs::write(dir.path().join("sub/init.mp4"), b"x").unwrap();
+    std::fs::write(dir.path().join("other.json"), b"x").unwrap();
+    let playlist = std::fs::read_to_string(dir.path().join("stream.m3u8")).unwrap();
+    for name in ["../init.mp4", "sub/init.mp4", ".hidden.mp4", "other.json", "/etc/hosts", "init_0.mp4", "init_.mp4", "init_1.mp4/", ""] {
+        std::fs::write(dir.path().join("stream.m3u8"), playlist.replace("URI=\"init_1.mp4\"", &format!("URI=\"{name}\""))).unwrap();
+        assert!(matches!(Local::read(dir.path()), Err(UploadError::Incomplete(_))), "{name:?}");
+    }
+    std::fs::write(dir.path().join("stream.m3u8"), playlist).unwrap();
+    assert!(Local::read(dir.path()).is_ok(), "the encoder's own names read");
+}

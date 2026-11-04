@@ -66,6 +66,20 @@ pub fn command(words: &[String]) -> String {
             "finish" => "edit finish",
             _ => "edit ?",
         },
+        // `setup <step>` (N89): the step, never a name or an account.
+        "setup" => match (w(1), w(2)) {
+            ("", _) => "setup",
+            ("wait", _) => "setup wait",
+            ("account", "new") => "setup account-new",
+            ("account", "have") => "setup account-have",
+            ("account", "pick") => "setup account-pick",
+            ("token", "open") => "setup token-open",
+            ("token", _) => "setup token",
+            ("card", _) => "setup card-open",
+            ("name", _) => "setup name",
+            ("permissions", _) => "setup permissions",
+            _ => "setup ?",
+        },
         "record" => match w(1) {
             "start" => "record start",
             "pause" => "record pause",
@@ -87,7 +101,7 @@ pub fn counted(answer: &Value) -> Vec<String> {
         match (k.as_str(), v) {
             (_, Value::Array(a)) => out.push(format!("{k} {}", a.len())),
             ("counts", Value::Object(c)) => out.extend(c.iter().filter(|(_, n)| n.is_number()).map(|(name, n)| format!("{name} {n}"))),
-            ("take" | "final", Value::String(t)) if t.chars().all(|c| c.is_ascii_lowercase() || c == '_') => out.push(format!("{k} {t}")),
+            ("take" | "final" | "at", Value::String(t)) if t.chars().all(|c| c.is_ascii_lowercase() || c == '_') => out.push(format!("{k} {t}")),
             ("id", Value::String(id)) => out.push(format!("id {}", short(id))),
             ("counting" | "dry_run" | "running" | "saved", Value::Bool(b)) => out.push(format!("{k} {b}")),
             ("rev", Value::Number(n)) => out.push(format!("rev {n}")),

@@ -4,6 +4,8 @@
 //! an agent branches on is never here (`out.rs`). No other file of the command writes a
 //! sentence of its own (`tests/voice.rs`).
 
+use crate::out::field;
+
 // ── help ──
 
 pub const HELP: &str = "\
@@ -31,6 +33,8 @@ shroom — your shroom videos from the command line.
   shroom edit <video> cut 1:02 1:10   leave a part out; also trim <in> <out>,
                                       put-back <cut>, apply <cut>, revert, finish
   shroom status                       is shroom running, recording, set up?
+  shroom setup                        set shroom up, step by step, with no window
+                                      (for a coding agent: follow each answer's next)
   shroom guide                        how a coding agent should use this tool
 
 Many at once (each item its own result; safe to run again; --dry-run first)
@@ -268,11 +272,11 @@ pub fn rename_usage() -> String {
 }
 
 pub fn renamed(title: &str) -> String {
-    format!("Renamed to “{title}”.")
+    format!("Renamed to “{}”.", field(title))
 }
 
 pub fn would_rename(was: &str, title: &str) -> String {
-    format!("Would rename “{was}” to “{title}” (nothing was changed).")
+    format!("Would rename “{}” to “{}” (nothing was changed).", field(was), field(title))
 }
 
 pub fn rename_item_shape() -> String {
@@ -284,16 +288,16 @@ pub fn renames_head(dry_run: bool) -> String {
 }
 
 pub fn line_renamed(was: &str, title: &str) -> String {
-    format!("  “{was}” → “{title}”")
+    format!("  “{}” → “{}”", field(was), field(title))
 }
 
 pub fn line_already_so(title: &str) -> String {
-    format!("  “{title}” — already so")
+    format!("  “{}” — already so", field(title))
 }
 
 /// One item of a batch that didn't go through, and why.
 pub fn line_failed(what: &str, why: &str) -> String {
-    format!("  {what} — {why}")
+    format!("  {} — {why}", field(what))
 }
 
 // ── links ──
@@ -303,7 +307,7 @@ pub fn links_head() -> String {
 }
 
 pub fn line_link(title: &str, link: &str) -> String {
-    format!("  {title}  {link}")
+    format!("  {}  {link}", field(title))
 }
 
 // ── delete ──
@@ -313,7 +317,7 @@ pub fn delete_usage() -> String {
 }
 
 pub fn line_video(id: &str, title: &str) -> String {
-    format!("  {id}  {title}")
+    format!("  {id}  {}", field(title))
 }
 
 pub fn not_here_already_gone(ids: &[String]) -> String {
@@ -337,7 +341,7 @@ pub fn line_not_found(id: &str) -> String {
 }
 
 pub fn line_deleted(id: &str, title: &str) -> String {
-    format!("  deleted  {id}  {title}")
+    format!("  deleted  {id}  {}", field(title))
 }
 
 pub fn deleted(n: usize) -> String {
@@ -377,7 +381,7 @@ pub fn old_head(n: usize, days: u64) -> String {
 }
 
 pub fn line_candidate(id: &str, day: &str, title: &str, why: &str) -> String {
-    format!("  {id}  {day}  {title} — {why}")
+    format!("  {id}  {day}  {} — {why}", field(title))
 }
 
 pub fn no_suggestions(older_than: Option<u64>) -> String {
@@ -405,6 +409,7 @@ pub fn pin_usage(on: bool) -> String {
 }
 
 pub fn pinned_one(title: &str, on: bool) -> String {
+    let title = field(title);
     if on { format!("Pinned “{title}”. It won't be suggested for cleanup.") } else { format!("Unpinned “{title}”. It can be suggested for cleanup again.") }
 }
 
@@ -429,7 +434,7 @@ pub fn line_pin(status: &str, id: &str, title: &str, on: bool) -> String {
         ("unchanged", false) => " (not pinned)",
         _ => "",
     };
-    format!("  {word:<9}  {id}  {title}{note}")
+    format!("  {word:<9}  {id}  {}{note}", field(title))
 }
 
 /// `· deleted Oct 27 unless pinned`, after a going video's title in the list.
@@ -461,15 +466,15 @@ pub fn autoclean_set_in_settings() -> String {
 // ── members ──
 
 pub fn owner_line(name: Option<&str>, macs: usize) -> String {
-    format!("{} (owner) · {macs} Mac{}", name.unwrap_or("You"), if macs == 1 { "" } else { "s" })
+    format!("{} (owner) · {macs} Mac{}", name.map_or("You".into(), field), if macs == 1 { "" } else { "s" })
 }
 
 pub fn member_line(id: &str, name: &str, joined: &str) -> String {
-    format!("{id}  {name}  joined {joined}")
+    format!("{id}  {}  joined {joined}", field(name))
 }
 
 pub fn invited_line(id: &str, name: Option<&str>) -> String {
-    format!("{id}  {}  invited, waiting", name.unwrap_or("Another Mac"))
+    format!("{id}  {}  invited, waiting", name.map_or("Another Mac".into(), field))
 }
 
 pub fn remove_usage() -> String {
@@ -628,6 +633,105 @@ pub fn partly(failed: usize, of: usize, lines: &str) -> String {
 
 pub fn record_usage() -> String {
     "shroom record start|pause|resume|stop".into()
+}
+
+/// `shroom setup` (N89): the step's agent line, for the person — the spec's, verbatim
+/// (`setup_spec.rs`), with the link name and the count it carries.
+pub fn setup_says(at: &str, host: Option<&str>, videos: Option<u32>) -> String {
+    let host = host.unwrap_or("your link name");
+    match at {
+        "welcome" | "account" => "Your videos will live in your own Cloudflare account. Do you have one already?".into(),
+        "account-signing-up" => "Cloudflare's sign-up is open in your browser. Finish there and confirm your email from their message, then tell me.".into(),
+        "token" => "Next, one access token for shroom. The page is pre-filled — two narrow permissions. Create it, press Copy, and tell me — not the token itself.".into(),
+        "token-garbled" => "That copy lost some characters — press Copy once more and tell me.".into(),
+        "token-wrong-powers" => "This token can't manage your video space — create a fresh one on the same page, press Copy, and tell me.".into(),
+        "token-pick-account" => "This token works for more than one Cloudflare account — which one should hold your videos?".into(),
+        "card" => "One moment — shroom is checking your token and your Cloudflare account.".into(),
+        "gate-email" => "Cloudflare wants your email verified before it opens storage. Check your inbox for their message, then tell me.".into(),
+        "gate-card" => "One step on Cloudflare's side: adding a card switches storage on. The free tier stays free — the card is their rule, not a charge.".into(),
+        "name" => "What name should your links carry? It's part of every link: v.yourname.workers.dev.".into(),
+        "name-taken" => "That name's taken — try another.".into(),
+        "wiring" => "Almost there — switching your name on takes a few minutes the first time, and only once.".into(),
+        "space-found" => {
+            let n = videos.unwrap_or(0);
+            format!("Found your space — {host}, {n} video{}. This Mac is joined.", if n == 1 { "" } else { "s" })
+        }
+        "done" => "Now macOS needs to let shroom record: your microphone and your camera, one click each, then screen recording in System Settings.".into(),
+        "perm-mic" => "macOS is asking for your microphone — click Allow.".into(),
+        "perm-camera" => "macOS is asking for your camera — click Allow.".into(),
+        "perm-screen" => "System Settings is open at Screen Recording: flip the switch next to shroom, then choose Quit & Reopen.".into(),
+        "relaunching" => "shroom is reopening — one moment.".into(),
+        "perm-priming" => "If macOS double-checks about recording, approve it — that's the last one for a good while.".into(),
+        "all-set" => format!("You're set: {host}. Click the mushroom in the menu bar to record."),
+        "wizard-offline" => "Everything so far is saved — I'll pick up right here when you're back online.".into(),
+        "wizard-unexpected" => "Something unexpected got in the way — everything so far is saved. I'll keep trying.".into(),
+        // A step this command doesn't know (a newer app): the window has it.
+        _ => setup_in_window(),
+    }
+}
+
+/// `shroom setup`: what the person does at this step; `None` while it's shroom's turn.
+pub fn setup_does(at: &str) -> Option<&'static str> {
+    Some(match at {
+        "welcome" | "account" => "say whether they have a Cloudflare account",
+        "account-signing-up" => "sign up in the browser and confirm their email",
+        "token" => "create the token on the page, press Copy, and tell you (never the token itself)",
+        "token-garbled" => "press Copy in Cloudflare once more",
+        "token-wrong-powers" => "create a fresh token on the page and press Copy",
+        "token-pick-account" => "choose the account that holds their videos",
+        "gate-email" => "confirm their email from Cloudflare's message",
+        "gate-card" => "add a card on Cloudflare's billing page",
+        "name" | "name-taken" => "choose their link name",
+        "perm-mic" | "perm-camera" => "click Allow in macOS's prompt",
+        "perm-screen" => "flip the switch next to shroom, then choose Quit & Reopen",
+        "perm-priming" => "approve macOS's check if it asks",
+        _ => return None,
+    })
+}
+
+/// `shroom setup`: the command to run next, by its step's words.
+pub fn setup_next(step: &str) -> String {
+    format!("shroom setup {step} --json")
+}
+
+/// `shroom setup`: the next command when the person picks one of their accounts.
+pub fn setup_next_pick() -> String {
+    setup_next("account pick <account id>")
+}
+
+/// `shroom setup`: the next command once the person has chosen their link name.
+pub fn setup_next_name() -> String {
+    setup_next("name '<their name>'")
+}
+
+/// `shroom setup`: one of the token's accounts, and how it's picked.
+pub fn setup_account_row(name: &str, id: &str) -> String {
+    format!("  {name}  (shroom setup account pick {id})")
+}
+
+/// `shroom setup`: the command to run next, as a person reads it.
+pub fn setup_next_line(cmd: &str) -> String {
+    format!("Next: {}", cmd.trim_end_matches(" --json"))
+}
+
+/// `shroom setup` (N89): how it's asked.
+pub fn setup_usage() -> String {
+    "shroom setup takes: (nothing), wait, account new, account have, account pick <id>, token open, token, card open, name <name>, permissions.".into()
+}
+
+/// `shroom setup token` found no token: nothing on the clipboard, nothing piped in.
+pub fn setup_no_token() -> String {
+    "There's no token on the clipboard yet. Press Copy next to the token in Cloudflare, then run this again.".into()
+}
+
+/// A step this command doesn't know: shroom's window has it.
+pub fn setup_in_window() -> String {
+    "Click the mushroom in the menu bar: shroom's window shows this step.".into()
+}
+
+/// An invite this Mac holds: its window is finishing the join.
+pub fn setup_joining() -> String {
+    "This Mac is joining a space from an invite. Click the mushroom in the menu bar to finish there.".into()
 }
 
 pub fn app_not_running() -> String {
