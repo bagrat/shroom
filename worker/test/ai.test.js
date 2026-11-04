@@ -935,7 +935,7 @@ const NAMED_LINE = "Named from what you said.";
 async function reloadShows(env, cookie) {
   const html = await (await call(env, "GET", `/${REC}`, { headers: { cookie } })).text();
   const island = html.match(/shroomChapters\(p,(\[\[.*?\]\])\)/)?.[1];
-  const track = html.match(/<track kind="captions" src="([^"]*)"(?: srclang="([^"]*)")?/);
+  const track = html.match(/<video [^>]*?data-cc="([^"]*)"(?: data-cc-lang="([^"]*)")?/);
   return { chapters: island ? JSON.parse(island) : [], captions: track ? { src: track[1].replace(/&amp;/g, "&"), lang: track[2] ?? "" } : null };
 }
 
@@ -958,7 +958,7 @@ function namingScript(html, { value = fieldOf(html).value, focused = !!fieldOf(h
   const named = [];
   /** A stand-in player: its video (playing on), its row with the speed button, what was wired. */
   const el = (tag, attrs = {}) => ({ tag, ...attrs, children: [], appendChild(c) { this.children.push(c); c.parentNode = this; return c; } });
-  const video = el("video", { src: playing, currentSrc: playing, paused: false, currentTime: 12.5 });
+  const video = el("video", { src: playing, currentSrc: playing, paused: false, currentTime: 12.5, attrs: {}, setAttribute(n, v) { this.attrs[n] = String(v); }, getAttribute(n) { return this.attrs[n] ?? null; } });
   const sp = el("button", { className: "sp" });
   const row = el("div", { insertBefore(c, at) { this.children.splice(this.children.indexOf(at), 0, c); c.parentNode = this; return c; } });
   row.children.push(sp); sp.parentNode = row;
@@ -1044,9 +1044,45 @@ describe("the page (B209)", () => {
   it("puts a Captions button in the player row, off until pressed, and the track it turns on", async () => {
     const env = await namedSpace();
     const html = await live(env);
-    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=0%3A0" srclang="en" label="${COPY.captions}">`));
+    // The track's address rides on the video; the track itself comes once the video has
+    // loaded (a <track> there as it loads makes iOS 27 refuse the video, 2026-11-03).
+    expect(html).toMatch(new RegExp(`<video [^>]* data-cc="/_shroom/cc/${REC}\\?r=0%3A0" data-cc-lang="en"></video>`));
+    expect(html).not.toContain("<track");
     expect(html).toContain(`<button type="button" class="cc" aria-label="${COPY.captions}" aria-pressed="false">`);
     expect(html).toContain("shroomCaptions(p)");
+  });
+
+  // On iOS 27 a <track> on the video as it loads makes the system player refuse the video
+  // itself ("not supported": Play, the big play mark and Fullscreen did nothing; Bagrat's
+  // iPhone, 2026-11-03). The page's own shroomCaptions adds the track only once the video has
+  // its metadata, and only once.
+  it("adds the captions' track only once the video has loaded, so a phone's player takes the video", async () => {
+    const env = await namedSpace();
+    const html = await live(env);
+    const fn = html.match(/function shroomCaptions\(p\)\{[\s\S]*?\}\);set\(on\)\}/)?.[0];
+    expect(fn, "shroomCaptions is on the page").toBeTruthy();
+    const attrs = Object.fromEntries([...html.match(/<video [^>]*>/)[0].matchAll(/\s([a-z-]+)="([^"]*)"/g)].map((m) => [m[1], m[2].replace(/&amp;/g, "&")]));
+    const run = (readyState) => {
+      const on = {};
+      const video = { readyState, children: [], textTracks: Object.assign([], { addEventListener() {} }),
+        getAttribute: (n) => attrs[n] ?? null, querySelector: (q) => (q === "track" ? video.children[0] ?? null : null),
+        appendChild(c) { this.children.push(c); return c; }, addEventListener: (t, f) => (on[t] ??= []).push(f) };
+      const button = { getAttribute: (n) => (n === "aria-label" ? COPY.captions : null), setAttribute() {}, addEventListener() {} };
+      const p = { querySelector: (q) => (q === "video" ? video : q === ".cc" ? button : null) };
+      const document = { createElement: (tag) => ({ tag }) };
+      new Function("document", "localStorage", `${fn};shroomCaptions(arguments[2])`)(document, { getItem: () => null, setItem() {} }, p);
+      return { video, loaded() { for (const f of on.loadedmetadata ?? []) f(); } };
+    };
+    const track = { tag: "track", kind: "captions", src: `/_shroom/cc/${REC}?r=0:0`.replace(":", "%3A"), srclang: "en", label: COPY.captions };
+    // Not yet loaded: no track until the video has its metadata, then exactly one.
+    const before = run(0);
+    expect(before.video.children).toEqual([]);
+    before.loaded();
+    expect(before.video.children).toEqual([track]);
+    before.loaded();
+    expect(before.video.children).toHaveLength(1);
+    // Already loaded (the owner's page dressing a player as it plays): at once.
+    expect(run(1).video.children).toEqual([track]);
   });
 
   it("looks exactly as it did for a video the space never named", async () => {
@@ -1115,7 +1151,7 @@ describe("the page (B209)", () => {
     const COPY = { rev: 2, file: "edit-2.mp4", duration: 140 };
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), edits: { ...edits([[30, 40]], 2), copy: COPY } }));
     let html = await live(env, cookie);
-    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=[^"&]*&amp;e=1"`));
+    expect(html).toMatch(new RegExp(`<video [^>]* data-cc="/_shroom/cc/${REC}\\?r=[^"&]*&amp;e=1"`));
     expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toMatchObject({ copy: `/m/${REC}/edit-2.mp4` });
     // Baked (B197): edit-3.mp4 is the recording now; a newer edit, its copy not up yet, plays
     // the file with its cuts skipped, on the file's own clock.
@@ -1123,8 +1159,8 @@ describe("the page (B209)", () => {
     await env.BUCKET.put(metaKey(REC), JSON.stringify({ ...record(env), durationSec: 150, media: BAKED, bakedFrom: [{ at: "2026-10-03T10:00:00Z", rev: 3, keep: [[0, 150]] }], edits: edits([[30, 40]], 4) }));
     html = await live(env, cookie);
     expect(html).toContain(`/m/${REC}/edit-3.mp4`);
-    expect(html).toMatch(new RegExp(`<track kind="captions" src="/_shroom/cc/${REC}\\?r=[^"]*"`));
-    expect(html).not.toMatch(/<track kind="captions" src="[^"]*e=1"/);
+    expect(html).toMatch(new RegExp(`<video [^>]* data-cc="/_shroom/cc/${REC}\\?r=[^"]*"`));
+    expect(html).not.toMatch(/data-cc="[^"]*e=1"/);
     expect(await (await call(env, "GET", `/_shroom/named/${REC}`, { headers: { cookie } })).json()).toMatchObject({ copy: null });
   });
 
@@ -1197,8 +1233,10 @@ describe("the page (B209)", () => {
     await p.answer(full());
     // The bar cut into its chapters, once.
     expect(p.player.wired.chapters).toEqual([CHAPTERS]);
-    // The captions' track on the video, the Captions button before the speed, wired once.
-    expect(p.player.video.children).toEqual([expect.objectContaining({ tag: "track", kind: "captions", src: CAPTIONS.src, srclang: "en", label: COPY.captions })]);
+    // The captions' address on the video (shroomCaptions adds the track once it has loaded),
+    // the Captions button before the speed, wired once.
+    expect(p.player.video.attrs).toEqual({ "data-cc": CAPTIONS.src, "data-cc-lang": "en" });
+    expect(p.player.video.children).toEqual([]);
     expect(p.player.row.children.map((c) => c.className)).toEqual(["cc", "sp"]);
     expect(p.player.row.children[0]).toMatchObject({ label: COPY.captions, pressed: "false" });
     expect(p.player.wired.captions).toBe(1);
@@ -1212,14 +1250,14 @@ describe("the page (B209)", () => {
   it("the captions follow the clock of what plays: an edit's own copy takes the edited one", async () => {
     const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
     await p.answer(full({ copy: `/m/${REC}/edit-3.mp4` }));
-    expect(p.player.video.children[0].src).toBe(`${CAPTIONS.src}&e=1`);
+    expect(p.player.video.getAttribute("data-cc")).toBe(`${CAPTIONS.src}&e=1`);
   });
 
   it("a baked recording's own file plays on its own clock, whatever its name (review of B241)", async () => {
     // A baked video plays `edit-3.mp4` as the recording, a newer edit's cuts skipped as it plays.
     const p = namingScript(await waitingPage(), { playing: `https://v.example.com/m/${REC}/edit-3.mp4` });
     await p.answer(full({ copy: null }));
-    expect(p.player.video.children[0].src).toBe(CAPTIONS.src);
+    expect(p.player.video.getAttribute("data-cc")).toBe(CAPTIONS.src);
   });
 
   // Review of B241: a voice cut lands after the name (the Mac plans its cuts from the finished

@@ -181,7 +181,7 @@ export const STALL_SECONDS = 120;
 export const IFACE = 2;
 /** The version of the app that deploys this file — the same as the app's own
  * (`app/src-tauri/tauri.conf.json`, held equal by a shroom-cloud test). */
-export const VERSION = "0.1.35";
+export const VERSION = "0.1.36";
 
 const ID = /^[A-Za-z0-9_-]{16}$/;
 const HLS_JS_KEY = ".shroom/player/hls.min.js";
@@ -5432,12 +5432,16 @@ const NAME_SHIM_STYLE = `.title[data-naming]::placeholder{font-size:var(--naming
 
 const ICON_CC = `<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="10" rx="2"/><path d="M7.2 6.6a1.8 1.8 0 1 0 0 2.8M11.7 6.6a1.8 1.8 0 1 0 0 2.8"/></svg>`;
 
-/** The player's markup with what the record names (B209 b): its captions track, and the
- * Captions button before the speed. @param {string} html playerHtml's @param {AiFace} ai */
+/** The player's markup with what the record names (B209 b): its captions track's address
+ * (and language) on the video, and the Captions button before the speed. Never a <track> in
+ * the markup: WebKit hands a track that's there as the video loads to the system player with
+ * it, and iOS 27 then refuses the video itself ("not supported" — Play, the big play mark and
+ * Fullscreen did nothing on a phone, 2026-11-03). `shroomCaptions` adds it once the video has
+ * loaded. @param {string} html playerHtml's @param {AiFace} ai */
 function aiPlayer(html, ai) {
   if (!ai.captions) return html;
-  const track = `<track kind="captions" src="${escapeHtml(ai.captions.src)}"${ai.captions.lang ? ` srclang="${ai.captions.lang}"` : ""} label="${escapeHtml(COPY.captions)}">`;
-  return html.replace("></video>", `>${track}</video>`).replace(`<button type="button" class="sp"`, `${AI_CC_BUTTON}<button type="button" class="sp"`);
+  const track = ` data-cc="${escapeHtml(ai.captions.src)}"${ai.captions.lang ? ` data-cc-lang="${ai.captions.lang}"` : ""}`;
+  return html.replace("></video>", `${track}></video>`).replace(`<button type="button" class="sp"`, `${AI_CC_BUTTON}<button type="button" class="sp"`);
 }
 
 /** The Captions button, off (B209 b). */
@@ -5449,7 +5453,8 @@ const AI_CC_BUTTON = `<button type="button" class="cc" aria-label="${escapeHtml(
  * while the finger is on it; the chapter playing follows the time and joins the bar's
  * spoken value. Called again on a player it drew, it redraws the bar with the chapters given
  * (fewer than two take the bar away): what plays changed under an open page (B241).
- * Captions are off until pressed, and the browser remembers. */
+ * Captions are off until pressed, and the browser remembers. The track itself is added once
+ * the video has loaded (`data-cc`, aiPlayer). */
 const AI_PLAYER_JS = `function shroomChapters(p,ch){if(p.shroomCh)return p.shroomCh(ch);var sk=p.querySelector(".seek"),v=p.querySelector("video"),ctl=p.querySelector(".ctl"),tm=p.querySelector(".time");if(!sk||!ch||ch.length<2)return;
 var bar=document.createElement("div"),tip=document.createElement("div"),n=document.createElement("span"),secs=[],hide=0,touch=false,built=-1;
 bar.className="chs";bar.setAttribute("aria-hidden","true");tip.className="chtip";tip.hidden=true;tip.setAttribute("aria-hidden","true");n.className="chn";
@@ -5475,6 +5480,8 @@ sk.addEventListener("input",function(){if(touch&&ch.length>1)show(+sk.value||0,t
 window.addEventListener("resize",function(){built=-1;paint()});
 p.shroomCh=function(x){ch=x||[];var on=ch.length>1;p.classList.toggle("ch",on);bar.style.display=n.style.display=on?"":"none";built=-1;off();if(on)paint();else{n.textContent="";sk.setAttribute("aria-valuetext",tm.textContent)}};paint()}
 function shroomCaptions(p){var v=p.querySelector("video"),b=p.querySelector(".cc"),k="shroom-captions",on=false;if(!b||!v.textTracks)return;
+function attach(){var d=v.getAttribute("data-cc");if(!d||v.querySelector("track"))return;var tr=document.createElement("track");tr.kind="captions";tr.src=d;var l=v.getAttribute("data-cc-lang");if(l)tr.srclang=l;tr.label=b.getAttribute("aria-label")||"";v.appendChild(tr)}
+if(v.readyState>=1)attach();else v.addEventListener("loadedmetadata",attach,{once:true});
 function set(x){on=x;for(var i=0;i<v.textTracks.length;i++)v.textTracks[i].mode=x?"showing":"hidden";b.setAttribute("aria-pressed",x?"true":"false")}
 try{on=localStorage.getItem(k)==="1"}catch(e){}
 b.addEventListener("click",function(){set(!on);try{localStorage.setItem(k,on?"1":"0")}catch(e){}});
@@ -5614,7 +5621,7 @@ const aiNote = (ai) => (ai.line || ai.waiting ? `<p class="ainote" id="ainote"${
  * @param {string} id @param {AiFace} ai @param {string} nonce the page's */
 function aiOwnerScript(id, ai, nonce) {
   if (!ai.waiting && !ai.coming && !ai.chapters.length) return "";
-  return `<script nonce="${nonce}">(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, coming: ai.coming, drawn: ai.chapters, later: COPY.namingLater, captions: COPY.captions, cc: AI_CC_BUTTON }))};
+  return `<script nonce="${nonce}">(function(){var t=document.getElementById("t"),l=document.getElementById("ainote"),n=0,asked=0,took=0,c=${jsonForScript(JSON.stringify({ id, waiting: ai.waiting, coming: ai.coming, drawn: ai.chapters, later: COPY.namingLater, cc: AI_CC_BUTTON }))};
 var shown=t.value,touched=false,mine=false,drawn=JSON.stringify(c.drawn),sh=t.hasAttribute("data-naming"),wide=t.placeholder;
 function unshim(){if(!sh)return;sh=false;t.placeholder=t.getAttribute("data-date")||"";t.removeAttribute("data-naming")}
 function place(){if(!sh)return;if(t.value||document.activeElement===t)return unshim();try{var cs=getComputedStyle(t),g=document.createElement("canvas").getContext("2d");g.font=cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily;
@@ -5624,7 +5631,7 @@ function say(x){if(l){l.textContent=x;l.hidden=!x}}
 function take(x){unshim();if(mine||x===shown)return;var was=shown;shown=x;t.dispatchEvent(new CustomEvent("shroom:named",{detail:x}));if(t.value!==was)return;
 t.value=x;document.title=x;if(document.activeElement===t){if(touched)t.select();else t.blur()}}
 function dress(j){var ch=j.chapters||[],cc=j.captions,k=JSON.stringify(ch),p=document.querySelector(".player");if(!p)return !ch.length&&!cc;var v=p.querySelector("video"),s=v.currentSrc||v.src||"";
-if(cc&&!p.querySelector(".cc")){var tr=document.createElement("track"),sp=p.querySelector(".sp"),h=document.createElement("div");tr.kind="captions";tr.src=cc.src+(j.copy&&s.slice(-j.copy.length)===j.copy?"&e=1":"");if(cc.lang)tr.srclang=cc.lang;tr.label=c.captions;v.appendChild(tr);
+if(cc&&!p.querySelector(".cc")){var sp=p.querySelector(".sp"),h=document.createElement("div");v.setAttribute("data-cc",cc.src+(j.copy&&s.slice(-j.copy.length)===j.copy?"&e=1":""));if(cc.lang)v.setAttribute("data-cc-lang",cc.lang);
 h.innerHTML=c.cc;sp.parentNode.insertBefore(h.firstChild,sp);shroomCaptions(p)}
 if(k!==drawn){drawn=k;shroomChapters(p,ch)}return true}
 function ask(then){var me=++asked;fetch("/_shroom/named/"+c.id,{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){var late=me<took;if(!late)took=me;
